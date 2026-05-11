@@ -35,7 +35,9 @@ export default function Home() {
         },
       ]);
 
-    if (!error) {
+    if (error) {
+      console.log(error);
+    } else {
       setAmount("");
       setNote("");
 
