@@ -8,6 +8,7 @@ import {
   Trash2,
   Pencil,
   X,
+  FolderCog,
 } from "lucide-react";
 
 export default function Home() {
@@ -31,8 +32,19 @@ export default function Home() {
   const [showModal, setShowModal] =
     useState(false);
 
+  const [
+    showCategoryModal,
+    setShowCategoryModal,
+  ] = useState(false);
+
   const [editingId, setEditingId] =
     useState<number | null>(null);
+
+  const [newCategory, setNewCategory] =
+    useState("");
+
+  const [selectedType, setSelectedType] =
+    useState("1");
 
   useEffect(() => {
     fetchExpenses();
@@ -97,7 +109,7 @@ export default function Home() {
       ]);
 
     if (!error) {
-      resetForm();
+      resetExpenseForm();
 
       fetchExpenses();
     }
@@ -117,7 +129,7 @@ export default function Home() {
       .eq("id", editingId);
 
     if (!error) {
-      resetForm();
+      resetExpenseForm();
 
       fetchExpenses();
     }
@@ -134,7 +146,40 @@ export default function Home() {
     fetchExpenses();
   }
 
-  function resetForm() {
+  async function addCategory() {
+    if (!newCategory) return;
+
+    const { error } = await supabase
+      .from("categories")
+      .insert([
+        {
+          name: newCategory,
+          type_id:
+            Number(selectedType),
+        },
+      ]);
+
+    if (!error) {
+      setNewCategory("");
+
+      setSelectedType("1");
+
+      fetchCategories();
+    }
+  }
+
+  async function deleteCategory(
+    id: number
+  ) {
+    await supabase
+      .from("categories")
+      .delete()
+      .eq("id", id);
+
+    fetchCategories();
+  }
+
+  function resetExpenseForm() {
     setAmount("");
 
     setNote("");
@@ -162,7 +207,7 @@ export default function Home() {
           Calm personal finance tracking
         </p>
 
-        {/* TOTAL CARD */}
+        {/* TOTAL */}
 
         <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 mb-5">
           <p className="text-gray-400 mb-2">
@@ -172,6 +217,33 @@ export default function Home() {
           <h2 className="text-5xl font-bold">
             RM {total.toFixed(2)}
           </h2>
+        </div>
+
+        {/* CATEGORY BUTTON */}
+
+        <div className="mb-5">
+          <button
+            onClick={() =>
+              setShowCategoryModal(
+                true
+              )
+            }
+            className="
+              bg-zinc-900
+              border
+              border-zinc-800
+              rounded-2xl
+              px-4
+              py-3
+              flex
+              items-center
+              gap-2
+            "
+          >
+            <FolderCog size={18} />
+
+            Manage Categories
+          </button>
         </div>
 
         {/* EXPENSE LIST */}
@@ -280,7 +352,165 @@ export default function Home() {
           <Plus size={28} />
         </button>
 
-        {/* MODAL */}
+        {/* CATEGORY MODAL */}
+
+        {showCategoryModal && (
+          <div
+            className="
+              fixed
+              inset-0
+              bg-black/70
+              flex
+              items-end
+              justify-center
+              z-50
+            "
+          >
+            <div
+              className="
+                bg-zinc-950
+                border
+                border-zinc-800
+                rounded-t-3xl
+                p-5
+                w-full
+                max-w-md
+              "
+            >
+              <div className="flex justify-between items-center mb-5">
+                <h2 className="text-xl font-bold">
+                  Manage Categories
+                </h2>
+
+                <button
+                  onClick={() =>
+                    setShowCategoryModal(
+                      false
+                    )
+                  }
+                >
+                  <X size={22} />
+                </button>
+              </div>
+
+              <div className="space-y-3 mb-5">
+                <input
+                  placeholder="Category Name"
+                  value={newCategory}
+                  onChange={(e) =>
+                    setNewCategory(
+                      e.target.value
+                    )
+                  }
+                  className="
+                    w-full
+                    bg-black
+                    border
+                    border-zinc-800
+                    rounded-2xl
+                    p-4
+                  "
+                />
+
+                <select
+                  value={selectedType}
+                  onChange={(e) =>
+                    setSelectedType(
+                      e.target.value
+                    )
+                  }
+                  className="
+                    w-full
+                    bg-black
+                    border
+                    border-zinc-800
+                    rounded-2xl
+                    p-4
+                  "
+                >
+                  <option value="1">
+                    Needs
+                  </option>
+
+                  <option value="2">
+                    Wants
+                  </option>
+
+                  <option value="3">
+                    Savings
+                  </option>
+                </select>
+
+                <button
+                  onClick={addCategory}
+                  className="
+                    w-full
+                    bg-white
+                    text-black
+                    rounded-2xl
+                    p-4
+                    font-semibold
+                  "
+                >
+                  Add Category
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {categories.map(
+                  (category) => (
+                    <div
+                      key={
+                        category.id
+                      }
+                      className="
+                        bg-zinc-900
+                        border
+                        border-zinc-800
+                        rounded-2xl
+                        p-3
+                        flex
+                        justify-between
+                        items-center
+                      "
+                    >
+                      <div>
+                        <p>
+                          {
+                            category.name
+                          }
+                        </p>
+
+                        <p className="text-sm text-gray-400">
+                          {
+                            category
+                              .types
+                              .name
+                          }
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() =>
+                          deleteCategory(
+                            category.id
+                          )
+                        }
+                        className="text-red-400"
+                      >
+                        <Trash2
+                          size={18}
+                        />
+                      </button>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EXPENSE MODAL */}
 
         {showModal && (
           <div
@@ -313,7 +543,9 @@ export default function Home() {
                 </h2>
 
                 <button
-                  onClick={resetForm}
+                  onClick={
+                    resetExpenseForm
+                  }
                 >
                   <X size={22} />
                 </button>
@@ -393,7 +625,9 @@ export default function Home() {
                             .name
                         }
                         {" → "}
-                        {category.name}
+                        {
+                          category.name
+                        }
                       </option>
                     )
                   )}
