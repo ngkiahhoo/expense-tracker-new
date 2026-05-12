@@ -1,28 +1,31 @@
 "use client";
 
-import ExpenseCard from
-"../components/ExpenseCard";
+import { useEffect, useState } from "react";
 
-import IncomeCard from
-"../components/IncomeCard";
-
-import ExpenseForm from
-"../components/ExpenseForm";
-
-import AnalyticsPanel from
-"../components/AnalyticsPanel";
-
-import { useEffect, useMemo, useState } from "react";
-
-import { supabase } from "../lib/supabase";
+import PullToRefresh
+from "react-simple-pull-to-refresh";
 
 import {
-  Plus,
-  X,
-  RotateCcw,
-  FolderCog,
   Wallet,
+  TrendingDown,
+  FolderTree,
+  Receipt,
+  ChevronDown,
+  ChevronUp,
+  RefreshCcw,
+  Plus,
 } from "lucide-react";
+
+import ExpenseCard from "../components/ExpenseCard";
+import ExpensePanel from "../components/ExpensePanel";
+import IncomePanel from "../components/IncomePanel";
+import AnalyticsPanel from "../components/AnalyticsPanel";
+import CategoryPanel from "../components/CategoryPanel";
+
+import useExpenses from "../hooks/useExpenses";
+import useIncome from "../hooks/useIncome";
+import useCategories from "../hooks/useCategories";
+import useAnalytics from "../hooks/useAnalytics";
 
 export default function Home() {
 
@@ -48,45 +51,8 @@ export default function Home() {
       }
     );
 
-  const [showIncomeList, setShowIncomeList] =
-    useState(false);
-
-  const [expenses, setExpenses] =
-    useState<any[]>([]);
-
-  const [categories, setCategories] =
-    useState<any[]>([]);
-
-  const [incomes, setIncomes] =
-    useState<any[]>([]);
-
   const [selectedMonth, setSelectedMonth] =
     useState(currentMonth);
-
-  const [amount, setAmount] =
-    useState("");
-
-  const [note, setNote] =
-    useState("");
-
-  const [expenseDate, setExpenseDate] =
-    useState(
-      new Date()
-        .toISOString()
-        .split("T")[0]
-    );
-
-  const [selectedCategory, setSelectedCategory] =
-    useState("");
-
-  const [editingId, setEditingId] =
-    useState<number | null>(null);
-
-  const [showCategories, setShowCategories] =
-    useState(false);
-
-  const [showAnalytics, setShowAnalytics] =
-    useState(false);
 
   const [showExpenseForm, setShowExpenseForm] =
     useState(false);
@@ -94,1095 +60,829 @@ export default function Home() {
   const [showIncomeForm, setShowIncomeForm] =
     useState(false);
 
-  const [newCategory, setNewCategory] =
-    useState("");
-
-  const [
-  editingCategoryId,
-  setEditingCategoryId
-] = useState<number | null>(
-  null
-);
-
-  const [selectedType, setSelectedType] =
-    useState("needs");
-
-  const [incomeAmount, setIncomeAmount] =
-    useState("");
-
-  const [incomeNote, setIncomeNote] =
-    useState("");
-
-  const [incomeEditingId, setIncomeEditingId] =
-    useState<number | null>(null);
-
-  const [loading, setLoading] =
+  const [showIncomeList, setShowIncomeList] =
     useState(false);
 
-  async function fetchExpenses() {
+  const [showCategories, setShowCategories] =
+    useState(false);
 
-    const start =
-      `${selectedMonth}-01`;
+  const [showAnalytics, setShowAnalytics] =
+    useState(false);
 
-    const end =
-      `${selectedMonth}-31`;
+  /* EXPENSES */
 
-    const { data, error } =
-      await supabase
-        .from("expenses")
-        .select(`
-  *,
-  categories (
-    id,
-    name,
-    type_id,
-    types (
-      id,
-      name
-    )
-  )
-`)
-        .gte("expense_date", start)
-        .lte("expense_date", end)
-        .order("expense_date", {
-          ascending: false,
-        });
+  const {
 
-    if (error) {
-      console.log(error);
-      return;
-    }
+    expenses,
 
-    setExpenses(data || []);
-  }
+    amount,
+    setAmount,
 
-  async function fetchCategories() {
+    note,
+    setNote,
 
-    const { data, error } =
-      await supabase
-        .from("categories")
-        .select(`
-  id,
-  name,
-  type_id,
-  types (
-    id,
-    name
-  )
-`)
-        .order("name");
+    expenseDate,
+    setExpenseDate,
 
-    if (error) {
-      console.log(error);
-      return;
-    }
+    selectedCategory,
+    setSelectedCategory,
 
-    setCategories(data || []);
-  }
+    editingId,
+    setEditingId,
 
-  async function fetchIncome() {
+    loading,
 
-    const start =
-      `${selectedMonth}-01`;
+    error,
 
-    const end =
-      `${selectedMonth}-31`;
+    fetchExpenses,
 
-    const { data } = await supabase
-      .from("incomes")
-      .select("*")
-      .gte("income_date", start)
-      .lte("income_date", end);
+    saveExpense,
 
-    setIncomes(data || []);
-  }
+    deleteExpense,
+
+    startEdit,
+
+    resetExpenseForm,
+
+  } = useExpenses(
+    selectedMonth
+  );
+
+  /* INCOME */
+
+  const {
+
+    incomes,
+
+    incomeAmount,
+    setIncomeAmount,
+
+    incomeNote,
+    setIncomeNote,
+
+    incomeEditingId,
+
+    fetchIncome,
+
+    addIncome,
+
+    deleteIncome,
+
+    startEditIncome,
+
+  } = useIncome(
+    selectedMonth
+  );
+
+  /* CATEGORY */
+
+  const {
+
+    categories,
+
+    newCategory,
+    setNewCategory,
+
+    selectedType,
+    setSelectedType,
+
+    editingCategoryId,
+
+    fetchCategories,
+
+    addCategory,
+
+    deleteCategory,
+
+    editCategory,
+
+  } = useCategories();
+
+  /* ANALYTICS */
+
+  const {
+
+    analytics,
+
+    totalSpending,
+
+    totalIncome,
+
+    spendingPercent,
+
+  } = useAnalytics(
+    expenses,
+    incomes
+  );
+
+  /* FETCH */
 
   useEffect(() => {
 
     fetchExpenses();
-    fetchCategories();
+
     fetchIncome();
+
+    fetchCategories();
 
   }, [selectedMonth]);
 
-  async function saveExpense() {
-
-    if (
-      !amount ||
-      !note ||
-      !selectedCategory
-    ) return;
-
-    setLoading(true);
-
-    if (editingId) {
-
-      const { error } =
-        await supabase
-          .from("expenses")
-          .update({
-            amount: Number(amount),
-            note,
-            expense_date:
-              expenseDate,
-            category_id:
-              Number(
-                selectedCategory
-              ),
-          })
-          .eq("id", editingId);
-
-      if (error) {
-        console.log(error);
-      }
-
-      setEditingId(null);
-
-    } else {
-
-      const { error } =
-        await supabase
-          .from("expenses")
-          .insert([
-            {
-              amount:
-                Number(amount),
-
-              note,
-
-              expense_date:
-                expenseDate,
-
-              category_id:
-                Number(
-                  selectedCategory
-                ),
-            },
-          ]);
-
-      if (error) {
-        console.log(error);
-      }
-    }
-
-    resetForm();
-
-    fetchExpenses();
-
-    setLoading(false);
-  }
-
-  function resetForm() {
-
-    setAmount("");
-
-    setNote("");
-
-    setSelectedCategory("");
-
-    setExpenseDate(
-      new Date()
-        .toISOString()
-        .split("T")[0]
-    );
-  }
-
-  async function deleteExpense(id:number) {
-
-    await supabase
-      .from("expenses")
-      .delete()
-      .eq("id", id);
-
-    fetchExpenses();
-  }
-
-  function startEdit(expense:any) {
-
-    setShowExpenseForm(true);
-
-    setEditingId(expense.id);
-
-    setAmount(
-      expense.amount.toString()
-    );
-
-    setNote(expense.note);
-
-    setExpenseDate(
-      expense.expense_date
-    );
-
-    if (expense.category_id) {
-
-      setSelectedCategory(
-        expense.category_id.toString()
-      );
-    }
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  }
-
-  async function addCategory() {
-
-  if (!newCategory) return;
-
-  const selectedTypeData =
-    await supabase
-      .from("types")
-      .select("id")
-      .eq(
-  "name",
-  selectedType.charAt(0)
-    .toUpperCase() +
-    selectedType.slice(1)
-)
-      .single();
-
-  const typeId =
-    selectedTypeData.data?.id;
-
-  if (!typeId) return;
-
-  if (editingCategoryId) {
-
-    await supabase
-      .from("categories")
-      .update({
-        name: newCategory,
-        type_id: typeId,
-      })
-      .eq(
-        "id",
-        editingCategoryId
-      );
-
-  } else {
-
-    await supabase
-      .from("categories")
-      .insert([
-        {
-          name: newCategory,
-          type_id: typeId,
-        },
-      ]);
-  }
-
-  setNewCategory("");
-
-  setEditingCategoryId(null);
-
-  fetchCategories();
-}
-
-  async function deleteCategory(
-  id:number
-) {
-
-  const { error } =
-    await supabase
-      .from("categories")
-      .delete()
-      .eq("id", id);
-
-  if (error) {
-
-    alert(
-      "This category is being used by expenses."
-    );
-
-    return;
-  }
-
-  fetchCategories();
-}
-
-  function editCategory(cat:any) {
-
-  setEditingCategoryId(
-    cat.id
-  );
-
-  setNewCategory(
-    cat.name
-  );
-
-  setSelectedType(
-    cat.types?.name?.toLowerCase()
-  );
-
-  window.scrollTo({
-    top: document.body.scrollHeight,
-    behavior: "smooth",
-  });
-}
-
-  async function addIncome() {
-
-    if (!incomeAmount) return;
-
-    if (incomeEditingId) {
-
-      await supabase
-        .from("incomes")
-        .update({
-          amount:
-            Number(incomeAmount),
-
-          note: incomeNote,
-        })
-        .eq(
-          "id",
-          incomeEditingId
-        );
-
-      setIncomeEditingId(null);
-
-    } else {
-
-      await supabase
-        .from("incomes")
-        .insert([
-          {
-            amount:
-              Number(incomeAmount),
-
-            note: incomeNote,
-
-            income_date:
-              `${selectedMonth}-01`,
-          },
-        ]);
-    }
-
-    setIncomeAmount("");
-
-    setIncomeNote("");
-
-    fetchIncome();
-  }
-
-  async function deleteIncome(
-    id:number
-  ) {
-
-    await supabase
-      .from("incomes")
-      .delete()
-      .eq("id", id);
-
-    fetchIncome();
-  }
-
-  function startEditIncome(
-    income:any
-  ) {
-
-    setIncomeEditingId(
-      income.id
-    );
-
-    setIncomeAmount(
-      income.amount.toString()
-    );
-
-    setIncomeNote(
-      income.note || ""
-    );
-
-    setShowIncomeForm(true);
-  }
-
-  const totalSpending =
-    expenses.reduce(
-      (sum, item) =>
-        sum + Number(item.amount),
-      0
-    );
-
-  const totalIncome =
-    incomes.reduce(
-      (sum, item) =>
-        sum + Number(item.amount),
-      0
-    );
-
-  const spendingPercent =
-    totalIncome > 0
-      ? (
-          (totalSpending /
-            totalIncome) *
-          100
-        ).toFixed(1)
-      : "0";
-
-  
-    const analytics =
-  useMemo(() => {
-
-    const result:any = {
-      needs: 0,
-      wants: 0,
-      savings: 0,
-    };
-
-    expenses.forEach((expense) => {
-
-      const typeName =
-        expense.categories?.types?.name
-          ?.toLowerCase();
-
-      if (
-        typeName === "needs"
-      ) {
-
-        result.needs +=
-          Number(expense.amount);
-
-      } else if (
-        typeName === "wants"
-      ) {
-
-        result.wants +=
-          Number(expense.amount);
-
-      } else if (
-        typeName === "savings"
-      ) {
-
-        result.savings +=
-          Number(expense.amount);
-      }
-
-    });
-
-    return result;
-
-  }, [expenses]);
-
   return (
 
-    <main className="
-      min-h-screen
-      bg-black
-      text-white
-      p-5
-    ">
+    <PullToRefresh
 
-      <div className="
-        max-w-md
-        mx-auto
-      ">
+      onRefresh={async () => {
 
-        <div className="
-          flex
-          justify-between
-          items-start
-          mb-6
-        ">
+        await fetchExpenses();
 
-          <div>
+        await fetchIncome();
 
-            <h1 className="
-              text-5xl
-              font-bold
-            ">
-              Expense Tracker
-            </h1>
+        await fetchCategories();
 
-            <p className="
-              text-zinc-400
-              mt-2
-            ">
-              {selectedMonth}
-            </p>
+      }}
 
-          </div>
+    >
 
-          <button
-            onClick={() => {
+      <main
+        className="
+          min-h-screen
+          bg-black
+          text-white
+          p-5
+        "
+      >
 
-              fetchExpenses();
-
-              fetchCategories();
-
-              fetchIncome();
-
-            }}
-            className="
-              bg-zinc-900
-              p-4
-              rounded-2xl
-            "
-          >
-            <RotateCcw size={20}/>
-          </button>
-
-        </div>
-
-        <select
-          value={selectedMonth}
-          onChange={(e)=>
-            setSelectedMonth(
-              e.target.value
-            )
-          }
+        <div
           className="
-            w-full
-            bg-zinc-900
-            border
-            border-zinc-800
-            rounded-2xl
-            p-4
-            mb-5
+            max-w-md
+            mx-auto
+            space-y-6
           "
         >
 
-          {months.map((month) => (
+          {/* HEADER */}
 
-            <option
-              key={month}
-              value={month}
-            >
-              {month === currentMonth
-                ? "Current Month"
-                : month}
-            </option>
-
-          ))}
-
-        </select>
-
-        <div className="
-          bg-zinc-900
-          rounded-3xl
-          p-6
-          mb-4
-        ">
-
-          <div className="
-            flex
-            items-center
-            gap-2
-            mb-2
-          ">
-
-            <Wallet size={18}/>
-
-            <p className="
-              text-zinc-400
-            ">
-              Monthly Income
-            </p>
-
-          </div>
-
-          <h2 className="
-            text-4xl
-            font-bold
-            mb-4
-          ">
-            RM {totalIncome.toFixed(2)}
-          </h2>
-
-          <button
-            onClick={() =>
-              setShowIncomeList(
-                !showIncomeList
-              )
-            }
+          <div
             className="
-              w-full
-              bg-zinc-800
-              rounded-2xl
-              p-4
-              text-left
-              font-semibold
+              flex
+              items-start
+              justify-between
             "
           >
 
-            {showIncomeList
-              ? "Hide Income Records"
-              : "Show Income Records"}
+            <div>
 
-          </button>
+              <h1
+                className="
+                  text-6xl
+                  font-black
+                  tracking-tight
+                "
+              >
+                Expense Tracker
+              </h1>
 
-          {showIncomeList && (
+              <p
+                className="
+                  text-zinc-500
+                  mt-2
+                "
+              >
+                Personal Finance Dashboard
+              </p>
 
-            <div className="
-              space-y-3
-              mt-4
-            ">
+              <p
+                className="
+                  text-zinc-400
+                  mt-4
+                  text-lg
+                "
+              >
+                {selectedMonth}
+              </p>
 
-              {incomes.map((income) => (
+            </div>
 
-                <IncomeCard
-                  key={income.id}
-                  income={income}
-                  startEditIncome={
-                    startEditIncome
-                  }
-                  deleteIncome={
-                    deleteIncome
-                  }
-                />
+            <button
+
+              onClick={() => {
+
+                fetchExpenses();
+
+                fetchIncome();
+
+                fetchCategories();
+
+              }}
+
+              className="
+                bg-zinc-900
+                border
+                border-zinc-800
+                rounded-2xl
+                p-4
+              "
+            >
+              <RefreshCcw size={20}/>
+            </button>
+
+          </div>
+
+          {/* MONTH */}
+
+          <div
+            className="
+              bg-zinc-900/90
+              border
+              border-zinc-800
+              rounded-3xl
+              p-5
+              shadow-xl
+            "
+          >
+
+            <select
+
+              value={selectedMonth}
+
+              onChange={(e) =>
+                setSelectedMonth(
+                  e.target.value
+                )
+              }
+
+              className="
+                w-full
+                bg-transparent
+                outline-none
+                text-lg
+              "
+            >
+
+              {months.map((month) => (
+
+                <option
+                  key={month}
+                  value={month}
+                  className="
+                    bg-black
+                  "
+                >
+                  {month === currentMonth
+                    ? "Current Month"
+                    : month}
+                </option>
 
               ))}
 
-            </div>
-
-          )}
-
-        </div>
-
-        <button
-          onClick={() =>
-            setShowAnalytics(
-              !showAnalytics
-            )
-          }
-          className="
-            w-full
-            bg-zinc-900
-            rounded-3xl
-            p-6
-            mb-5
-            text-left
-          "
-        >
-
-          <p className="
-            text-zinc-400
-            mb-2
-          ">
-            Total Spending
-          </p>
-
-          <h2 className="
-            text-5xl
-            font-bold
-            mb-2
-          ">
-            RM {totalSpending.toFixed(2)}
-          </h2>
-
-          <p className="
-            text-zinc-400
-          ">
-            {spendingPercent}% of income
-          </p>
-
-        </button>
-
-        {showAnalytics && (
-
-          <AnalyticsPanel
-            analytics={analytics}
-            totalSpending={
-              totalSpending
-            }
-            totalIncome={
-              totalIncome
-            }
-            expenses={expenses}
-          />
-
-        )}
-
-        <div className="mb-5">
-
-          <button
-            onClick={() =>
-              setShowExpenseForm(
-                !showExpenseForm
-              )
-            }
-            className="
-              w-full
-              bg-zinc-900
-              rounded-2xl
-              p-4
-              font-bold
-              mb-3
-              flex
-              items-center
-              justify-center
-              gap-2
-            "
-          >
-
-            {showExpenseForm ? (
-              <>
-                <X size={18}/>
-                Close Expense Form
-              </>
-            ) : (
-              <>
-                <Plus size={18}/>
-                Add Expense
-              </>
-            )}
-
-          </button>
-
-          {showExpenseForm && (
-
-            <ExpenseForm
-
-              amount={amount}
-              setAmount={setAmount}
-
-              note={note}
-              setNote={setNote}
-
-              expenseDate={expenseDate}
-              setExpenseDate={
-                setExpenseDate
-              }
-
-              selectedCategory={
-                selectedCategory
-              }
-
-              setSelectedCategory={
-                setSelectedCategory
-              }
-
-              categories={categories}
-
-              editingId={editingId}
-
-              saveExpense={saveExpense}
-
-              loading={loading}
-
-              cancelEdit={() => {
-
-                setEditingId(null);
-
-                resetForm();
-
-                setShowExpenseForm(
-                  false
-                );
-
-              }}
-            />
-
-          )}
-
-        </div>
-
-        <div className="mb-5">
-
-          <button
-            onClick={() =>
-              setShowIncomeForm(
-                !showIncomeForm
-              )
-            }
-            className="
-              w-full
-              bg-zinc-900
-              rounded-2xl
-              p-4
-              font-bold
-              mb-3
-              flex
-              items-center
-              justify-center
-              gap-2
-            "
-          >
-
-            {showIncomeForm ? (
-              <>
-                <X size={18}/>
-                Close Income Form
-              </>
-            ) : (
-              <>
-                <Plus size={18}/>
-                Add Income
-              </>
-            )}
-
-          </button>
-
-          {showIncomeForm && (
-
-            <div className="
-              bg-zinc-900
-              rounded-3xl
-              p-5
-              space-y-3
-            ">
-
-              <input
-                type="number"
-                placeholder="Income Amount"
-                value={incomeAmount}
-                onChange={(e)=>
-                  setIncomeAmount(
-                    e.target.value
-                  )
-                }
-                className="
-                  w-full
-                  bg-black
-                  rounded-2xl
-                  p-4
-                "
-              />
-
-              <input
-                type="text"
-                placeholder="Income Note"
-                value={incomeNote}
-                onChange={(e)=>
-                  setIncomeNote(
-                    e.target.value
-                  )
-                }
-                className="
-                  w-full
-                  bg-black
-                  rounded-2xl
-                  p-4
-                "
-              />
-
-              <button
-                onClick={async () => {
-
-                  await addIncome();
-
-                  setShowIncomeForm(
-                    false
-                  );
-
-                }}
-                className="
-                  w-full
-                  bg-green-500
-                  text-black
-                  rounded-2xl
-                  py-4
-                  font-bold
-                "
-              >
-                Save Income
-              </button>
-
-            </div>
-
-          )}
-
-        </div>
-
-        <button
-          onClick={() =>
-            setShowCategories(
-              !showCategories
-            )
-          }
-          className="
-            w-full
-            bg-zinc-900
-            rounded-2xl
-            p-4
-            flex
-            items-center
-            justify-center
-            gap-2
-            mb-5
-          "
-        >
-
-          <FolderCog size={18}/>
-
-          Categories
-
-        </button>
-
-        {showCategories && (
-
-          <div className="
-            bg-zinc-900
-            rounded-3xl
-            p-5
-            mb-5
-            space-y-3
-          ">
-
-            <input
-              type="text"
-              placeholder="Category Name"
-              value={newCategory}
-              onChange={(e)=>
-                setNewCategory(
-                  e.target.value
-                )
-              }
-              className="
-                w-full
-                bg-black
-                rounded-2xl
-                p-4
-              "
-            />
-
-            <select
-              value={selectedType}
-              onChange={(e)=>
-                setSelectedType(
-                  e.target.value
-                )
-              }
-              className="
-                w-full
-                bg-black
-                rounded-2xl
-                p-4
-              "
-            >
-
-              <option value="needs">
-                Needs
-              </option>
-
-              <option value="wants">
-                Wants
-              </option>
-
-              <option value="savings">
-                Savings
-              </option>
-
             </select>
-
-            <button
-              onClick={addCategory}
-              className="
-                w-full
-                bg-white
-                text-black
-                rounded-2xl
-                py-4
-                font-bold
-              "
-            >
-              {
-  editingCategoryId
-    ? "Update Category"
-    : "Add Category"
-}
-            </button>
-
-            <div className="
-              space-y-2
-              pt-3
-            ">
-
-              {categories.map((cat) => (
-
-  <div
-    key={cat.id}
-    className="
-      bg-black
-      rounded-2xl
-      p-4
-      flex
-      items-center
-      justify-between
-    "
-  >
-
-    <div>
-
-      <p className="
-        font-semibold
-      ">
-        {cat.name}
-      </p>
-
-      <p className="
-        text-sm
-        text-zinc-500
-      ">
-        {cat.types?.name}
-      </p>
-
-    </div>
-
-    <div className="
-      flex
-      gap-2
-    ">
-
-      <button
-        onClick={() =>
-          editCategory(cat)
-        }
-        className="
-          bg-zinc-800
-          px-3
-          py-2
-          rounded-xl
-          text-sm
-        "
-      >
-        Edit
-      </button>
-
-      <button
-        onClick={() =>
-          deleteCategory(cat.id)
-        }
-        className="
-          bg-red-500
-          px-3
-          py-2
-          rounded-xl
-          text-sm
-        "
-      >
-        Delete
-      </button>
-
-    </div>
-
-  </div>
-
-))}
-
-            </div>
 
           </div>
 
-        )}
+          {/* ERROR */}
 
-        <div className="space-y-3">
+          {error && (
 
-          {expenses.map((expense) => (
+            <div
+              className="
+                bg-red-500
+                text-white
+                p-4
+                rounded-2xl
+              "
+            >
+              {error}
+            </div>
 
-            <ExpenseCard
-              key={expense.id}
-              expense={expense}
-              startEdit={startEdit}
-              deleteExpense={deleteExpense}
-            />
+          )}
 
-          ))}
+          {/* INCOME */}
+
+          <div
+            className="
+              bg-zinc-900/90
+              border
+              border-emerald-500/30
+              rounded-3xl
+              p-5
+              shadow-xl
+            "
+          >
+
+            <button
+
+              onClick={() =>
+                setShowIncomeList(
+                  !showIncomeList
+                )
+              }
+
+              className="
+                w-full
+                text-left
+              "
+            >
+
+              <div
+                className="
+                  flex
+                  justify-between
+                  items-start
+                "
+              >
+
+                <div>
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                      text-zinc-400
+                    "
+                  >
+                    <Wallet size={18}/>
+                    <span>
+                      Monthly Income
+                    </span>
+                  </div>
+
+                  <h1
+                    className="
+                      text-6xl
+                      font-bold
+                      mt-3
+                      text-emerald-400
+                    "
+                  >
+                    RM
+                    {" "}
+                    {totalIncome.toFixed(2)}
+                  </h1>
+
+                </div>
+
+                <div
+                  className="
+                    text-zinc-400
+                    mt-2
+                  "
+                >
+
+                  {showIncomeList
+                    ? <ChevronUp/>
+                    : <ChevronDown/>}
+
+                </div>
+
+              </div>
+
+            </button>
+
+            {showIncomeList && (
+
+              <div
+                className="
+                  mt-6
+                  border-t
+                  border-zinc-800
+                  pt-6
+                "
+              >
+
+                <IncomePanel
+                showIncomeList={showIncomeList}
+setShowIncomeList={setShowIncomeList}
+                  totalIncome={totalIncome}
+                  incomes={incomes}
+
+                  showIncomeForm={showIncomeForm}
+
+                  setShowIncomeForm={setShowIncomeForm}
+
+                  incomeAmount={incomeAmount}
+
+                  setIncomeAmount={setIncomeAmount}
+
+                  incomeNote={incomeNote}
+
+                  setIncomeNote={setIncomeNote}
+
+                  incomeEditingId={incomeEditingId}
+
+                  addIncome={addIncome}
+
+                  startEditIncome={startEditIncome}
+
+                  deleteIncome={deleteIncome}
+
+                />
+
+              </div>
+
+            )}
+
+          </div>
+
+          {/* SPENDING */}
+
+          <div
+            className="
+              bg-zinc-900/90
+              border
+              border-red-500/30
+              rounded-3xl
+              p-5
+              shadow-xl
+            "
+          >
+
+            <button
+
+              onClick={() =>
+                setShowAnalytics(
+                  !showAnalytics
+                )
+              }
+
+              className="
+                w-full
+                text-left
+              "
+            >
+
+              <div
+                className="
+                  flex
+                  justify-between
+                  items-start
+                "
+              >
+
+                <div>
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                      text-zinc-400
+                    "
+                  >
+                    <TrendingDown size={18}/>
+                    <span>
+                      Total Spending
+                    </span>
+                  </div>
+
+                  <h1
+                    className="
+                      text-6xl
+                      font-bold
+                      mt-3
+                      text-red-400
+                    "
+                  >
+                    RM
+                    {" "}
+                    {totalSpending.toFixed(2)}
+                  </h1>
+
+                  <p
+                    className="
+                      text-zinc-400
+                      mt-3
+                    "
+                  >
+                    {spendingPercent}
+                    %
+                    {" "}
+                    of income
+                  </p>
+
+                </div>
+
+                <div
+                  className="
+                    text-zinc-400
+                    mt-2
+                  "
+                >
+
+                  {showAnalytics
+                    ? <ChevronUp/>
+                    : <ChevronDown/>}
+
+                </div>
+
+              </div>
+
+            </button>
+
+            {showAnalytics && (
+
+              <div
+                className="
+                  mt-6
+                  border-t
+                  border-zinc-800
+                  pt-6
+                "
+              >
+
+                <AnalyticsPanel
+
+                  analytics={analytics}
+
+                  totalSpending={totalSpending}
+
+                />
+
+              </div>
+
+            )}
+
+          </div>
+
+          {/* EXPENSE FORM */}
+
+          <div
+            className="
+              bg-zinc-900/90
+              border
+              border-zinc-800
+              rounded-3xl
+              p-5
+              shadow-xl
+            "
+          >
+
+            <button
+
+              onClick={() =>
+                setShowExpenseForm(
+                  !showExpenseForm
+                )
+              }
+
+              className="
+                w-full
+                flex
+                items-center
+                justify-center
+                gap-3
+                text-xl
+                font-bold
+              "
+            >
+
+              <Plus size={22}/>
+
+              {showExpenseForm
+                ? "Close Expense Form"
+                : "Add Expense"}
+
+            </button>
+
+            {showExpenseForm && (
+
+              <div
+                className="
+                  mt-6
+                  border-t
+                  border-zinc-800
+                  pt-6
+                "
+              >
+
+                <ExpensePanel
+                showExpenseForm={showExpenseForm}
+setShowExpenseForm={setShowExpenseForm}
+                  amount={amount}
+
+                  setAmount={setAmount}
+
+                  note={note}
+
+                  setNote={setNote}
+
+                  expenseDate={expenseDate}
+
+                  setExpenseDate={setExpenseDate}
+
+                  selectedCategory={selectedCategory}
+
+                  setSelectedCategory={setSelectedCategory}
+
+                  categories={categories}
+
+                  editingId={editingId}
+
+                  loading={loading}
+
+                  saveExpense={saveExpense}
+
+                  resetExpenseForm={resetExpenseForm}
+
+                  setEditingId={setEditingId}
+
+                />
+
+              </div>
+
+            )}
+
+          </div>
+
+          {/* CATEGORIES */}
+
+          <div
+            className="
+              bg-zinc-900/90
+              border
+              border-purple-500/30
+              rounded-3xl
+              p-5
+              shadow-xl
+            "
+          >
+
+            <button
+
+              onClick={() =>
+                setShowCategories(
+                  !showCategories
+                )
+              }
+
+              className="
+                w-full
+                flex
+                items-center
+                justify-between
+                text-xl
+                font-bold
+              "
+            >
+
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-3
+                "
+              >
+                <FolderTree size={22}/>
+                Categories
+              </div>
+
+              {showCategories
+                ? <ChevronUp/>
+                : <ChevronDown/>}
+
+            </button>
+
+            {showCategories && (
+
+              <div
+                className="
+                  mt-6
+                  border-t
+                  border-zinc-800
+                  pt-6
+                "
+              >
+
+                <CategoryPanel
+
+  showCategories={showCategories}
+  setShowCategories={setShowCategories}
+
+  newCategory={newCategory}
+  setNewCategory={setNewCategory}
+
+  selectedType={selectedType}
+  setSelectedType={setSelectedType}
+
+  editingCategoryId={editingCategoryId}
+
+  addCategory={addCategory}
+  editCategory={editCategory}
+  deleteCategory={deleteCategory}
+
+  categories={categories}
+
+/>
+
+              </div>
+
+            )}
+
+          </div>
+
+          {/* EXPENSE LIST */}
+
+          <div
+            className="
+              space-y-4
+            "
+          >
+
+            <div
+              className="
+                flex
+                items-center
+                gap-3
+                px-2
+              "
+            >
+
+              <Receipt size={22}/>
+
+              <h2
+                className="
+                  text-2xl
+                  font-bold
+                "
+              >
+                Expense Records
+              </h2>
+
+            </div>
+
+            {loading && (
+
+              <div
+                className="
+                  bg-zinc-900
+                  rounded-3xl
+                  p-10
+                  text-center
+                  text-zinc-400
+                "
+              >
+                Loading...
+              </div>
+
+            )}
+
+            {!loading &&
+              expenses.length === 0 && (
+
+              <div
+                className="
+                  bg-zinc-900
+                  border
+                  border-zinc-800
+                  rounded-3xl
+                  p-10
+                  text-center
+                "
+              >
+
+                <h2
+                  className="
+                    text-2xl
+                    font-bold
+                    mb-2
+                  "
+                >
+                  No expenses yet
+                </h2>
+
+                <p
+                  className="
+                    text-zinc-400
+                  "
+                >
+                  Tap Add Expense to start
+                </p>
+
+              </div>
+
+            )}
+
+            {!loading &&
+              expenses.map((expense) => (
+
+              <ExpenseCard
+  key={expense.id}
+
+  expense={expense}
+
+  startEdit={startEdit}
+
+  deleteExpense={deleteExpense}
+/>
+
+            ))}
+
+          </div>
 
         </div>
 
-      </div>
+      </main>
 
-    </main>
+    </PullToRefresh>
   );
 }

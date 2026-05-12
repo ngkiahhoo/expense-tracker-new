@@ -114,7 +114,7 @@ export default function ExpenseForm({
 >
   {category.name}
   {" · "}
-  {category.type}
+  {category.types?.name}
 </option>
           )
         )}

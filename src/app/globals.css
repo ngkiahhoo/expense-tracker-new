@@ -7,3 +7,33 @@ body {
   margin: 0;
   padding: 0;
 }
+
+.section-card {
+
+  @apply
+  bg-zinc-900/90
+  border
+  border-zinc-800
+  rounded-3xl
+  p-5
+  shadow-xl
+  backdrop-blur;
+
+}
+
+.section-title {
+
+  @apply
+  text-2xl
+  font-bold
+  mb-4;
+
+}
+
+.section-subtitle {
+
+  @apply
+  text-zinc-400
+  text-sm;
+
+}
