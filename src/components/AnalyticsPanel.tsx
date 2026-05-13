@@ -1,26 +1,58 @@
+interface SpendingAnalytics {
+  needs: number;
+  wants: number;
+  savings: number;
+}
+
 export default function AnalyticsPanel({
   analytics,
   totalSpending,
-}: any) {
+}: {
+  analytics: SpendingAnalytics;
+  totalSpending: number;
+}) {
 
-  function percent(value:number) {
+  function percent(value: number) {
 
-    if (totalSpending <= 0)
+    if (totalSpending <= 0) {
       return "0.0";
+    }
 
     return (
       (value / totalSpending) * 100
     ).toFixed(1);
   }
 
+  const rows = [
+    {
+      key: "needs",
+      label: "Needs",
+      value: analytics.needs,
+      color: "bg-emerald-400",
+    },
+    {
+      key: "wants",
+      label: "Wants",
+      value: analytics.wants,
+      color: "bg-sky-400",
+    },
+    {
+      key: "savings",
+      label: "Savings",
+      value: analytics.savings,
+      color: "bg-violet-400",
+    },
+  ];
+
   return (
 
     <div
       className="
         bg-zinc-900
+        border
+        border-zinc-800
         rounded-3xl
         p-5
-        mb-5
       "
     >
 
@@ -36,170 +68,60 @@ export default function AnalyticsPanel({
 
       <div className="space-y-5">
 
-        {/* NEEDS */}
+        {rows.map((row) => (
 
-        <div>
-
-          <div
-            className="
-              flex
-              justify-between
-              mb-2
-            "
-          >
-
-            <span>
-              Needs
-            </span>
-
-            <span>
-              {percent(
-                analytics.needs
-              )}
-              %
-              {" · "}
-              RM
-              {" "}
-              {analytics.needs.toFixed(2)}
-            </span>
-
-          </div>
-
-          <div
-            className="
-              h-3
-              bg-zinc-800
-              rounded-full
-              overflow-hidden
-            "
-          >
+          <div key={row.key}>
 
             <div
               className="
-                h-full
-                bg-white
+                flex
+                justify-between
+                gap-3
+                mb-2
+                text-sm
               "
-              style={{
-                width:
-                  `${percent(
-                    analytics.needs
-                  )}%`
-              }}
-            />
+            >
 
-          </div>
+              <span>
+                {row.label}
+              </span>
 
-        </div>
+              <span
+                className="
+                  text-right
+                  text-zinc-300
+                "
+              >
+                {percent(row.value)}% - RM {row.value.toFixed(2)}
+              </span>
 
-        {/* WANTS */}
-
-        <div>
-
-          <div
-            className="
-              flex
-              justify-between
-              mb-2
-            "
-          >
-
-            <span>
-              Wants
-            </span>
-
-            <span>
-              {percent(
-                analytics.wants
-              )}
-              %
-              {" · "}
-              RM
-              {" "}
-              {analytics.wants.toFixed(2)}
-            </span>
-
-          </div>
-
-          <div
-            className="
-              h-3
-              bg-zinc-800
-              rounded-full
-              overflow-hidden
-            "
-          >
+            </div>
 
             <div
               className="
-                h-full
-                bg-white
+                h-3
+                bg-zinc-800
+                rounded-full
+                overflow-hidden
               "
-              style={{
-                width:
-                  `${percent(
-                    analytics.wants
-                  )}%`
-              }}
-            />
+            >
+
+              <div
+                className={`
+                  h-full
+                  ${row.color}
+                `}
+                style={{
+                  width:
+                    `${percent(row.value)}%`,
+                }}
+              />
+
+            </div>
 
           </div>
 
-        </div>
-
-        {/* SAVINGS */}
-
-        <div>
-
-          <div
-            className="
-              flex
-              justify-between
-              mb-2
-            "
-          >
-
-            <span>
-              Savings
-            </span>
-
-            <span>
-              {percent(
-                analytics.savings
-              )}
-              %
-              {" · "}
-              RM
-              {" "}
-              {analytics.savings.toFixed(2)}
-            </span>
-
-          </div>
-
-          <div
-            className="
-              h-3
-              bg-zinc-800
-              rounded-full
-              overflow-hidden
-            "
-          >
-
-            <div
-              className="
-                h-full
-                bg-white
-              "
-              style={{
-                width:
-                  `${percent(
-                    analytics.savings
-                  )}%`
-              }}
-            />
-
-          </div>
-
-        </div>
+        ))}
 
       </div>
 

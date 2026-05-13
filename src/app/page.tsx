@@ -1,31 +1,56 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import PullToRefresh
 from "react-simple-pull-to-refresh";
 
 import {
-  Wallet,
-  TrendingDown,
+  CalendarDays,
+  ChartPie,
+  ClipboardList,
+  Pencil,
   FolderTree,
-  Receipt,
-  ChevronDown,
-  ChevronUp,
-  RefreshCcw,
   Plus,
+  TrendingDown,
+  type LucideIcon,
+  Wallet,
+  X,
 } from "lucide-react";
 
-import ExpenseCard from "../components/ExpenseCard";
-import ExpensePanel from "../components/ExpensePanel";
-import IncomePanel from "../components/IncomePanel";
-import AnalyticsPanel from "../components/AnalyticsPanel";
-import CategoryPanel from "../components/CategoryPanel";
+import ExpensePanel
+from "../components/ExpensePanel";
+import IncomePanel
+from "../components/IncomePanel";
+import CategoryPanel
+from "../components/CategoryPanel";
+import AnalyticsPanel
+from "../components/AnalyticsPanel";
+import ExpenseRecordsPanel
+from "../components/ExpenseRecordsPanel";
 
-import useExpenses from "../hooks/useExpenses";
-import useIncome from "../hooks/useIncome";
-import useCategories from "../hooks/useCategories";
-import useAnalytics from "../hooks/useAnalytics";
+import useExpenses
+from "../hooks/useExpenses";
+import useIncome
+from "../hooks/useIncome";
+import useCategories
+from "../hooks/useCategories";
+import useAnalytics
+from "../hooks/useAnalytics";
+import useSavedNotes
+from "../hooks/useSavedNotes";
+import type {
+  Expense,
+} from "../types/expense";
+
+type BottomTool =
+  | "expense"
+  | "categories"
+  | "records"
+  | "income";
 
 export default function Home() {
 
@@ -38,7 +63,6 @@ export default function Home() {
     Array.from(
       { length: 12 },
       (_, i) => {
-
         const d = new Date();
 
         d.setMonth(
@@ -54,25 +78,22 @@ export default function Home() {
   const [selectedMonth, setSelectedMonth] =
     useState(currentMonth);
 
+  const [activeTool, setActiveTool] =
+    useState<BottomTool | null>(null);
+
   const [showExpenseForm, setShowExpenseForm] =
-    useState(false);
+    useState(true);
 
   const [showIncomeForm, setShowIncomeForm] =
-    useState(false);
+    useState(true);
 
   const [showIncomeList, setShowIncomeList] =
-    useState(false);
+    useState(true);
 
   const [showCategories, setShowCategories] =
-    useState(false);
-
-  const [showAnalytics, setShowAnalytics] =
-    useState(false);
-
-  /* EXPENSES */
+    useState(true);
 
   const {
-
     expenses,
 
     amount,
@@ -91,27 +112,18 @@ export default function Home() {
     setEditingId,
 
     loading,
-
     error,
 
     fetchExpenses,
-
     saveExpense,
-
     deleteExpense,
-
     startEdit,
-
     resetExpenseForm,
-
   } = useExpenses(
     selectedMonth
   );
 
-  /* INCOME */
-
   const {
-
     incomes,
 
     incomeAmount,
@@ -123,21 +135,14 @@ export default function Home() {
     incomeEditingId,
 
     fetchIncome,
-
     addIncome,
-
     deleteIncome,
-
     startEditIncome,
-
   } = useIncome(
     selectedMonth
   );
 
-  /* CATEGORY */
-
   const {
-
     categories,
 
     newCategory,
@@ -149,579 +154,147 @@ export default function Home() {
     editingCategoryId,
 
     fetchCategories,
-
     addCategory,
-
     deleteCategory,
-
     editCategory,
-
   } = useCategories();
 
-  /* ANALYTICS */
+  const {
+    savedNotes,
+    addSavedNote,
+    updateSavedNote,
+    deleteSavedNote,
+  } = useSavedNotes();
 
   const {
-
     analytics,
-
     totalSpending,
-
     totalIncome,
-
     spendingPercent,
-
   } = useAnalytics(
     expenses,
     incomes
   );
 
-  /* FETCH */
-
   useEffect(() => {
-
     fetchExpenses();
-
     fetchIncome();
-
     fetchCategories();
-
+    // Fetch callbacks come from local hooks and intentionally refresh when the month changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth]);
+
+  async function refreshAll() {
+    await Promise.all([
+      fetchExpenses(),
+      fetchIncome(),
+      fetchCategories(),
+    ]);
+  }
+
+  async function handleSaveExpense() {
+    const noteToSave = note;
+
+    const didSave =
+      await saveExpense();
+
+    if (didSave) {
+      addSavedNote(
+        noteToSave
+      );
+    }
+  }
+
+  function toggleTool(
+    tool: Exclude<BottomTool, "income">
+  ) {
+    setActiveTool((current) =>
+      current === tool
+        ? null
+        : tool
+    );
+
+    if (tool === "expense") {
+      setShowExpenseForm(true);
+    }
+
+    if (tool === "categories") {
+      setShowCategories(true);
+    }
+  }
+
+  function openIncomeCrud() {
+    setShowIncomeList(true);
+    setShowIncomeForm(true);
+    setActiveTool("income");
+  }
+
+  function handleStartEdit(
+    expense: Expense
+  ) {
+    startEdit(expense);
+    setShowExpenseForm(true);
+    setActiveTool("expense");
+  }
+
+  function handleStartEditIncome(
+    income: unknown
+  ) {
+    startEditIncome(income);
+    setShowIncomeForm(true);
+  }
+
+  const sheetTitle =
+    activeTool === "expense"
+      ? editingId
+        ? "Edit Expense"
+        : "Add Expense"
+      : activeTool === "income"
+      ? incomeEditingId
+        ? "Edit Income"
+        : "Income CRUD"
+      : activeTool === "categories"
+      ? "Category CRUD"
+      : "Expense Records";
 
   return (
 
     <PullToRefresh
-
-      onRefresh={async () => {
-
-        await fetchExpenses();
-
-        await fetchIncome();
-
-        await fetchCategories();
-
-      }}
-
+      onRefresh={refreshAll}
     >
 
-      <main
+      <div
         className="
           min-h-screen
           bg-black
           text-white
-          p-5
         "
       >
 
-        <div
+        <main
           className="
-            max-w-md
-            mx-auto
-            space-y-6
+            min-h-screen
+            px-5
+            pt-5
+            pb-40
           "
         >
 
-          {/* HEADER */}
-
           <div
             className="
-              flex
-              items-start
-              justify-between
+              max-w-md
+              mx-auto
+              space-y-5
             "
           >
 
-            <div>
-
-              <h1
-                className="
-                  text-6xl
-                  font-black
-                  tracking-tight
-                "
-              >
-                Expense Tracker
-              </h1>
-
-              <p
-                className="
-                  text-zinc-500
-                  mt-2
-                "
-              >
-                Personal Finance Dashboard
-              </p>
-
-              <p
-                className="
-                  text-zinc-400
-                  mt-4
-                  text-lg
-                "
-              >
-                {selectedMonth}
-              </p>
-
-            </div>
-
-            <button
-
-              onClick={() => {
-
-                fetchExpenses();
-
-                fetchIncome();
-
-                fetchCategories();
-
-              }}
-
+            <section
               className="
-                bg-zinc-900
+                bg-zinc-900/90
                 border
                 border-zinc-800
-                rounded-2xl
-                p-4
-              "
-            >
-              <RefreshCcw size={20}/>
-            </button>
-
-          </div>
-
-          {/* MONTH */}
-
-          <div
-            className="
-              bg-zinc-900/90
-              border
-              border-zinc-800
-              rounded-3xl
-              p-5
-              shadow-xl
-            "
-          >
-
-            <select
-
-              value={selectedMonth}
-
-              onChange={(e) =>
-                setSelectedMonth(
-                  e.target.value
-                )
-              }
-
-              className="
-                w-full
-                bg-transparent
-                outline-none
-                text-lg
-              "
-            >
-
-              {months.map((month) => (
-
-                <option
-                  key={month}
-                  value={month}
-                  className="
-                    bg-black
-                  "
-                >
-                  {month === currentMonth
-                    ? "Current Month"
-                    : month}
-                </option>
-
-              ))}
-
-            </select>
-
-          </div>
-
-          {/* ERROR */}
-
-          {error && (
-
-            <div
-              className="
-                bg-red-500
-                text-white
-                p-4
-                rounded-2xl
-              "
-            >
-              {error}
-            </div>
-
-          )}
-
-          {/* INCOME */}
-
-          <div
-            className="
-              bg-zinc-900/90
-              border
-              border-emerald-500/30
-              rounded-3xl
-              p-5
-              shadow-xl
-            "
-          >
-
-            <button
-
-              onClick={() =>
-                setShowIncomeList(
-                  !showIncomeList
-                )
-              }
-
-              className="
-                w-full
-                text-left
-              "
-            >
-
-              <div
-                className="
-                  flex
-                  justify-between
-                  items-start
-                "
-              >
-
-                <div>
-
-                  <div
-                    className="
-                      flex
-                      items-center
-                      gap-2
-                      text-zinc-400
-                    "
-                  >
-                    <Wallet size={18}/>
-                    <span>
-                      Monthly Income
-                    </span>
-                  </div>
-
-                  <h1
-                    className="
-                      text-6xl
-                      font-bold
-                      mt-3
-                      text-emerald-400
-                    "
-                  >
-                    RM
-                    {" "}
-                    {totalIncome.toFixed(2)}
-                  </h1>
-
-                </div>
-
-                <div
-                  className="
-                    text-zinc-400
-                    mt-2
-                  "
-                >
-
-                  {showIncomeList
-                    ? <ChevronUp/>
-                    : <ChevronDown/>}
-
-                </div>
-
-              </div>
-
-            </button>
-
-            {showIncomeList && (
-
-              <div
-                className="
-                  mt-6
-                  border-t
-                  border-zinc-800
-                  pt-6
-                "
-              >
-
-                <IncomePanel
-                showIncomeList={showIncomeList}
-setShowIncomeList={setShowIncomeList}
-                  totalIncome={totalIncome}
-                  incomes={incomes}
-
-                  showIncomeForm={showIncomeForm}
-
-                  setShowIncomeForm={setShowIncomeForm}
-
-                  incomeAmount={incomeAmount}
-
-                  setIncomeAmount={setIncomeAmount}
-
-                  incomeNote={incomeNote}
-
-                  setIncomeNote={setIncomeNote}
-
-                  incomeEditingId={incomeEditingId}
-
-                  addIncome={addIncome}
-
-                  startEditIncome={startEditIncome}
-
-                  deleteIncome={deleteIncome}
-
-                />
-
-              </div>
-
-            )}
-
-          </div>
-
-          {/* SPENDING */}
-
-          <div
-            className="
-              bg-zinc-900/90
-              border
-              border-red-500/30
-              rounded-3xl
-              p-5
-              shadow-xl
-            "
-          >
-
-            <button
-
-              onClick={() =>
-                setShowAnalytics(
-                  !showAnalytics
-                )
-              }
-
-              className="
-                w-full
-                text-left
-              "
-            >
-
-              <div
-                className="
-                  flex
-                  justify-between
-                  items-start
-                "
-              >
-
-                <div>
-
-                  <div
-                    className="
-                      flex
-                      items-center
-                      gap-2
-                      text-zinc-400
-                    "
-                  >
-                    <TrendingDown size={18}/>
-                    <span>
-                      Total Spending
-                    </span>
-                  </div>
-
-                  <h1
-                    className="
-                      text-6xl
-                      font-bold
-                      mt-3
-                      text-red-400
-                    "
-                  >
-                    RM
-                    {" "}
-                    {totalSpending.toFixed(2)}
-                  </h1>
-
-                  <p
-                    className="
-                      text-zinc-400
-                      mt-3
-                    "
-                  >
-                    {spendingPercent}
-                    %
-                    {" "}
-                    of income
-                  </p>
-
-                </div>
-
-                <div
-                  className="
-                    text-zinc-400
-                    mt-2
-                  "
-                >
-
-                  {showAnalytics
-                    ? <ChevronUp/>
-                    : <ChevronDown/>}
-
-                </div>
-
-              </div>
-
-            </button>
-
-            {showAnalytics && (
-
-              <div
-                className="
-                  mt-6
-                  border-t
-                  border-zinc-800
-                  pt-6
-                "
-              >
-
-                <AnalyticsPanel
-
-                  analytics={analytics}
-
-                  totalSpending={totalSpending}
-
-                />
-
-              </div>
-
-            )}
-
-          </div>
-
-          {/* EXPENSE FORM */}
-
-          <div
-            className="
-              bg-zinc-900/90
-              border
-              border-zinc-800
-              rounded-3xl
-              p-5
-              shadow-xl
-            "
-          >
-
-            <button
-
-              onClick={() =>
-                setShowExpenseForm(
-                  !showExpenseForm
-                )
-              }
-
-              className="
-                w-full
-                flex
-                items-center
-                justify-center
-                gap-3
-                text-xl
-                font-bold
-              "
-            >
-
-              <Plus size={22}/>
-
-              {showExpenseForm
-                ? "Close Expense Form"
-                : "Add Expense"}
-
-            </button>
-
-            {showExpenseForm && (
-
-              <div
-                className="
-                  mt-6
-                  border-t
-                  border-zinc-800
-                  pt-6
-                "
-              >
-
-                <ExpensePanel
-                showExpenseForm={showExpenseForm}
-setShowExpenseForm={setShowExpenseForm}
-                  amount={amount}
-
-                  setAmount={setAmount}
-
-                  note={note}
-
-                  setNote={setNote}
-
-                  expenseDate={expenseDate}
-
-                  setExpenseDate={setExpenseDate}
-
-                  selectedCategory={selectedCategory}
-
-                  setSelectedCategory={setSelectedCategory}
-
-                  categories={categories}
-
-                  editingId={editingId}
-
-                  loading={loading}
-
-                  saveExpense={saveExpense}
-
-                  resetExpenseForm={resetExpenseForm}
-
-                  setEditingId={setEditingId}
-
-                />
-
-              </div>
-
-            )}
-
-          </div>
-
-          {/* CATEGORIES */}
-
-          <div
-            className="
-              bg-zinc-900/90
-              border
-              border-purple-500/30
-              rounded-3xl
-              p-5
-              shadow-xl
-            "
-          >
-
-            <button
-
-              onClick={() =>
-                setShowCategories(
-                  !showCategories
-                )
-              }
-
-              className="
-                w-full
-                flex
-                items-center
-                justify-between
-                text-xl
-                font-bold
+                rounded-3xl
+                p-5
               "
             >
 
@@ -729,160 +302,479 @@ setShowExpenseForm={setShowExpenseForm}
                 className="
                   flex
                   items-center
-                  gap-3
+                  gap-2
+                  text-zinc-400
+                  mb-3
                 "
               >
-                <FolderTree size={22}/>
-                Categories
+                <CalendarDays size={18}/>
+                <span>
+                  View Month
+                </span>
               </div>
 
-              {showCategories
-                ? <ChevronUp/>
-                : <ChevronDown/>}
+              <select
+                value={selectedMonth}
+                onChange={(e) =>
+                  setSelectedMonth(
+                    e.target.value
+                  )
+                }
+                className="
+                  w-full
+                  bg-black
+                  border
+                  border-zinc-800
+                  rounded-2xl
+                  p-4
+                  outline-none
+                  text-lg
+                "
+              >
 
-            </button>
+                {months.map((month) => (
 
-            {showCategories && (
+                  <option
+                    key={month}
+                    value={month}
+                    className="bg-black"
+                  >
+                    {month === currentMonth
+                      ? "Current Month"
+                      : month}
+                  </option>
+
+                ))}
+
+              </select>
+
+            </section>
+
+            {error && (
 
               <div
                 className="
-                  mt-6
-                  border-t
-                  border-zinc-800
-                  pt-6
+                  bg-red-500
+                  text-white
+                  p-4
+                  rounded-2xl
                 "
               >
-
-                <CategoryPanel
-
-  showCategories={showCategories}
-  setShowCategories={setShowCategories}
-
-  newCategory={newCategory}
-  setNewCategory={setNewCategory}
-
-  selectedType={selectedType}
-  setSelectedType={setSelectedType}
-
-  editingCategoryId={editingCategoryId}
-
-  addCategory={addCategory}
-  editCategory={editCategory}
-  deleteCategory={deleteCategory}
-
-  categories={categories}
-
-/>
-
+                {error}
               </div>
 
             )}
 
-          </div>
-
-          {/* EXPENSE LIST */}
-
-          <div
-            className="
-              space-y-4
-            "
-          >
-
-            <div
+            <section
               className="
-                flex
-                items-center
-                gap-3
-                px-2
+                bg-zinc-900/90
+                border
+                border-emerald-500/30
+                rounded-3xl
+                p-5
               "
             >
 
-              <Receipt size={22}/>
-
-              <h2
-                className="
-                  text-2xl
-                  font-bold
-                "
-              >
-                Expense Records
-              </h2>
-
-            </div>
-
-            {loading && (
-
               <div
                 className="
-                  bg-zinc-900
-                  rounded-3xl
-                  p-10
-                  text-center
+                  flex
+                  items-center
+                  gap-2
                   text-zinc-400
                 "
               >
-                Loading...
+                <Wallet size={18}/>
+                <span>
+                  Monthly Income
+                </span>
               </div>
 
-            )}
+              <h2
+                className="
+                  text-5xl
+                  font-bold
+                  mt-3
+                  text-emerald-400
+                "
+              >
+                RM {totalIncome.toFixed(2)}
+              </h2>
 
-            {!loading &&
-              expenses.length === 0 && (
+              <button
+                onClick={openIncomeCrud}
+                className="
+                  mt-5
+                  inline-flex
+                  items-center
+                  gap-2
+                  bg-white
+                  text-black
+                  rounded-2xl
+                  px-4
+                  py-3
+                  text-sm
+                  font-bold
+                "
+              >
+                <Pencil size={16}/>
+                Manage Income
+              </button>
+
+            </section>
+
+            <section
+              className="
+                bg-zinc-900/90
+                border
+                border-red-500/30
+                rounded-3xl
+                p-5
+              "
+            >
 
               <div
                 className="
-                  bg-zinc-900
-                  border
-                  border-zinc-800
-                  rounded-3xl
-                  p-10
-                  text-center
+                  flex
+                  items-center
+                  gap-2
+                  text-zinc-400
                 "
               >
-
-                <h2
-                  className="
-                    text-2xl
-                    font-bold
-                    mb-2
-                  "
-                >
-                  No expenses yet
-                </h2>
-
-                <p
-                  className="
-                    text-zinc-400
-                  "
-                >
-                  Tap Add Expense to start
-                </p>
-
+                <TrendingDown size={18}/>
+                <span>
+                  Total Spending
+                </span>
               </div>
 
-            )}
+              <h2
+                className="
+                  text-5xl
+                  font-bold
+                  mt-3
+                  text-red-400
+                "
+              >
+                RM {totalSpending.toFixed(2)}
+              </h2>
 
-            {!loading &&
-              expenses.map((expense) => (
+              <p
+                className="
+                  text-zinc-400
+                  mt-3
+                "
+              >
+                {spendingPercent}% of income
+              </p>
 
-              <ExpenseCard
-  key={expense.id}
+            </section>
 
-  expense={expense}
+            <section>
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-2
+                  text-zinc-400
+                  mb-3
+                  px-1
+                "
+              >
+                <ChartPie size={18}/>
+                <span>
+                  Spending Analytics
+                </span>
+              </div>
 
-  startEdit={startEdit}
-
-  deleteExpense={deleteExpense}
-/>
-
-            ))}
+              <AnalyticsPanel
+                analytics={analytics}
+                totalSpending={totalSpending}
+              />
+            </section>
 
           </div>
 
-        </div>
+        </main>
 
-      </main>
+        {activeTool && (
+
+          <div
+            className="
+              fixed
+              inset-x-0
+              bottom-24
+              z-40
+              px-4
+            "
+          >
+            <div
+              className="
+                max-w-md
+                mx-auto
+                max-h-[68vh]
+                overflow-y-auto
+                bg-zinc-950
+                border
+                border-zinc-800
+                rounded-3xl
+                shadow-2xl
+              "
+            >
+
+              <div
+                className="
+                  sticky
+                  top-0
+                  z-10
+                  flex
+                  items-center
+                  justify-between
+                  gap-3
+                  bg-zinc-950
+                  border-b
+                  border-zinc-800
+                  p-4
+                "
+              >
+                <div>
+                  <p
+                    className="
+                      text-xs
+                      uppercase
+                      tracking-wide
+                      text-zinc-500
+                    "
+                  >
+                    Quick Action
+                  </p>
+
+                  <h2
+                    className="
+                      text-xl
+                      font-bold
+                    "
+                  >
+                    {sheetTitle}
+                  </h2>
+                </div>
+
+                <button
+                  onClick={() =>
+                    setActiveTool(null)
+                  }
+                  title="Close panel"
+                  aria-label="Close panel"
+                  className="
+                    bg-zinc-900
+                    rounded-2xl
+                    p-3
+                    shrink-0
+                  "
+                >
+                  <X size={18}/>
+                </button>
+              </div>
+
+              <div className="p-4">
+                {activeTool === "expense" && (
+                  <ExpensePanel
+                    showExpenseForm={showExpenseForm}
+                    setShowExpenseForm={setShowExpenseForm}
+                    showToggle={false}
+                    amount={amount}
+                    setAmount={setAmount}
+                    note={note}
+                    setNote={setNote}
+                    expenseDate={expenseDate}
+                    setExpenseDate={setExpenseDate}
+                    selectedCategory={selectedCategory}
+                    setSelectedCategory={setSelectedCategory}
+                    categories={categories}
+                    editingId={editingId}
+                    loading={loading}
+                    saveExpense={handleSaveExpense}
+                    resetExpenseForm={resetExpenseForm}
+                    setEditingId={setEditingId}
+                    savedNotes={savedNotes}
+                    addSavedNote={addSavedNote}
+                    updateSavedNote={updateSavedNote}
+                    deleteSavedNote={deleteSavedNote}
+                  />
+                )}
+
+                {activeTool === "income" && (
+                  <IncomePanel
+                    totalIncome={totalIncome}
+                    incomes={incomes}
+                    showIncomeList={showIncomeList}
+                    setShowIncomeList={setShowIncomeList}
+                    showIncomeForm={showIncomeForm}
+                    setShowIncomeForm={setShowIncomeForm}
+                    incomeAmount={incomeAmount}
+                    setIncomeAmount={setIncomeAmount}
+                    incomeNote={incomeNote}
+                    setIncomeNote={setIncomeNote}
+                    incomeEditingId={incomeEditingId}
+                    addIncome={addIncome}
+                    startEditIncome={handleStartEditIncome}
+                    deleteIncome={deleteIncome}
+                  />
+                )}
+
+                {activeTool === "categories" && (
+                  <CategoryPanel
+                    showCategories={showCategories}
+                    newCategory={newCategory}
+                    setNewCategory={setNewCategory}
+                    selectedType={selectedType}
+                    setSelectedType={setSelectedType}
+                    editingCategoryId={editingCategoryId}
+                    addCategory={addCategory}
+                    editCategory={editCategory}
+                    deleteCategory={deleteCategory}
+                    categories={categories}
+                  />
+                )}
+
+                {activeTool === "records" && (
+                  <ExpenseRecordsPanel
+                    expenses={expenses}
+                    loading={loading}
+                    startEdit={handleStartEdit}
+                    deleteExpense={deleteExpense}
+                  />
+                )}
+              </div>
+
+            </div>
+          </div>
+
+        )}
+
+        <nav
+          className="
+            fixed
+            inset-x-0
+            bottom-0
+            z-50
+            border-t
+            border-zinc-800
+            bg-black/95
+            backdrop-blur
+            px-3
+            pb-[env(safe-area-inset-bottom)]
+          "
+        >
+          <div
+            className="
+              max-w-md
+              mx-auto
+              grid
+              grid-cols-3
+              gap-2
+              py-3
+            "
+          >
+            <BottomBarButton
+              active={activeTool === "expense"}
+              onClick={() =>
+                toggleTool("expense")
+              }
+              icon={Plus}
+              label="Add"
+              description="Expense"
+            />
+
+            <BottomBarButton
+              active={activeTool === "categories"}
+              onClick={() =>
+                toggleTool("categories")
+              }
+              icon={FolderTree}
+              label="Category"
+              description="CRUD"
+            />
+
+            <BottomBarButton
+              active={activeTool === "records"}
+              onClick={() =>
+                toggleTool("records")
+              }
+              icon={ClipboardList}
+              label="Records"
+              description="History"
+            />
+          </div>
+        </nav>
+
+      </div>
 
     </PullToRefresh>
+  );
+}
+
+function BottomBarButton({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+  description,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: LucideIcon;
+  label: string;
+  description: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        min-h-16
+        rounded-2xl
+        border
+        p-3
+        text-left
+        transition
+        ${
+          active
+            ? "border-white bg-white text-black"
+            : "border-zinc-800 bg-zinc-900 text-white"
+        }
+      `}
+    >
+      <div
+        className="
+          flex
+          items-center
+          gap-2
+        "
+      >
+        <Icon size={19}/>
+        <span
+          className="
+            text-sm
+            font-bold
+            leading-none
+          "
+        >
+          {label}
+        </span>
+      </div>
+
+      <p
+        className={`
+          mt-2
+          text-[11px]
+          leading-none
+          ${
+            active
+              ? "text-zinc-700"
+              : "text-zinc-500"
+          }
+        `}
+      >
+        {description}
+      </p>
+    </button>
   );
 }

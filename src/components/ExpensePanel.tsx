@@ -8,6 +8,43 @@ import {
 import ExpenseForm
 from "./ExpenseForm";
 
+import type {
+  Category,
+} from "../types/category";
+import type {
+  SavedNote,
+} from "../hooks/useSavedNotes";
+
+interface ExpensePanelProps {
+  showExpenseForm: boolean;
+  setShowExpenseForm: (value: boolean) => void;
+  amount: string;
+  setAmount: (value: string) => void;
+  note: string;
+  setNote: (value: string) => void;
+  expenseDate: string;
+  setExpenseDate: (value: string) => void;
+  selectedCategory: string;
+  setSelectedCategory: (value: string) => void;
+  categories: Category[];
+  editingId: number | null;
+  loading: boolean;
+  saveExpense: () =>
+    | void
+    | boolean
+    | Promise<void | boolean>;
+  resetExpenseForm: () => void;
+  setEditingId: (id: number | null) => void;
+  showToggle?: boolean;
+  savedNotes?: SavedNote[];
+  addSavedNote?: (content: string) => void;
+  updateSavedNote?: (
+    id: string,
+    content: string
+  ) => void;
+  deleteSavedNote?: (id: string) => void;
+}
+
 export default function ExpensePanel({
 
   showExpenseForm,
@@ -37,7 +74,14 @@ export default function ExpensePanel({
 
   setEditingId,
 
-}: any) {
+  showToggle = true,
+
+  savedNotes,
+  addSavedNote,
+  updateSavedNote,
+  deleteSavedNote,
+
+}: ExpensePanelProps) {
 
   return (
 
@@ -45,39 +89,43 @@ export default function ExpensePanel({
 
       {/* BUTTON */}
 
-      <button
-        onClick={() =>
-          setShowExpenseForm(
-            !showExpenseForm
-          )
-        }
-        className="
-          w-full
-          bg-zinc-900
-          rounded-2xl
-          p-4
-          mb-5
-          font-bold
-          flex
-          justify-center
-          items-center
-          gap-2
-        "
-      >
+      {showToggle && (
 
-        {showExpenseForm ? (
-          <>
-            <X size={18}/>
-            Close Expense
-          </>
-        ) : (
-          <>
-            <Plus size={18}/>
-            Add Expense
-          </>
-        )}
+        <button
+          onClick={() =>
+            setShowExpenseForm(
+              !showExpenseForm
+            )
+          }
+          className="
+            w-full
+            bg-zinc-900
+            rounded-2xl
+            p-4
+            mb-5
+            font-bold
+            flex
+            justify-center
+            items-center
+            gap-2
+          "
+        >
 
-      </button>
+          {showExpenseForm ? (
+            <>
+              <X size={18}/>
+              Close Expense
+            </>
+          ) : (
+            <>
+              <Plus size={18}/>
+              Add Expense
+            </>
+          )}
+
+        </button>
+
+      )}
 
       {/* FORM */}
 
@@ -122,6 +170,11 @@ export default function ExpensePanel({
 
               resetExpenseForm();
             }}
+
+            savedNotes={savedNotes}
+            addSavedNote={addSavedNote}
+            updateSavedNote={updateSavedNote}
+            deleteSavedNote={deleteSavedNote}
 
           />
 

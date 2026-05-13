@@ -97,7 +97,7 @@ export default function useExpenses(
           "Please fill all fields"
         );
 
-        return;
+        return false;
       }
 
       const payload = {
@@ -116,31 +116,37 @@ export default function useExpenses(
           ),
       };
 
+      const saveError =
+        editingId
+          ? await updateExpense(
+              editingId,
+              payload
+            )
+          : await createExpense(
+              payload
+            );
+
+      if (saveError) {
+        throw saveError;
+      }
+
       if (editingId) {
-
-        await updateExpense(
-          editingId,
-          payload
-        );
-
         setEditingId(null);
-
-      } else {
-
-        await createExpense(
-          payload
-        );
       }
 
       resetExpenseForm();
 
       await fetchExpenses();
 
+      return true;
+
     } catch {
 
       setError(
         "Failed to save expense"
       );
+
+      return false;
 
     } finally {
 

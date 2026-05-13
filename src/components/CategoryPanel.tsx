@@ -1,9 +1,25 @@
 "use client";
 
+import type {
+  Category,
+} from "../types/category";
+
+interface CategoryPanelProps {
+  showCategories: boolean;
+  newCategory: string;
+  setNewCategory: (value: string) => void;
+  selectedType: string;
+  setSelectedType: (value: string) => void;
+  editingCategoryId: number | null;
+  addCategory: () => void | Promise<void>;
+  editCategory: (category: Category) => void;
+  deleteCategory: (id: number) => void | Promise<void>;
+  categories: Category[];
+}
+
 export default function CategoryPanel({
 
   showCategories,
-  setShowCategories,
 
   newCategory,
   setNewCategory,
@@ -19,7 +35,7 @@ export default function CategoryPanel({
 
   categories,
 
-}: any) {
+}: CategoryPanelProps) {
 
   return (
 
@@ -119,7 +135,7 @@ export default function CategoryPanel({
           >
 
             {categories.map(
-              (cat:any) => (
+              (cat) => (
 
                 <div
                   key={cat.id}
