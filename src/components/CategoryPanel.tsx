@@ -53,57 +53,70 @@ export default function CategoryPanel({
             p-5
             mb-5
             space-y-3
+            sm:p-6
           "
         >
 
-          {/* INPUT */}
-
-          <input
-            value={newCategory}
-            onChange={(e) =>
-              setNewCategory(
-                e.target.value
-              )
-            }
-            placeholder="Category Name"
+          <div
             className="
-              w-full
-              bg-black
-              rounded-2xl
-              p-4
-            "
-          />
-
-          {/* TYPE */}
-
-          <select
-            value={selectedType}
-            onChange={(e) =>
-              setSelectedType(
-                e.target.value
-              )
-            }
-            className="
-              w-full
-              bg-black
-              rounded-2xl
-              p-4
+              grid
+              gap-3
+              sm:grid-cols-[minmax(0,1fr)_160px]
             "
           >
 
-            <option value="needs">
-              Needs
-            </option>
+            {/* INPUT */}
 
-            <option value="wants">
-              Wants
-            </option>
+            <input
+              value={newCategory}
+              onChange={(e) =>
+                setNewCategory(
+                  e.target.value
+                )
+              }
+              placeholder="Category Name"
+              className="
+                w-full
+                min-w-0
+                bg-black
+                rounded-2xl
+                p-4
+              "
+            />
 
-            <option value="savings">
-              Savings
-            </option>
+            {/* TYPE */}
 
-          </select>
+            <select
+              value={selectedType}
+              onChange={(e) =>
+                setSelectedType(
+                  e.target.value
+                )
+              }
+              className="
+                w-full
+                min-w-0
+                bg-black
+                rounded-2xl
+                p-4
+              "
+            >
+
+              <option value="needs">
+                Needs
+              </option>
+
+              <option value="wants">
+                Wants
+              </option>
+
+              <option value="savings">
+                Savings
+              </option>
+
+            </select>
+
+          </div>
 
           {/* BUTTON */}
 
@@ -129,8 +142,10 @@ export default function CategoryPanel({
 
           <div
             className="
-              space-y-3
+              grid
+              gap-3
               pt-3
+              md:grid-cols-2
             "
           >
 
@@ -144,16 +159,18 @@ export default function CategoryPanel({
                     rounded-2xl
                     p-4
                     flex
+                    gap-3
                     justify-between
                     items-center
                   "
                 >
 
-                  <div>
+                  <div className="min-w-0">
 
                     <p
                       className="
                         font-bold
+                        truncate
                       "
                     >
                       {cat.name}
@@ -163,6 +180,7 @@ export default function CategoryPanel({
                       className="
                         text-sm
                         text-zinc-400
+                        truncate
                       "
                     >
                       {
@@ -176,6 +194,7 @@ export default function CategoryPanel({
                     className="
                       flex
                       gap-2
+                      shrink-0
                     "
                   >
 

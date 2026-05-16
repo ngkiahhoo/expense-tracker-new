@@ -7,6 +7,27 @@ import {
 import IncomeCard
 from "./IncomeCard";
 
+import type {
+  Income,
+} from "../types/income";
+
+interface IncomePanelProps {
+  totalIncome: number;
+  incomes: Income[];
+  showIncomeList: boolean;
+  setShowIncomeList: (value: boolean) => void;
+  showIncomeForm: boolean;
+  setShowIncomeForm: (value: boolean) => void;
+  incomeAmount: string;
+  setIncomeAmount: (value: string) => void;
+  incomeNote: string;
+  setIncomeNote: (value: string) => void;
+  incomeEditingId: number | null;
+  addIncome: () => void | Promise<void>;
+  startEditIncome: (income: Income) => void;
+  deleteIncome: (id: number) => void | Promise<void>;
+}
+
 export default function IncomePanel({
 
   
@@ -34,7 +55,7 @@ export default function IncomePanel({
 
   deleteIncome,
 
-}: any) {
+}: IncomePanelProps) {
 
   return (
 
@@ -48,6 +69,7 @@ export default function IncomePanel({
           rounded-3xl
           p-5
           mb-5
+          sm:p-6
         "
       >
 
@@ -87,6 +109,7 @@ export default function IncomePanel({
                 text-5xl
                 font-bold
                 mt-2
+                break-words
               "
             >
               RM
@@ -104,13 +127,15 @@ export default function IncomePanel({
 
           <div
             className="
+              grid
+              gap-3
               mt-5
-              space-y-3
+              md:grid-cols-2
             "
           >
 
             {incomes.map(
-              (income:any) => (
+              (income) => (
 
                 <IncomeCard
 
@@ -166,42 +191,55 @@ export default function IncomePanel({
             p-5
             mb-5
             space-y-3
+            sm:p-6
           "
         >
 
-          <input
-            type="number"
-            placeholder="Income Amount"
-            value={incomeAmount}
-            onChange={(e) =>
-              setIncomeAmount(
-                e.target.value
-              )
-            }
+          <div
             className="
-              w-full
-              bg-black
-              rounded-2xl
-              p-4
+              grid
+              gap-3
+              md:grid-cols-2
             "
-          />
+          >
 
-          <input
-            type="text"
-            placeholder="Income Note"
-            value={incomeNote}
-            onChange={(e) =>
-              setIncomeNote(
-                e.target.value
-              )
-            }
-            className="
-              w-full
-              bg-black
-              rounded-2xl
-              p-4
-            "
-          />
+            <input
+              type="number"
+              placeholder="Income Amount"
+              value={incomeAmount}
+              onChange={(e) =>
+                setIncomeAmount(
+                  e.target.value
+                )
+              }
+              className="
+                w-full
+                min-w-0
+                bg-black
+                rounded-2xl
+                p-4
+              "
+            />
+
+            <input
+              type="text"
+              placeholder="Income Note"
+              value={incomeNote}
+              onChange={(e) =>
+                setIncomeNote(
+                  e.target.value
+                )
+              }
+              className="
+                w-full
+                min-w-0
+                bg-black
+                rounded-2xl
+                p-4
+              "
+            />
+
+          </div>
 
           <button
             onClick={addIncome}

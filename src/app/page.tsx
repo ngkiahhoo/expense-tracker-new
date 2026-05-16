@@ -45,6 +45,9 @@ from "../hooks/useSavedNotes";
 import type {
   Expense,
 } from "../types/expense";
+import type {
+  Income,
+} from "../types/income";
 
 type BottomTool =
   | "expense"
@@ -238,7 +241,7 @@ export default function Home() {
   }
 
   function handleStartEditIncome(
-    income: unknown
+    income: Income
   ) {
     startEditIncome(income);
     setShowIncomeForm(true);
@@ -257,6 +260,11 @@ export default function Home() {
       ? "Category CRUD"
       : "Expense Records";
 
+  const sheetWidthClass =
+    activeTool === "records"
+      ? "lg:w-[720px]"
+      : "lg:w-[430px]";
+
   return (
 
     <PullToRefresh
@@ -274,17 +282,27 @@ export default function Home() {
         <main
           className="
             min-h-screen
-            px-5
-            pt-5
+            px-4
+            pt-4
             pb-40
+            sm:px-6
+            sm:pt-6
+            md:px-8
+            lg:pb-28
           "
         >
 
           <div
             className="
+              w-full
               max-w-md
               mx-auto
-              space-y-5
+              grid
+              gap-5
+              md:max-w-5xl
+              md:grid-cols-2
+              lg:max-w-6xl
+              lg:grid-cols-3
             "
           >
 
@@ -295,6 +313,9 @@ export default function Home() {
                 border-zinc-800
                 rounded-3xl
                 p-5
+                sm:p-6
+                md:col-span-2
+                lg:col-span-1
               "
             >
 
@@ -328,7 +349,8 @@ export default function Home() {
                   rounded-2xl
                   p-4
                   outline-none
-                  text-lg
+                  text-base
+                  sm:text-lg
                 "
               >
 
@@ -372,6 +394,7 @@ export default function Home() {
                 border-emerald-500/30
                 rounded-3xl
                 p-5
+                sm:p-6
               "
             >
 
@@ -395,6 +418,9 @@ export default function Home() {
                   font-bold
                   mt-3
                   text-emerald-400
+                  break-words
+                  lg:text-4xl
+                  xl:text-5xl
                 "
               >
                 RM {totalIncome.toFixed(2)}
@@ -429,6 +455,7 @@ export default function Home() {
                 border-red-500/30
                 rounded-3xl
                 p-5
+                sm:p-6
               "
             >
 
@@ -452,6 +479,9 @@ export default function Home() {
                   font-bold
                   mt-3
                   text-red-400
+                  break-words
+                  lg:text-4xl
+                  xl:text-5xl
                 "
               >
                 RM {totalSpending.toFixed(2)}
@@ -468,7 +498,12 @@ export default function Home() {
 
             </section>
 
-            <section>
+            <section
+              className="
+                md:col-span-2
+                lg:col-span-3
+              "
+            >
               <div
                 className="
                   flex
@@ -498,16 +533,26 @@ export default function Home() {
         {activeTool && (
 
           <div
-            className="
+            className={`
               fixed
               inset-x-0
               bottom-24
               z-40
               px-4
-            "
+              md:bottom-28
+              md:px-6
+              lg:inset-x-auto
+              lg:top-8
+              lg:right-8
+              lg:bottom-28
+              lg:px-0
+              lg:max-w-[calc(100vw-2rem)]
+              ${sheetWidthClass}
+            `}
           >
             <div
               className="
+                w-full
                 max-w-md
                 mx-auto
                 max-h-[68vh]
@@ -517,6 +562,10 @@ export default function Home() {
                 border-zinc-800
                 rounded-3xl
                 shadow-2xl
+                md:max-w-2xl
+                md:max-h-[72vh]
+                lg:max-w-none
+                lg:max-h-full
               "
             >
 
@@ -662,6 +711,7 @@ export default function Home() {
             backdrop-blur
             px-3
             pb-[env(safe-area-inset-bottom)]
+            lg:px-6
           "
         >
           <div
@@ -672,6 +722,8 @@ export default function Home() {
               grid-cols-3
               gap-2
               py-3
+              md:max-w-xl
+              lg:max-w-2xl
             "
           >
             <BottomBarButton
@@ -735,6 +787,8 @@ function BottomBarButton({
         p-3
         text-left
         transition
+        sm:p-4
+        md:text-center
         ${
           active
             ? "border-white bg-white text-black"
@@ -747,6 +801,7 @@ function BottomBarButton({
           flex
           items-center
           gap-2
+          md:justify-center
         "
       >
         <Icon size={19}/>

@@ -5,11 +5,21 @@ import {
   Trash2,
 } from "lucide-react";
 
+import type {
+  Income,
+} from "../types/income";
+
+interface IncomeCardProps {
+  income: Income;
+  startEditIncome: (income: Income) => void;
+  deleteIncome: (id: number) => void | Promise<void>;
+}
+
 export default function IncomeCard({
   income,
   startEditIncome,
   deleteIncome,
-}: any) {
+}: IncomeCardProps) {
 
   return (
 
@@ -18,15 +28,17 @@ export default function IncomeCard({
       rounded-3xl
       p-5
       flex
+      gap-3
       justify-between
       items-center
     ">
 
-      <div>
+      <div className="min-w-0">
 
         <p className="
           text-3xl
           font-bold
+          break-words
         ">
           RM {income.amount}
         </p>
@@ -35,6 +47,7 @@ export default function IncomeCard({
           text-zinc-400
           text-sm
           mt-1
+          truncate
         ">
           {income.note || "Income"}
         </p>
@@ -44,6 +57,7 @@ export default function IncomeCard({
       <div className="
         flex
         gap-2
+        shrink-0
       ">
 
         <button

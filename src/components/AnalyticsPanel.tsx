@@ -53,6 +53,7 @@ export default function AnalyticsPanel({
         border-zinc-800
         rounded-3xl
         p-5
+        sm:p-6
       "
     >
 
@@ -66,7 +67,13 @@ export default function AnalyticsPanel({
         Spending Breakdown
       </h2>
 
-      <div className="space-y-5">
+      <div
+        className="
+          grid
+          gap-5
+          md:grid-cols-3
+        "
+      >
 
         {rows.map((row) => (
 

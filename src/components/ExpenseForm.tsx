@@ -125,6 +125,7 @@ export default function ExpenseForm({
         rounded-3xl
         p-5
         space-y-4
+        sm:p-6
       "
     >
 
@@ -137,6 +138,7 @@ export default function ExpenseForm({
         }
         className="
           w-full
+          min-w-0
           bg-black
           rounded-2xl
           p-4
@@ -198,6 +200,7 @@ export default function ExpenseForm({
           }
           className="
             w-full
+            min-w-0
             bg-black
             rounded-2xl
             p-4
@@ -282,6 +285,7 @@ export default function ExpenseForm({
         }
         className="
           w-full
+          min-w-0
           bg-black
           rounded-2xl
           p-4
@@ -298,6 +302,7 @@ export default function ExpenseForm({
         }
         className="
           w-full
+          min-w-0
           bg-black
           rounded-2xl
           p-4
@@ -312,13 +317,13 @@ export default function ExpenseForm({
         {categories.map(
           (category) => (
             <option
-  key={category.id}
-  value={category.id}
->
-  {category.name}
-  {" · "}
-  {category.types?.name}
-</option>
+              key={category.id}
+              value={category.id}
+            >
+              {category.name}
+              {" · "}
+              {category.types?.name}
+            </option>
           )
         )}
 
@@ -332,26 +337,26 @@ export default function ExpenseForm({
       >
 
         <button
-  onClick={saveExpense}
-  disabled={loading}
-  className="
-    w-full
-    bg-white
-    text-black
-    rounded-2xl
-    p-4
-    font-bold
-    disabled:opacity-50
-  "
->
+          onClick={saveExpense}
+          disabled={loading}
+          className="
+            w-full
+            bg-white
+            text-black
+            rounded-2xl
+            p-4
+            font-bold
+            disabled:opacity-50
+          "
+        >
 
-  {loading
-    ? "Saving..."
-    : editingId
-    ? "Update Expense"
-    : "Add Expense"}
+          {loading
+            ? "Saving..."
+            : editingId
+            ? "Update Expense"
+            : "Add Expense"}
 
-</button>
+        </button>
 
         {editingId && (
           <button

@@ -27,6 +27,7 @@ export default function ExpenseCard({
         border-zinc-800
         rounded-2xl
         p-4
+        h-full
       "
     >
 
@@ -79,12 +80,19 @@ export default function ExpenseCard({
           </p>
         </div>
 
-        <div className="text-right shrink-0">
+        <div
+          className="
+            text-right
+            shrink-0
+            max-w-[45%]
+          "
+        >
 
           <p
             className="
               text-xl
               font-bold
+              break-words
             "
           >
             RM {Number(expense.amount).toFixed(2)}

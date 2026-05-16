@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -153,22 +152,11 @@ export default function ExpenseRecordsPanel({
       )
     );
 
-  useEffect(() => {
-    setPage(1);
-  }, [
-    query,
-    sortDirection,
-    sortField,
-  ]);
-
-  useEffect(() => {
-    setPage((current) =>
-      Math.min(current, totalPages)
-    );
-  }, [totalPages]);
+  const safePage =
+    Math.min(page, totalPages);
 
   const pageStart =
-    (page - 1) * PAGE_SIZE;
+    (safePage - 1) * PAGE_SIZE;
 
   const pageExpenses =
     filteredExpenses.slice(
@@ -198,6 +186,12 @@ export default function ExpenseRecordsPanel({
           rounded-2xl
           p-3
           space-y-3
+          sm:p-4
+          md:grid
+          md:grid-cols-[minmax(0,1fr)_minmax(220px,280px)]
+          md:items-center
+          md:gap-3
+          md:space-y-0
         "
       >
         <div
@@ -217,11 +211,13 @@ export default function ExpenseRecordsPanel({
 
           <input
             value={query}
-            onChange={(event) =>
+            onChange={(event) => {
               setQuery(
                 event.target.value
-              )
-            }
+              );
+
+              setPage(1);
+            }}
             placeholder="Search name, category, note, date"
             className="
               min-w-0
@@ -243,11 +239,13 @@ export default function ExpenseRecordsPanel({
         >
           <select
             value={sortField}
-            onChange={(event) =>
+            onChange={(event) => {
               setSortField(
                 event.target.value as SortField
-              )
-            }
+              );
+
+              setPage(1);
+            }}
             className="
               min-w-0
               bg-black
@@ -272,13 +270,15 @@ export default function ExpenseRecordsPanel({
           </select>
 
           <button
-            onClick={() =>
+            onClick={() => {
               setSortDirection((current) =>
                 current === "asc"
                   ? "desc"
                   : "asc"
-              )
-            }
+              );
+
+              setPage(1);
+            }}
             title="Toggle sort direction"
             aria-label="Toggle sort direction"
             className="
@@ -396,14 +396,24 @@ export default function ExpenseRecordsPanel({
         )}
 
       {!loading &&
-        pageExpenses.map((expense) => (
-          <ExpenseCard
-            key={expense.id}
-            expense={expense}
-            startEdit={startEdit}
-            deleteExpense={deleteExpense}
-          />
-        ))}
+        pageExpenses.length > 0 && (
+          <div
+            className="
+              grid
+              gap-3
+              md:grid-cols-2
+            "
+          >
+            {pageExpenses.map((expense) => (
+              <ExpenseCard
+                key={expense.id}
+                expense={expense}
+                startEdit={startEdit}
+                deleteExpense={deleteExpense}
+              />
+            ))}
+          </div>
+        )}
 
       {!loading &&
         filteredExpenses.length > 0 && (
@@ -418,11 +428,11 @@ export default function ExpenseRecordsPanel({
           >
             <button
               onClick={() =>
-                setPage((current) =>
-                  Math.max(1, current - 1)
+                setPage(
+                  Math.max(1, safePage - 1)
                 )
               }
-              disabled={page <= 1}
+              disabled={safePage <= 1}
               title="Previous page"
               aria-label="Previous page"
               className="
@@ -444,19 +454,19 @@ export default function ExpenseRecordsPanel({
                 text-zinc-400
               "
             >
-              Page {page} / {totalPages}
+              Page {safePage} / {totalPages}
             </p>
 
             <button
               onClick={() =>
-                setPage((current) =>
+                setPage(
                   Math.min(
                     totalPages,
-                    current + 1
+                    safePage + 1
                   )
                 )
               }
-              disabled={page >= totalPages}
+              disabled={safePage >= totalPages}
               title="Next page"
               aria-label="Next page"
               className="
