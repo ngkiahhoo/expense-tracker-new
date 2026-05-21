@@ -7,19 +7,21 @@ interface SpendingAnalytics {
 export default function AnalyticsPanel({
   analytics,
   totalSpending,
+  totalIncome,
 }: {
   analytics: SpendingAnalytics;
   totalSpending: number;
+  totalIncome: number;
 }) {
 
   function percent(value: number) {
 
-    if (totalSpending <= 0) {
+    if (totalIncome <= 0) {
       return "0.0";
     }
 
     return (
-      (value / totalSpending) * 100
+      (value / totalIncome) * 100
     ).toFixed(1);
   }
 
@@ -28,19 +30,19 @@ export default function AnalyticsPanel({
       key: "needs",
       label: "Needs",
       value: analytics.needs,
-      color: "#22c55e",
+      color: "#ef4444", // red
     },
     {
       key: "wants",
       label: "Wants",
       value: analytics.wants,
-      color: "#38bdf8",
+      color: "#3b82f6", // blue
     },
     {
       key: "savings",
       label: "Savings",
       value: analytics.savings,
-      color: "#a78bfa",
+      color: "#22c55e", // green
     },
   ];
 

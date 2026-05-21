@@ -77,3 +77,45 @@ export async function removeExpense(
 
   return error;
 }
+
+export async function getExpensesByCategory(
+  selectedMonth: string,
+  categoryId: number | null,
+  search: string | null = null,
+  limit = 10,
+  offset = 0,
+  sortField = 'expense_date',
+  sortDirection: 'asc' | 'desc' = 'desc'
+) {
+  const start = `${selectedMonth}-01`;
+  const end = `${selectedMonth}-31`;
+
+  let query = supabase
+    .from('expenses')
+    .select(
+      `*, categories ( id, name, type_id, types ( id, name ) )`,
+      { count: 'exact' }
+    )
+    .gte('expense_date', start)
+    .lte('expense_date', end)
+    .range(offset, offset + limit - 1)
+    .order(sortField, { ascending: sortDirection === 'asc' });
+
+  if (categoryId !== null) {
+    query = query.eq('category_id', categoryId);
+  }
+
+  if (search) {
+    // simple server-side search on note field
+    query = query.ilike('note', `%${search}%`);
+  }
+
+  const { data, count, error } = await query;
+
+  if (error) {
+    console.log(error);
+    return { data: [], count: 0 };
+  }
+
+  return { data: data || [], count: count || 0 };
+}

@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -31,6 +32,12 @@ import AnalyticsPanel
 from "../components/AnalyticsPanel";
 import ExpenseRecordsPanel
 from "../components/ExpenseRecordsPanel";
+import AIExportSheet
+from "../components/features/export/AIExportSheet";
+import ExpenseCategoryBreakdown
+from "../components/features/analytics/ExpenseCategoryBreakdown";
+import CategoryExpenseSheet
+from "../components/features/analytics/CategoryExpenseSheet";
 
 import useExpenses
 from "../hooks/useExpenses";
@@ -38,6 +45,8 @@ import useIncome
 from "../hooks/useIncome";
 import useCategories
 from "../hooks/useCategories";
+import useCategoryBreakdown
+from "../hooks/useCategoryBreakdown";
 import useAnalytics
 from "../hooks/useAnalytics";
 import useSavedNotes
@@ -48,6 +57,9 @@ import type {
 import type {
   Income,
 } from "../types/income";
+import type {
+  CategoryBreakdownItem,
+} from "../types/analytics";
 
 type BottomTool =
   | "expense"
@@ -83,6 +95,37 @@ export default function Home() {
 
   const [activeTool, setActiveTool] =
     useState<BottomTool | null>(null);
+
+  const [showExportSheet, setShowExportSheet] =
+    useState(false);
+
+  // draggable sheet state for activeTool panels
+  const sheetDialogRef = useRef<HTMLDivElement | null>(null);
+  const sheetHeaderRef = useRef<HTMLDivElement | null>(null);
+  const [sheetPos, setSheetPos] = useState<{ x: number; y: number } | null>(null);
+  const sheetDragging = useRef(false);
+  const sheetDragStart = useRef({ x: 0, y: 0 });
+  const sheetDialogStart = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!sheetDragging.current) return;
+      const dx = e.clientX - sheetDragStart.current.x;
+      const dy = e.clientY - sheetDragStart.current.y;
+      setSheetPos({ x: sheetDialogStart.current.x + dx, y: sheetDialogStart.current.y + dy });
+    }
+
+    function onUp() {
+      sheetDragging.current = false;
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
 
   const [showExpenseForm, setShowExpenseForm] =
     useState(true);
@@ -178,6 +221,14 @@ export default function Home() {
     expenses,
     incomes
   );
+
+  const categoryBreakdown = useCategoryBreakdown(
+    expenses,
+    categories
+  );
+
+  const [activeCategory, setActiveCategory] =
+    useState<CategoryBreakdownItem | null>(null);
 
   useEffect(() => {
     fetchExpenses();
@@ -518,11 +569,30 @@ export default function Home() {
                 <span>
                   Spending Analytics
                 </span>
+                <button onClick={() => setShowExportSheet(true)} className="ml-auto rounded-2xl bg-zinc-900 p-2 text-sm">Export for AI</button>
               </div>
 
               <AnalyticsPanel
                 analytics={analytics}
                 totalSpending={totalSpending}
+                totalIncome={totalIncome}
+              />
+            </section>
+
+            {showExportSheet && (
+              <AIExportSheet isOpen={showExportSheet} onClose={() => setShowExportSheet(false)} />
+            )}
+
+            <section
+              className="
+                md:col-span-2
+                lg:col-span-3
+              "
+            >
+              <ExpenseCategoryBreakdown
+                breakdown={categoryBreakdown}
+                loading={loading}
+                onSelectCategory={setActiveCategory}
               />
             </section>
 
@@ -551,6 +621,8 @@ export default function Home() {
             `}
           >
             <div
+              ref={sheetDialogRef}
+              style={sheetPos ? { position: "fixed", left: sheetPos.x, top: sheetPos.y } : undefined}
               className="
                 w-full
                 max-w-md
@@ -570,6 +642,17 @@ export default function Home() {
             >
 
               <div
+                ref={sheetHeaderRef}
+                onMouseDown={(e) => {
+                  const el = sheetDialogRef.current;
+                  if (!el) return;
+                  const rect = el.getBoundingClientRect();
+                  sheetDragging.current = true;
+                  sheetDragStart.current = { x: e.clientX, y: e.clientY };
+                  sheetDialogStart.current = { x: rect.left, y: rect.top };
+                  setSheetPos({ x: rect.left, y: rect.top });
+                  e.preventDefault();
+                }}
                 className="
                   sticky
                   top-0
@@ -582,6 +665,7 @@ export default function Home() {
                   border-b
                   border-zinc-800
                   p-4
+                  cursor-grab
                 "
               >
                 <div>
@@ -698,6 +782,18 @@ export default function Home() {
           </div>
 
         )}
+
+        <CategoryExpenseSheet
+          isOpen={activeCategory !== null}
+          categoryId={activeCategory?.categoryId ?? null}
+          categoryName={activeCategory?.categoryName ?? ""}
+          categoryTotal={activeCategory?.totalAmount ?? 0}
+          categoryPercent={activeCategory?.percentage ?? 0}
+          selectedMonth={selectedMonth}
+          onClose={() => setActiveCategory(null)}
+          onEdit={handleStartEdit}
+          onDelete={deleteExpense}
+        />
 
         <nav
           className="
