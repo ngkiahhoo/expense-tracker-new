@@ -29,13 +29,15 @@ export default function useAIExport() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [payload, setPayload] = useState<string | null>(null);
 
-  const generateAndCopy = useCallback(async (
+  const generateExport = useCallback(async (
     range: ExportRange,
     options: ExportOptions
   ) => {
     setLoading(true);
     setError(null);
+    setPayload(null);
 
     try {
       const { start, end } = rangeToDates(range);
@@ -88,26 +90,65 @@ export default function useAIExport() {
           };
         });
 
-      const payload = formatAIExport(expenses, incomes, categories, monthlySummaries, {
+      const out = formatAIExport(expenses, incomes, categories, monthlySummaries, {
         includeExpenses: options.includeExpenses,
         includeMonthlySummary: options.includeMonthlySummary,
         includeCategories: options.includeCategories,
         includeAIPrompt: options.includeAIPrompt,
       });
 
-      await navigator.clipboard.writeText(payload);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 3000);
-
+      setPayload(out);
       setLoading(false);
-      return true;
+      return out;
     } catch (err: any) {
       console.log(err);
       setError(err.message || String(err));
       setLoading(false);
-      return false;
+      return null;
     }
   }, []);
 
-  return { loading, copied, error, generateAndCopy };
+  const copyToClipboard = useCallback(async (text?: string) => {
+    const toCopy = text ?? payload;
+    if (!toCopy) return false;
+    setError(null);
+
+    // Try modern Clipboard API first
+    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(toCopy);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+        return true;
+      } catch (e) {
+        // fallthrough to fallback
+        console.warn('clipboard.writeText failed', e);
+      }
+    }
+
+    // Legacy fallback using a temporary textarea + execCommand
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = toCopy;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'absolute';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+        return true;
+      }
+    } catch (err) {
+      console.warn('execCommand copy failed', err);
+    }
+
+    setError('The request is not allowed by the user agent or the platform in the current context, possibly because the user denied permission.');
+    return false;
+  }, [payload]);
+
+  return { loading, copied, error, payload, generateExport, copyToClipboard };
 }

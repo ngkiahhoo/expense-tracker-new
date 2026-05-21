@@ -21,7 +21,7 @@ export default function AIExportSheet({
     includeAIPrompt: true,
   });
 
-  const { loading, copied, error, generateAndCopy } = useAIExport();
+  const { loading, copied, error, payload, generateExport, copyToClipboard } = useAIExport();
 
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
@@ -101,12 +101,16 @@ export default function AIExportSheet({
           <div className="flex items-center gap-3">
             <button
               onClick={async () => {
-                await generateAndCopy(range, options);
+                if (!payload) {
+                  await generateExport(range, options);
+                } else {
+                  await copyToClipboard(payload);
+                }
               }}
               disabled={loading}
               className="rounded-2xl bg-white text-black px-4 py-3 font-bold"
             >
-              {loading ? "Generating..." : "Copy export to clipboard"}
+              {loading ? "Generating..." : payload ? (copied ? "Copied" : "Copy export to clipboard") : "Generate export"}
             </button>
 
             {copied && (
@@ -115,6 +119,13 @@ export default function AIExportSheet({
 
             {error && <div className="text-sm text-red-500">{error}</div>}
           </div>
+
+          {payload && (
+            <div>
+              <h4 className="text-sm text-zinc-400 mb-2">Export preview (you can manually copy)</h4>
+              <textarea readOnly value={payload} className="w-full h-40 rounded-md bg-zinc-900 p-3 text-sm text-zinc-100" />
+            </div>
+          )}
 
           <div className="text-xs text-zinc-500">Note: The export is copied to your clipboard; you can paste it into any AI tool.</div>
         </div>
