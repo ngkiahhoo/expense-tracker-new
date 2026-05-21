@@ -28,19 +28,19 @@ export default function AnalyticsPanel({
       key: "needs",
       label: "Needs",
       value: analytics.needs,
-      color: "bg-emerald-400",
+      color: "#22c55e",
     },
     {
       key: "wants",
       label: "Wants",
       value: analytics.wants,
-      color: "bg-sky-400",
+      color: "#38bdf8",
     },
     {
       key: "savings",
       label: "Savings",
       value: analytics.savings,
-      color: "bg-violet-400",
+      color: "#a78bfa",
     },
   ];
 
@@ -114,13 +114,17 @@ export default function AnalyticsPanel({
             >
 
               <div
-                className={`
+                className="
                   h-full
-                  ${row.color}
-                `}
+                  rounded-full
+                  transition-all
+                  duration-300
+                "
                 style={{
-                  width:
-                    `${percent(row.value)}%`,
+                  width: `${percent(row.value)}%`,
+                  backgroundColor: row.color,
+                  minWidth:
+                    row.value > 0 ? "2px" : undefined,
                 }}
               />
 
