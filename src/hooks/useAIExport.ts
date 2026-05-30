@@ -178,7 +178,7 @@ export default function useAIExport() {
     if (!toCopy) return false;
     setError(null);
 
-    // Try modern Clipboard API first
+    // Try modern Clipboard API first (for modern browsers including iOS 13.3+)
     if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
       try {
         await navigator.clipboard.writeText(toCopy);
@@ -186,22 +186,35 @@ export default function useAIExport() {
         setTimeout(() => setCopied(false), 3000);
         return true;
       } catch (e) {
-        // fallthrough to fallback
         console.warn('clipboard.writeText failed', e);
+        // fallthrough to fallback
       }
     }
 
-    // Legacy fallback using a temporary textarea + execCommand
+    // Fallback 1: Using textarea + execCommand (works on older iOS and Android)
     try {
       const ta = document.createElement('textarea');
       ta.value = toCopy;
       ta.setAttribute('readonly', '');
       ta.style.position = 'absolute';
       ta.style.left = '-9999px';
+      ta.style.top = '-9999px';
+      ta.style.opacity = '0';
       document.body.appendChild(ta);
-      ta.select();
+      
+      // Focus the textarea first
+      ta.focus();
+      
+      // For iOS: use setSelectionRange instead of select()
+      if (navigator.userAgent.match(/iphone|ipad|ipod/i)) {
+        ta.setSelectionRange(0, ta.value.length);
+      } else {
+        ta.select();
+      }
+      
       const ok = document.execCommand('copy');
       document.body.removeChild(ta);
+      
       if (ok) {
         setCopied(true);
         setTimeout(() => setCopied(false), 3000);
@@ -211,7 +224,30 @@ export default function useAIExport() {
       console.warn('execCommand copy failed', err);
     }
 
-    setError('The request is not allowed by the user agent or the platform in the current context, possibly because the user denied permission.');
+    // Fallback 2: Using a non-readonly textarea for maximum compatibility
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = toCopy;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      
+      if (ok) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+        return true;
+      }
+    } catch (err) {
+      console.warn('fallback copy method failed', err);
+    }
+
+    setError('Unable to copy to clipboard. Please copy manually or check your device permissions.');
     return false;
   }, [payload]);
 
