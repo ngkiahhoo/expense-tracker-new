@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  Pencil,
+  Trash2,
+} from "lucide-react";
+
 import type {
   Category,
 } from "../types/category";
@@ -158,10 +163,8 @@ export default function CategoryPanel({
                     bg-black
                     rounded-2xl
                     p-4
-                    flex
+                    grid
                     gap-3
-                    justify-between
-                    items-center
                   "
                 >
 
@@ -173,7 +176,7 @@ export default function CategoryPanel({
                         truncate
                       "
                     >
-                      {cat.name}
+                      {cat.name || "Unnamed Category"}
                     </p>
 
                     <p
@@ -183,18 +186,16 @@ export default function CategoryPanel({
                         truncate
                       "
                     >
-                      {
-                        cat.types?.name
-                      }
+                      {cat.types?.name || "No type"}
                     </p>
 
                   </div>
 
                   <div
                     className="
-                      flex
+                      grid
+                      grid-cols-2
                       gap-2
-                      shrink-0
                     "
                   >
 
@@ -203,12 +204,18 @@ export default function CategoryPanel({
                         editCategory(cat)
                       }
                       className="
+                        flex
+                        items-center
+                        justify-center
+                        gap-2
                         bg-zinc-800
                         px-4
-                        py-2
+                        py-3
                         rounded-xl
+                        font-bold
                       "
                     >
+                      <Pencil size={15}/>
                       Edit
                     </button>
 
@@ -219,12 +226,18 @@ export default function CategoryPanel({
                         )
                       }
                       className="
+                        flex
+                        items-center
+                        justify-center
+                        gap-2
                         bg-red-500
                         px-4
-                        py-2
+                        py-3
                         rounded-xl
+                        font-bold
                       "
                     >
+                      <Trash2 size={15}/>
                       Delete
                     </button>
 

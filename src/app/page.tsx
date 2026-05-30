@@ -11,6 +11,7 @@ from "react-simple-pull-to-refresh";
 
 import {
   CalendarDays,
+  CalendarSync,
   ChartPie,
   ClipboardList,
   Pencil,
@@ -32,6 +33,8 @@ import AnalyticsPanel
 from "../components/AnalyticsPanel";
 import ExpenseRecordsPanel
 from "../components/ExpenseRecordsPanel";
+import RecurringExpensePanel
+from "../components/RecurringExpensePanel";
 import AIExportSheet
 from "../components/features/export/AIExportSheet";
 import ExpenseCategoryBreakdown
@@ -51,6 +54,8 @@ import useAnalytics
 from "../hooks/useAnalytics";
 import useSavedNotes
 from "../hooks/useSavedNotes";
+import useRecurringExpenses
+from "../hooks/useRecurringExpenses";
 import type {
   Expense,
 } from "../types/expense";
@@ -63,30 +68,41 @@ import type {
 
 type BottomTool =
   | "expense"
+  | "recurring"
   | "categories"
   | "records"
   | "income";
 
 export default function Home() {
 
+  const today =
+    new Date();
+
   const currentMonth =
-    `${new Date().getFullYear()}-${String(
-      new Date().getMonth() + 1
+    `${today.getFullYear()}-${String(
+      today.getMonth() + 1
     ).padStart(2, "0")}`;
 
   const months =
     Array.from(
       { length: 12 },
       (_, i) => {
-        const d = new Date();
+        const d =
+          new Date(
+            today.getFullYear(),
+            today.getMonth() - i,
+            1
+          );
 
-        d.setMonth(
-          d.getMonth() - i
-        );
+        const year =
+          d.getFullYear();
 
-        return `${d.getFullYear()}-${String(
-          d.getMonth() + 1
-        ).padStart(2, "0")}`;
+        const month =
+          String(
+            d.getMonth() + 1
+          ).padStart(2, "0");
+
+        return `${year}-${month}`;
       }
     );
 
@@ -213,6 +229,44 @@ export default function Home() {
   } = useSavedNotes();
 
   const {
+    recurringExpenses,
+
+    recurringName,
+    setRecurringName,
+
+    recurringAmount,
+    setRecurringAmount,
+
+    recurringDescription,
+    setRecurringDescription,
+
+    recurringCategory,
+    setRecurringCategory,
+
+    recurringRepeatDay,
+    setRecurringRepeatDay,
+
+    recurringIsActive,
+    setRecurringIsActive,
+
+    recurringEditingId,
+    setRecurringEditingId,
+
+    recurringLoading,
+    recurringError,
+    generatedRecurringCount,
+
+    fetchRecurringExpenses,
+    saveRecurringExpense,
+    deleteRecurringExpense,
+    startEditRecurringExpense,
+    resetRecurringExpenseForm,
+    generateDueRecurringExpenses,
+  } = useRecurringExpenses(
+    selectedMonth
+  );
+
+  const {
     analytics,
     totalSpending,
     totalIncome,
@@ -231,18 +285,30 @@ export default function Home() {
     useState<CategoryBreakdownItem | null>(null);
 
   useEffect(() => {
-    fetchExpenses();
-    fetchIncome();
-    fetchCategories();
+    async function loadMonthData() {
+      await generateDueRecurringExpenses();
+
+      await Promise.all([
+        fetchExpenses(),
+        fetchIncome(),
+        fetchCategories(),
+        fetchRecurringExpenses(),
+      ]);
+    }
+
+    loadMonthData();
     // Fetch callbacks come from local hooks and intentionally refresh when the month changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth]);
 
   async function refreshAll() {
+    await generateDueRecurringExpenses();
+
     await Promise.all([
       fetchExpenses(),
       fetchIncome(),
       fetchCategories(),
+      fetchRecurringExpenses(),
     ]);
   }
 
@@ -257,6 +323,22 @@ export default function Home() {
         noteToSave
       );
     }
+  }
+
+  async function handleSaveRecurringExpense() {
+    const didSave =
+      await saveRecurringExpense();
+
+    if (didSave) {
+      const createdCount =
+        await generateDueRecurringExpenses();
+
+      if (createdCount > 0) {
+        await fetchExpenses();
+      }
+    }
+
+    return didSave;
   }
 
   function toggleTool(
@@ -274,6 +356,10 @@ export default function Home() {
 
     if (tool === "categories") {
       setShowCategories(true);
+    }
+
+    if (tool === "recurring") {
+      void fetchRecurringExpenses();
     }
   }
 
@@ -303,6 +389,10 @@ export default function Home() {
       ? editingId
         ? "Edit Expense"
         : "Add Expense"
+      : activeTool === "recurring"
+      ? recurringEditingId
+        ? "Edit Recurring"
+        : "Recurring Expenses"
       : activeTool === "income"
       ? incomeEditingId
         ? "Edit Income"
@@ -734,6 +824,35 @@ export default function Home() {
                   />
                 )}
 
+                {activeTool === "recurring" && (
+                  <RecurringExpensePanel
+                    recurringExpenses={recurringExpenses}
+                    recurringName={recurringName}
+                    setRecurringName={setRecurringName}
+                    recurringAmount={recurringAmount}
+                    setRecurringAmount={setRecurringAmount}
+                    recurringDescription={recurringDescription}
+                    setRecurringDescription={setRecurringDescription}
+                    recurringCategory={recurringCategory}
+                    setRecurringCategory={setRecurringCategory}
+                    recurringRepeatDay={recurringRepeatDay}
+                    setRecurringRepeatDay={setRecurringRepeatDay}
+                    recurringIsActive={recurringIsActive}
+                    setRecurringIsActive={setRecurringIsActive}
+                    recurringEditingId={recurringEditingId}
+                    setRecurringEditingId={setRecurringEditingId}
+                    recurringLoading={recurringLoading}
+                    recurringError={recurringError}
+                    generatedRecurringCount={generatedRecurringCount}
+                    categories={categories}
+                    refreshRecurringExpenses={fetchRecurringExpenses}
+                    saveRecurringExpense={handleSaveRecurringExpense}
+                    deleteRecurringExpense={deleteRecurringExpense}
+                    startEditRecurringExpense={startEditRecurringExpense}
+                    resetRecurringExpenseForm={resetRecurringExpenseForm}
+                  />
+                )}
+
                 {activeTool === "income" && (
                   <IncomePanel
                     totalIncome={totalIncome}
@@ -815,10 +934,10 @@ export default function Home() {
               max-w-md
               mx-auto
               grid
-              grid-cols-3
+              grid-cols-4
               gap-2
               py-3
-              md:max-w-xl
+              md:max-w-2xl
               lg:max-w-2xl
             "
           >
@@ -833,12 +952,22 @@ export default function Home() {
             />
 
             <BottomBarButton
+              active={activeTool === "recurring"}
+              onClick={() =>
+                toggleTool("recurring")
+              }
+              icon={CalendarSync}
+              label="Repeat"
+              description="Monthly"
+            />
+
+            <BottomBarButton
               active={activeTool === "categories"}
               onClick={() =>
                 toggleTool("categories")
               }
               icon={FolderTree}
-              label="Category"
+              label="Cat"
               description="CRUD"
             />
 
@@ -878,12 +1007,14 @@ function BottomBarButton({
       onClick={onClick}
       className={`
         min-h-16
+        min-w-0
         rounded-2xl
         border
-        p-3
+        p-2
         text-left
         transition
-        sm:p-4
+        sm:p-3
+        md:p-4
         md:text-center
         ${
           active
@@ -897,15 +1028,22 @@ function BottomBarButton({
           flex
           items-center
           gap-2
+          min-w-0
           md:justify-center
         "
       >
-        <Icon size={19}/>
+        <Icon
+          size={18}
+          className="shrink-0"
+        />
         <span
           className="
-            text-sm
+            min-w-0
+            truncate
+            text-xs
             font-bold
             leading-none
+            sm:text-sm
           "
         >
           {label}
@@ -917,6 +1055,7 @@ function BottomBarButton({
           mt-2
           text-[11px]
           leading-none
+          truncate
           ${
             active
               ? "text-zinc-700"
