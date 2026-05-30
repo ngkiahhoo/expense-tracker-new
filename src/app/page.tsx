@@ -480,7 +480,7 @@ export default function Home() {
               max-w-5xl
               mx-auto
               grid
-              gap-5
+              gap-4
             "
           >
 
@@ -490,8 +490,8 @@ export default function Home() {
                 border
                 border-zinc-800
                 rounded-3xl
-                p-5
-                sm:p-6
+                p-4
+                sm:p-5
               "
             >
 
@@ -569,9 +569,9 @@ export default function Home() {
                 border
                 border-emerald-500/30
                 rounded-3xl
-                p-5
-                sm:p-6
-                min-h-[220px]
+                p-3
+                sm:p-4
+                min-h-[104px]
                 flex
                 flex-col
                 justify-between
@@ -596,14 +596,17 @@ export default function Home() {
 
                   <h2
                     className="
-                      text-4xl
+                      text-3xl
                       font-bold
-                      mt-3
+                      mt-2
                       text-emerald-400
-                      break-words
+                      leading-tight
                     "
                   >
-                    RM {totalIncome.toFixed(2)}
+                    <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+                      <span className="text-base text-zinc-400">RM</span>
+                      <span>{totalIncome.toFixed(2)}</span>
+                    </span>
                   </h2>
                 </div>
 
@@ -616,8 +619,8 @@ export default function Home() {
                     bg-white
                     text-black
                     rounded-2xl
-                    px-4
-                    py-3
+                    px-3
+                    py-2
                     text-sm
                     font-bold
                     shrink-0
@@ -636,16 +639,19 @@ export default function Home() {
                 border
                 border-red-500/30
                 rounded-3xl
-                p-5
-                sm:p-6
-                min-h-[180px]
+                p-3
+                sm:p-4
+                min-h-[104px]
+                flex
+                flex-col
+                justify-between
               "
             >
 
               <div
                 className="
                   text-zinc-400
-                  mb-3
+                  mb-2
                 "
               >
                 Total Spending
@@ -653,19 +659,23 @@ export default function Home() {
 
               <h2
                 className="
-                  text-4xl
+                  text-3xl
                   font-bold
                   text-red-400
-                  break-words
+                  leading-tight
                 "
               >
-                RM {totalSpending.toFixed(2)}
+                <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+                  <span className="text-base text-zinc-400">RM</span>
+                  <span>{totalSpending.toFixed(2)}</span>
+                </span>
               </h2>
 
               <p
                 className="
+                  text-sm
                   text-zinc-400
-                  mt-2
+                  mt-1
                 "
               >
                 {spendingPercent}% of income
@@ -679,16 +689,19 @@ export default function Home() {
                 border
                 border-blue-500/30
                 rounded-3xl
-                p-5
-                sm:p-6
-                min-h-[180px]
+                p-3
+                sm:p-4
+                min-h-[104px]
+                flex
+                flex-col
+                justify-between
               "
             >
 
               <div
                 className="
                   text-zinc-400
-                  mb-3
+                  mb-2
                 "
               >
                 Balance
@@ -696,19 +709,23 @@ export default function Home() {
 
               <h2
                 className="
-                  text-4xl
+                  text-3xl
                   font-bold
                   text-sky-400
-                  break-words
+                  leading-tight
                 "
               >
-                RM {balance.toFixed(2)}
+                <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+                  <span className="text-base text-zinc-400">RM</span>
+                  <span>{balance.toFixed(2)}</span>
+                </span>
               </h2>
 
               <p
                 className="
+                  text-sm
                   text-zinc-400
-                  mt-2
+                  mt-1
                 "
               >
                 {balancePercent}% of income
