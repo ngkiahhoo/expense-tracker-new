@@ -35,8 +35,6 @@ import ExpenseRecordsPanel
 from "../components/ExpenseRecordsPanel";
 import RecurringExpensePanel
 from "../components/RecurringExpensePanel";
-import AIExportSheet
-from "../components/features/export/AIExportSheet";
 import ExpenseCategoryBreakdown
 from "../components/features/analytics/ExpenseCategoryBreakdown";
 import CategoryExpenseSheet
@@ -56,6 +54,8 @@ import useSavedNotes
 from "../hooks/useSavedNotes";
 import useRecurringExpenses
 from "../hooks/useRecurringExpenses";
+import useAIExport
+from "../hooks/useAIExport";
 import type {
   Expense,
 } from "../types/expense";
@@ -72,6 +72,13 @@ type BottomTool =
   | "categories"
   | "records"
   | "income";
+
+const fullAIExportOptions = {
+  includeExpenses:true,
+  includeMonthlySummary:true,
+  includeCategories:true,
+  includeAIPrompt:true,
+};
 
 export default function Home() {
 
@@ -111,9 +118,6 @@ export default function Home() {
 
   const [activeTool, setActiveTool] =
     useState<BottomTool | null>(null);
-
-  const [showExportSheet, setShowExportSheet] =
-    useState(false);
 
   // draggable sheet state for activeTool panels
   const sheetDialogRef = useRef<HTMLDivElement | null>(null);
@@ -267,6 +271,14 @@ export default function Home() {
   );
 
   const {
+    loading:exportLoading,
+    copied:exportCopied,
+    error:exportError,
+    generateExport,
+    copyToClipboard,
+  } = useAIExport();
+
+  const {
     analytics,
     totalSpending,
     totalIncome,
@@ -275,6 +287,13 @@ export default function Home() {
     expenses,
     incomes
   );
+
+  const balance =
+    totalIncome - totalSpending;
+
+  const balancePercent = totalIncome > 0
+    ? ((balance / totalIncome) * 100).toFixed(1)
+    : "0.0";
 
   const categoryBreakdown = useCategoryBreakdown(
     expenses,
@@ -339,6 +358,20 @@ export default function Home() {
     }
 
     return didSave;
+  }
+
+  async function handleCopyAIExport() {
+    const exportPayload =
+      await generateExport(
+        "all",
+        fullAIExportOptions
+      );
+
+    if (exportPayload) {
+      await copyToClipboard(
+        exportPayload
+      );
+    }
   }
 
   function toggleTool(
@@ -591,51 +624,108 @@ export default function Home() {
 
             <section
               className="
-                bg-zinc-900/90
-                border
-                border-red-500/30
-                rounded-3xl
-                p-5
-                sm:p-6
+                grid
+                grid-cols-1
+                md:grid-cols-2
+                gap-5
               "
             >
 
               <div
                 className="
-                  flex
-                  items-center
-                  gap-2
-                  text-zinc-400
+                  bg-zinc-900/90
+                  border
+                  border-red-500/30
+                  rounded-3xl
+                  p-5
+                  sm:p-6
                 "
               >
-                <TrendingDown size={18}/>
-                <span>
-                  Total Spending
-                </span>
+
+                <div
+                  className="
+                    flex
+                    items-center
+                    gap-2
+                    text-zinc-400
+                    mb-3
+                  "
+                >
+                  <TrendingDown size={18}/>
+                  <span>
+                    Total Spending
+                  </span>
+                </div>
+
+                <h2
+                  className="
+                    text-4xl
+                    font-bold
+                    text-red-400
+                    break-words
+                  "
+                >
+                  RM {totalSpending.toFixed(2)}
+                </h2>
+
+                <p
+                  className="
+                    text-zinc-400
+                    mt-2
+                  "
+                >
+                  {spendingPercent}% of income
+                </p>
+
               </div>
 
-              <h2
+              <div
                 className="
-                  text-5xl
-                  font-bold
-                  mt-3
-                  text-red-400
-                  break-words
-                  lg:text-4xl
-                  xl:text-5xl
+                  bg-zinc-900/90
+                  border
+                  border-blue-500/30
+                  rounded-3xl
+                  p-5
+                  sm:p-6
                 "
               >
-                RM {totalSpending.toFixed(2)}
-              </h2>
 
-              <p
-                className="
-                  text-zinc-400
-                  mt-3
-                "
-              >
-                {spendingPercent}% of income
-              </p>
+                <div
+                  className="
+                    flex
+                    items-center
+                    gap-2
+                    text-zinc-400
+                    mb-3
+                  "
+                >
+                  <TrendingDown size={18}/>
+                  <span>
+                    Balance
+                  </span>
+                </div>
+
+                <h2
+                  className="
+                    text-4xl
+                    font-bold
+                    text-sky-400
+                    break-words
+                  "
+                >
+                  RM {balance.toFixed(2)}
+                </h2>
+
+                <p
+                  className="
+                    text-zinc-400
+                    mt-2
+                  "
+                >
+                  {balancePercent}% of income
+                </p>
+
+              </div>
 
             </section>
 
@@ -659,7 +749,55 @@ export default function Home() {
                 <span>
                   Spending Analytics
                 </span>
-                <button onClick={() => setShowExportSheet(true)} className="ml-auto rounded-2xl bg-zinc-900 p-2 text-sm">Export for AI</button>
+
+                <div
+                  className="
+                    ml-auto
+                    flex
+                    items-center
+                    gap-2
+                  "
+                >
+                  {exportError && (
+                    <span
+                      className="
+                        hidden
+                        max-w-[220px]
+                        truncate
+                        text-xs
+                        text-red-400
+                        sm:inline
+                      "
+                    >
+                      {exportError}
+                    </span>
+                  )}
+
+                  <button
+                    onClick={handleCopyAIExport}
+                    disabled={exportLoading}
+                    className={`
+                      rounded-2xl
+                      px-3
+                      py-2
+                      text-sm
+                      font-bold
+                      transition
+                      disabled:opacity-60
+                      ${
+                        exportCopied
+                          ? "bg-emerald-500 text-black"
+                          : "bg-zinc-900 text-white"
+                      }
+                    `}
+                  >
+                    {exportLoading
+                      ? "Copying..."
+                      : exportCopied
+                      ? "Copied!"
+                      : "Export for AI"}
+                  </button>
+                </div>
               </div>
 
               <AnalyticsPanel
@@ -668,10 +806,6 @@ export default function Home() {
                 totalIncome={totalIncome}
               />
             </section>
-
-            {showExportSheet && (
-              <AIExportSheet isOpen={showExportSheet} onClose={() => setShowExportSheet(false)} />
-            )}
 
             <section
               className="

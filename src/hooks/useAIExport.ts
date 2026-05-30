@@ -1,9 +1,38 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { fetchExpensesRange, fetchIncomesRange, fetchCategories } from "../services/exportService";
-import { formatAIExport } from "../utils/formatAIExport";
-import type { ExportOptions, ExportRange } from "../types/export";
+import {
+  useCallback,
+  useState,
+} from "react";
+
+import {
+  fetchCategories,
+  fetchExpensesRange,
+  fetchIncomesRange,
+} from "../services/exportService";
+import {
+  formatAIExport,
+} from "../utils/formatAIExport";
+import type {
+  ExportOptions,
+  ExportRange,
+  MonthlySummary,
+} from "../types/export";
+import type {
+  Expense,
+} from "../types/expense";
+import type {
+  Income,
+} from "../types/income";
+
+interface MonthlyAccumulator {
+  income:number;
+  expense:number;
+  needs:number;
+  wants:number;
+  savings:number;
+  transaction_count:number;
+}
 
 function rangeToDates(range: ExportRange) {
   const end = new Date();
@@ -36,6 +65,7 @@ export default function useAIExport() {
     options: ExportOptions
   ) => {
     setLoading(true);
+    setCopied(false);
     setError(null);
     setPayload(null);
 
@@ -48,18 +78,43 @@ export default function useAIExport() {
       ]);
 
       // Build monthly summaries
-      const monthlyMap: Record<string, any> = {};
+      const monthlyMap: Record<string, MonthlyAccumulator> = {};
 
       // incomes by month
-      incomes.forEach((inc: any) => {
-        const month = inc.income_date?.slice(0, 7) || inc.date?.slice(0, 7);
-        monthlyMap[month] = monthlyMap[month] || { income: 0, expense: 0, needs: 0, wants: 0, savings: 0, transaction_count: 0 };
+      incomes.forEach((inc: Income) => {
+        const month =
+          inc.income_date?.slice(0, 7);
+
+        if (!month) {
+          return;
+        }
+
+        monthlyMap[month] =
+          monthlyMap[month] || {
+            income: 0,
+            expense: 0,
+            needs: 0,
+            wants: 0,
+            savings: 0,
+            transaction_count: 0,
+          };
+
         monthlyMap[month].income += Number(inc.amount || 0);
       });
 
-      expenses.forEach((e: any) => {
+      expenses.forEach((e: Expense) => {
         const month = e.expense_date.slice(0, 7);
-        monthlyMap[month] = monthlyMap[month] || { income: 0, expense: 0, needs: 0, wants: 0, savings: 0, transaction_count: 0 };
+
+        monthlyMap[month] =
+          monthlyMap[month] || {
+            income: 0,
+            expense: 0,
+            needs: 0,
+            wants: 0,
+            savings: 0,
+            transaction_count: 0,
+          };
+
         monthlyMap[month].expense += Number(e.amount || 0);
         monthlyMap[month].transaction_count += 1;
         const typeName = e.categories?.types?.name?.toLowerCase();
@@ -68,13 +123,15 @@ export default function useAIExport() {
         else if (typeName === "savings") monthlyMap[month].savings += Number(e.amount || 0);
       });
 
-      const monthlySummaries = Object.keys(monthlyMap)
+      const monthlySummaries: MonthlySummary[] = Object.keys(monthlyMap)
         .sort()
         .map((month) => {
           const m = monthlyMap[month];
           const income = m.income || 0;
           const expense = m.expense || 0;
-          const saving_rate = income > 0 ? ((income - expense) / income) * 100 : 0;
+          const balance =
+            income - expense;
+          const saving_rate = income > 0 ? (balance / income) * 100 : 0;
           const needs_ratio = income > 0 ? (m.needs / income) * 100 : 0;
           const wants_ratio = income > 0 ? (m.wants / income) * 100 : 0;
           const savings_ratio = income > 0 ? (m.savings / income) * 100 : 0;
@@ -82,6 +139,10 @@ export default function useAIExport() {
             month,
             income,
             expense,
+            balance:
+              Number(
+                balance.toFixed(2)
+              ),
             saving_rate: Number(saving_rate.toFixed(1)),
             needs_ratio: Number(needs_ratio.toFixed(1)),
             wants_ratio: Number(wants_ratio.toFixed(1)),
@@ -100,9 +161,13 @@ export default function useAIExport() {
       setPayload(out);
       setLoading(false);
       return out;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.log(err);
-      setError(err.message || String(err));
+      setError(
+        err instanceof Error
+          ? err.message
+          : String(err)
+      );
       setLoading(false);
       return null;
     }

@@ -5,6 +5,18 @@ export interface ExportOptions {
   includeAIPrompt: boolean;
 }
 
+export interface MonthlySummary {
+  month:string;
+  income:number;
+  expense:number;
+  balance:number;
+  saving_rate:number;
+  needs_ratio:number;
+  wants_ratio:number;
+  savings_ratio:number;
+  transaction_count:number;
+}
+
 export type ExportRange =
   | '30d'
   | '3m'
