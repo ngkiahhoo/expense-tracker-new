@@ -276,6 +276,9 @@ export default function Home() {
     error:exportError,
     generateExport,
     copyToClipboard,
+    payload:exportPayload,
+    showModal:showExportModalFromHook,
+    setShowModal:setShowExportModalFromHook,
   } = useAIExport();
 
   const {
@@ -302,6 +305,11 @@ export default function Home() {
 
   const [activeCategory, setActiveCategory] =
     useState<CategoryBreakdownItem | null>(null);
+  const [exportModalCopied, setExportModalCopied] = useState(false);
+
+  // Use the modal state from the hook
+  const showExportModal = showExportModalFromHook;
+  const setShowExportModal = setShowExportModalFromHook;
 
   useEffect(() => {
     async function loadMonthData() {
@@ -1118,6 +1126,114 @@ export default function Home() {
         </nav>
 
       </div>
+
+      {showExportModal && exportPayload && (
+        <div
+          className="
+            fixed
+            inset-0
+            bg-black/80
+            flex
+            items-center
+            justify-center
+            z-50
+            p-4
+          "
+          onClick={() => setShowExportModal(false)}
+        >
+          <div
+            className="
+              bg-zinc-900
+              border
+              border-zinc-800
+              rounded-3xl
+              p-6
+              w-full
+              max-w-2xl
+              max-h-[80vh]
+              overflow-y-auto
+              flex
+              flex-col
+              gap-4
+            "
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center gap-4">
+              <h2 className="text-xl font-bold">Export Data</h2>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-zinc-400 hover:text-white text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <textarea
+              value={exportPayload}
+              readOnly
+              className="
+                bg-zinc-800
+                border
+                border-zinc-700
+                rounded-2xl
+                p-4
+                text-sm
+                font-mono
+                text-zinc-300
+                w-full
+                flex-1
+                resize-none
+                focus:outline-none
+                focus:border-zinc-600
+              "
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(exportPayload).then(() => {
+                    setExportModalCopied(true);
+                    setTimeout(() => setExportModalCopied(false), 2000);
+                  }).catch(() => {
+                    alert('Failed to copy. Please select text and copy manually.');
+                  });
+                }}
+                className={`
+                  flex-1
+                  rounded-2xl
+                  px-4
+                  py-3
+                  font-bold
+                  transition
+                  ${
+                    exportModalCopied
+                      ? "bg-emerald-500 text-black"
+                      : "bg-emerald-600 text-white hover:bg-emerald-700"
+                  }
+                `}
+              >
+                {exportModalCopied ? 'Copied!' : 'Copy Text'}
+              </button>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="
+                  flex-1
+                  bg-zinc-800
+                  text-white
+                  rounded-2xl
+                  px-4
+                  py-3
+                  font-bold
+                  hover:bg-zinc-700
+                  transition
+                "
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </PullToRefresh>
   );

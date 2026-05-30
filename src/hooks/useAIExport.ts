@@ -59,6 +59,7 @@ export default function useAIExport() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   const generateExport = useCallback(async (
     range: ExportRange,
@@ -191,26 +192,52 @@ export default function useAIExport() {
       }
     }
 
-    // Fallback 1: Using textarea + execCommand (works on older iOS and Android)
+    // Fallback 1: Using contenteditable div (better for iOS)
+    try {
+      const div = document.createElement('div');
+      div.contentEditable = 'true';
+      div.textContent = toCopy;
+      div.style.position = 'fixed';
+      div.style.left = '0';
+      div.style.top = '0';
+      div.style.zIndex = '-9999';
+      div.style.opacity = '0';
+      document.body.appendChild(div);
+      
+      const range = document.createRange();
+      range.selectNodeContents(div);
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      div.focus();
+      
+      const ok = document.execCommand('copy');
+      document.body.removeChild(div);
+      
+      if (ok) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+        return true;
+      }
+    } catch (err) {
+      console.warn('contenteditable copy failed', err);
+    }
+
+    // Fallback 2: Using textarea + execCommand with setSelectionRange
     try {
       const ta = document.createElement('textarea');
       ta.value = toCopy;
-      ta.setAttribute('readonly', '');
-      ta.style.position = 'absolute';
-      ta.style.left = '-9999px';
-      ta.style.top = '-9999px';
+      ta.style.position = 'fixed';
+      ta.style.left = '0';
+      ta.style.top = '0';
+      ta.style.zIndex = '-9999';
       ta.style.opacity = '0';
+      ta.style.fontSize = '16px'; // Prevent zoom on iOS
       document.body.appendChild(ta);
-      
-      // Focus the textarea first
       ta.focus();
-      
-      // For iOS: use setSelectionRange instead of select()
-      if (navigator.userAgent.match(/iphone|ipad|ipod/i)) {
-        ta.setSelectionRange(0, ta.value.length);
-      } else {
-        ta.select();
-      }
+      ta.setSelectionRange(0, ta.value.length);
       
       const ok = document.execCommand('copy');
       document.body.removeChild(ta);
@@ -221,18 +248,19 @@ export default function useAIExport() {
         return true;
       }
     } catch (err) {
-      console.warn('execCommand copy failed', err);
+      console.warn('textarea copy failed', err);
     }
 
-    // Fallback 2: Using a non-readonly textarea for maximum compatibility
+    // Fallback 3: Using textarea + select() for older browsers
     try {
       const ta = document.createElement('textarea');
       ta.value = toCopy;
       ta.style.position = 'fixed';
-      ta.style.left = '-9999px';
-      ta.style.top = '-9999px';
+      ta.style.left = '0';
+      ta.style.top = '0';
+      ta.style.zIndex = '-9999';
+      ta.style.opacity = '0';
       document.body.appendChild(ta);
-      ta.focus();
       ta.select();
       
       const ok = document.execCommand('copy');
@@ -244,12 +272,15 @@ export default function useAIExport() {
         return true;
       }
     } catch (err) {
-      console.warn('fallback copy method failed', err);
+      console.warn('select copy failed', err);
     }
 
-    setError('Unable to copy to clipboard. Please copy manually or check your device permissions.');
+    // All methods failed - show modal for manual copy
+    console.error('All copy methods failed, showing modal');
+    setShowModal(true);
+    setError('Copy failed. Use the modal below to copy manually.');
     return false;
   }, [payload]);
 
-  return { loading, copied, error, payload, generateExport, copyToClipboard };
+  return { loading, copied, error, payload, generateExport, copyToClipboard, showModal, setShowModal };
 }
