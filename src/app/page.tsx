@@ -477,14 +477,10 @@ export default function Home() {
           <div
             className="
               w-full
-              max-w-md
+              max-w-5xl
               mx-auto
               grid
               gap-5
-              md:max-w-5xl
-              md:grid-cols-2
-              lg:max-w-6xl
-              lg:grid-cols-3
             "
           >
 
@@ -496,8 +492,6 @@ export default function Home() {
                 rounded-3xl
                 p-5
                 sm:p-6
-                md:col-span-2
-                lg:col-span-1
               "
             >
 
@@ -577,163 +571,148 @@ export default function Home() {
                 rounded-3xl
                 p-5
                 sm:p-6
+                min-h-[220px]
+                flex
+                flex-col
+                justify-between
               "
             >
 
-              <div
-                className="
-                  flex
-                  items-center
-                  gap-2
-                  text-zinc-400
-                "
-              >
-                <Wallet size={18}/>
-                <span>
-                  Monthly Income
-                </span>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                      text-zinc-400
+                    "
+                  >
+                    <Wallet size={18}/>
+                    <span>
+                      Monthly Income
+                    </span>
+                  </div>
+
+                  <h2
+                    className="
+                      text-4xl
+                      font-bold
+                      mt-3
+                      text-emerald-400
+                      break-words
+                    "
+                  >
+                    RM {totalIncome.toFixed(2)}
+                  </h2>
+                </div>
+
+                <button
+                  onClick={openIncomeCrud}
+                  className="
+                    inline-flex
+                    items-center
+                    gap-2
+                    bg-white
+                    text-black
+                    rounded-2xl
+                    px-4
+                    py-3
+                    text-sm
+                    font-bold
+                    shrink-0
+                  "
+                >
+                  <Pencil size={16}/>
+                  Manage Income
+                </button>
               </div>
-
-              <h2
-                className="
-                  text-5xl
-                  font-bold
-                  mt-3
-                  text-emerald-400
-                  break-words
-                  lg:text-4xl
-                  xl:text-5xl
-                "
-              >
-                RM {totalIncome.toFixed(2)}
-              </h2>
-
-              <button
-                onClick={openIncomeCrud}
-                className="
-                  mt-5
-                  inline-flex
-                  items-center
-                  gap-2
-                  bg-white
-                  text-black
-                  rounded-2xl
-                  px-4
-                  py-3
-                  text-sm
-                  font-bold
-                "
-              >
-                <Pencil size={16}/>
-                Manage Income
-              </button>
 
             </section>
 
             <section
               className="
-                grid
-                grid-cols-1
-                md:grid-cols-2
-                gap-5
+                bg-zinc-900/90
+                border
+                border-red-500/30
+                rounded-3xl
+                p-5
+                sm:p-6
+                min-h-[180px]
               "
             >
 
               <div
                 className="
-                  bg-zinc-900/90
-                  border
-                  border-red-500/30
-                  rounded-3xl
-                  p-5
-                  sm:p-6
+                  text-zinc-400
+                  mb-3
                 "
               >
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-2
-                    text-zinc-400
-                    mb-3
-                  "
-                >
-                  <TrendingDown size={18}/>
-                  <span>
-                    Total Spending
-                  </span>
-                </div>
-
-                <h2
-                  className="
-                    text-4xl
-                    font-bold
-                    text-red-400
-                    break-words
-                  "
-                >
-                  RM {totalSpending.toFixed(2)}
-                </h2>
-
-                <p
-                  className="
-                    text-zinc-400
-                    mt-2
-                  "
-                >
-                  {spendingPercent}% of income
-                </p>
-
+                Total Spending
               </div>
+
+              <h2
+                className="
+                  text-4xl
+                  font-bold
+                  text-red-400
+                  break-words
+                "
+              >
+                RM {totalSpending.toFixed(2)}
+              </h2>
+
+              <p
+                className="
+                  text-zinc-400
+                  mt-2
+                "
+              >
+                {spendingPercent}% of income
+              </p>
+
+            </section>
+
+            <section
+              className="
+                bg-zinc-900/90
+                border
+                border-blue-500/30
+                rounded-3xl
+                p-5
+                sm:p-6
+                min-h-[180px]
+              "
+            >
 
               <div
                 className="
-                  bg-zinc-900/90
-                  border
-                  border-blue-500/30
-                  rounded-3xl
-                  p-5
-                  sm:p-6
+                  text-zinc-400
+                  mb-3
                 "
               >
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-2
-                    text-zinc-400
-                    mb-3
-                  "
-                >
-                  <TrendingDown size={18}/>
-                  <span>
-                    Balance
-                  </span>
-                </div>
-
-                <h2
-                  className="
-                    text-4xl
-                    font-bold
-                    text-sky-400
-                    break-words
-                  "
-                >
-                  RM {balance.toFixed(2)}
-                </h2>
-
-                <p
-                  className="
-                    text-zinc-400
-                    mt-2
-                  "
-                >
-                  {balancePercent}% of income
-                </p>
-
+                Balance
               </div>
+
+              <h2
+                className="
+                  text-4xl
+                  font-bold
+                  text-sky-400
+                  break-words
+                "
+              >
+                RM {balance.toFixed(2)}
+              </h2>
+
+              <p
+                className="
+                  text-zinc-400
+                  mt-2
+                "
+              >
+                {balancePercent}% of income
+              </p>
 
             </section>
 
