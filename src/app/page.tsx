@@ -23,6 +23,8 @@ import {
   X,
 } from "lucide-react";
 
+import { useToast } from "@/contexts/ToastContext";
+
 import ExpensePanel
 from "../components/ExpensePanel";
 import IncomePanel
@@ -81,6 +83,8 @@ const fullAIExportOptions = {
 };
 
 export default function Home() {
+
+  const toast = useToast();
 
   const today =
     new Date();
@@ -328,6 +332,26 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth]);
 
+  // Auto-generate recurring expenses every hour
+  useEffect(() => {
+    // Check immediately on mount
+    generateDueRecurringExpenses();
+
+    // Then check every hour
+    const interval = setInterval(
+      async () => {
+        const createdCount = await generateDueRecurringExpenses();
+        if (createdCount > 0) {
+          await fetchExpenses();
+        }
+      },
+      60 * 60 * 1000 // 1 hour in milliseconds
+    );
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function refreshAll() {
     await generateDueRecurringExpenses();
 
@@ -342,30 +366,96 @@ export default function Home() {
   async function handleSaveExpense() {
     const noteToSave = note;
 
-    const didSave =
+    const result =
       await saveExpense();
 
-    if (didSave) {
+    if (result.success) {
       addSavedNote(
         noteToSave
       );
+      toast.showToast(result.message || "Expense saved successfully", "success");
+    } else {
+      toast.showToast(result.error || "Failed to save expense", "error");
     }
+
+    return result.success;
   }
 
   async function handleSaveRecurringExpense() {
-    const didSave =
+    const result =
       await saveRecurringExpense();
 
-    if (didSave) {
+    if (result.success) {
       const createdCount =
         await generateDueRecurringExpenses();
 
       if (createdCount > 0) {
         await fetchExpenses();
       }
+      toast.showToast(result.message || "Recurring expense saved successfully", "success");
+    } else {
+      toast.showToast(result.error || "Failed to save recurring expense", "error");
     }
 
-    return didSave;
+    return result.success;
+  }
+
+  async function handleDeleteRecurringExpense(id: number) {
+    const result = await deleteRecurringExpense(id);
+    if (result.success) {
+      toast.showToast(result.message || "Recurring expense deleted successfully", "success");
+    } else {
+      toast.showToast(result.error || "Failed to delete recurring expense", "error");
+    }
+    return result.success;
+  }
+
+  async function handleDeleteExpense(id: number) {
+    const result = await deleteExpense(id);
+    if (result.success) {
+      toast.showToast(result.message || "Expense deleted successfully", "success");
+    } else {
+      toast.showToast(result.error || "Failed to delete expense", "error");
+    }
+    return result.success;
+  }
+
+  async function handleDeleteIncome(id: number) {
+    const result = await deleteIncome(id);
+    if (result.success) {
+      toast.showToast(result.message || "Income deleted successfully", "success");
+    } else {
+      toast.showToast(result.error || "Failed to delete income", "error");
+    }
+  }
+
+  async function handleAddIncome() {
+    const result = await addIncome();
+    if (result.success) {
+      toast.showToast(result.message || "Income added successfully", "success");
+    } else {
+      toast.showToast(result.error || "Failed to add income", "error");
+    }
+    return result.success;
+  }
+
+  async function handleAddCategory() {
+    const result = await addCategory();
+    if (result.success) {
+      toast.showToast(result.message || "Category added successfully", "success");
+    } else {
+      toast.showToast(result.error || "Failed to add category", "error");
+    }
+    return result.success;
+  }
+
+  async function handleDeleteCategory(id: number) {
+    const result = await deleteCategory(id);
+    if (result.success) {
+      toast.showToast(result.message || "Category deleted successfully", "success");
+    } else {
+      toast.showToast(result.error || "Failed to delete category", "error");
+    }
   }
 
   async function handleCopyAIExport() {
@@ -375,11 +465,21 @@ export default function Home() {
         fullAIExportOptions
       );
 
-    if (exportPayload) {
-      await copyToClipboard(
-        exportPayload
-      );
+    if (!exportPayload) {
+      toast.showToast("AI export failed. Check your connection and try again.", "error");
+      return false;
     }
+
+    const copied = await copyToClipboard(
+      exportPayload
+    );
+
+    if (copied) {
+      toast.showToast("Export text copied to clipboard.", "success");
+    } else {
+      toast.showToast("Copy failed. Use the modal to copy manually.", "warning");
+    }
+    return copied;
   }
 
   function toggleTool(
@@ -791,7 +891,7 @@ export default function Home() {
                       ${
                         exportCopied
                           ? "bg-emerald-500 text-black"
-                          : "bg-zinc-900 text-white"
+                          : "bg-white text-black"
                       }
                     `}
                   >
@@ -925,10 +1025,13 @@ export default function Home() {
                   title="Close panel"
                   aria-label="Close panel"
                   className="
-                    bg-zinc-900
+                    bg-white
+                    text-black
                     rounded-2xl
                     p-3
                     shrink-0
+                    hover:opacity-90
+                    transition-opacity
                   "
                 >
                   <X size={18}/>
@@ -985,7 +1088,7 @@ export default function Home() {
                     categories={categories}
                     refreshRecurringExpenses={fetchRecurringExpenses}
                     saveRecurringExpense={handleSaveRecurringExpense}
-                    deleteRecurringExpense={deleteRecurringExpense}
+                    deleteRecurringExpense={handleDeleteRecurringExpense}
                     startEditRecurringExpense={startEditRecurringExpense}
                     resetRecurringExpenseForm={resetRecurringExpenseForm}
                   />
@@ -1004,9 +1107,9 @@ export default function Home() {
                     incomeNote={incomeNote}
                     setIncomeNote={setIncomeNote}
                     incomeEditingId={incomeEditingId}
-                    addIncome={addIncome}
+                    addIncome={handleAddIncome}
                     startEditIncome={handleStartEditIncome}
-                    deleteIncome={deleteIncome}
+                    deleteIncome={handleDeleteIncome}
                   />
                 )}
 
@@ -1018,9 +1121,9 @@ export default function Home() {
                     selectedType={selectedType}
                     setSelectedType={setSelectedType}
                     editingCategoryId={editingCategoryId}
-                    addCategory={addCategory}
+                    addCategory={handleAddCategory}
                     editCategory={editCategory}
-                    deleteCategory={deleteCategory}
+                    deleteCategory={handleDeleteCategory}
                     categories={categories}
                   />
                 )}
@@ -1030,7 +1133,7 @@ export default function Home() {
                     expenses={expenses}
                     loading={loading}
                     startEdit={handleStartEdit}
-                    deleteExpense={deleteExpense}
+                    deleteExpense={handleDeleteExpense}
                   />
                 )}
               </div>

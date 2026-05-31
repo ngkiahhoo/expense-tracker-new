@@ -178,11 +178,14 @@ export default function ExpenseForm({
             title="Save note"
             aria-label="Save note"
             className="
-              bg-zinc-800
+              bg-white
+              text-black
               rounded-2xl
               px-4
-              text-white
+              font-bold
               disabled:opacity-40
+              hover:opacity-90
+              transition-opacity
             "
             disabled={!note.trim()}
           >
@@ -241,11 +244,14 @@ export default function ExpenseForm({
                 items-center
                 justify-center
                 gap-2
-                bg-zinc-800
+                bg-white
+                text-black
                 rounded-2xl
                 p-3
                 text-sm
                 font-bold
+                hover:opacity-90
+                transition-opacity
               "
             >
               <Pencil size={15}/>
@@ -260,11 +266,14 @@ export default function ExpenseForm({
                 items-center
                 justify-center
                 gap-2
-                bg-red-500
+                bg-white
+                text-black
                 rounded-2xl
                 p-3
                 text-sm
                 font-bold
+                hover:opacity-90
+                transition-opacity
               "
             >
               <Trash2 size={15}/>
@@ -362,9 +371,12 @@ export default function ExpenseForm({
           <button
             onClick={cancelEdit}
             className="
-              bg-zinc-800
+              bg-white
+              text-black
               rounded-2xl
               px-5
+              hover:opacity-90
+              transition-opacity
             "
           >
             <X size={18}/>

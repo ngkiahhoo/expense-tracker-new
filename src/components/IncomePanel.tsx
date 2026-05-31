@@ -23,9 +23,9 @@ interface IncomePanelProps {
   incomeNote: string;
   setIncomeNote: (value: string) => void;
   incomeEditingId: number | null;
-  addIncome: () => void | Promise<void>;
+  addIncome: () => Promise<any>;
   startEditIncome: (income: Income) => void;
-  deleteIncome: (id: number) => void | Promise<void>;
+  deleteIncome: (id: number) => Promise<any>;
 }
 
 export default function IncomePanel({
@@ -66,6 +66,8 @@ export default function IncomePanel({
       <div
         className="
           bg-zinc-900
+          border-2
+          border-zinc-700
           rounded-3xl
           p-5
           mb-5
@@ -168,11 +170,14 @@ export default function IncomePanel({
         }
         className="
           w-full
-          bg-zinc-900
+          bg-white
+          text-black
           rounded-2xl
           p-4
           mb-5
           font-bold
+          hover:opacity-90
+          transition-opacity
         "
       >
 
@@ -187,6 +192,8 @@ export default function IncomePanel({
         <div
           className="
             bg-zinc-900
+            border-2
+            border-zinc-700
             rounded-3xl
             p-5
             mb-5

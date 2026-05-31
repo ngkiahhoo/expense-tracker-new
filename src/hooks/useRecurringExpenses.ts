@@ -193,10 +193,10 @@ export default function useRecurringExpenses(
         repeatDay < 1 ||
         repeatDay > 31
       ) {
-        setRecurringError(
-          "Please fill name, price, category, and day."
-        );
-        return false;
+        const msg =
+          "Please fill name, price, category, and day.";
+        setRecurringError(msg);
+        return { success: false, error: msg };
       }
 
       const payload:RecurringExpensePayload = {
@@ -227,24 +227,22 @@ export default function useRecurringExpenses(
             );
 
       if (saveError) {
-        setRecurringError(
-          recurringErrorMessage(
+        const msg = recurringErrorMessage(
             "Could not save recurring expense",
             saveError
-          )
-        );
-        return false;
+          );
+        setRecurringError(msg);
+        return { success: false, error: msg };
       }
 
       setRecurringEditingId(null);
       resetRecurringExpenseForm();
       await fetchRecurringExpenses();
-      return true;
-    } catch {
-      setRecurringError(
-        "Failed to save recurring expense"
-      );
-      return false;
+      return { success: true, message: recurringEditingId ? "Recurring expense updated successfully" : "Recurring expense added successfully" };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to save recurring expense";
+      setRecurringError(msg);
+      return { success: false, error: msg };
     } finally {
       setRecurringLoading(false);
     }
@@ -263,19 +261,17 @@ export default function useRecurringExpenses(
         );
 
       if (error) {
-        setRecurringError(
-          "Failed to delete recurring expense"
-        );
-        return false;
+        const msg = "Failed to delete recurring expense";
+        setRecurringError(msg);
+        return { success: false, error: msg };
       }
 
       await fetchRecurringExpenses();
-      return true;
-    } catch {
-      setRecurringError(
-        "Failed to delete recurring expense"
-      );
-      return false;
+      return { success: true, message: "Recurring expense deleted successfully" };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to delete recurring expense";
+      setRecurringError(msg);
+      return { success: false, error: msg };
     } finally {
       setRecurringLoading(false);
     }

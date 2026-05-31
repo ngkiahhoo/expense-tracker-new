@@ -32,69 +32,128 @@ export default function useIncome(
   const [incomeEditingId, setIncomeEditingId] =
     useState<number | null>(null);
 
+  const [incomeLoading, setIncomeLoading] =
+    useState(false);
+
+  const [incomeError, setIncomeError] =
+    useState("");
+
   async function fetchIncome() {
 
-    const data =
-      await getIncomes(
-        selectedMonth
-      );
+    try {
+      const data =
+        await getIncomes(
+          selectedMonth
+        );
 
-    setIncomes(data);
+      setIncomes(data);
+      setIncomeError("");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to fetch income";
+      setIncomeError(msg);
+    }
   }
 
   async function addIncome() {
 
-    if (!incomeAmount)
-      return;
+    try {
+      setIncomeLoading(true);
+      setIncomeError("");
 
-    const payload = {
+      if (!incomeAmount) {
+        const msg = "Please enter amount";
+        setIncomeError(msg);
+        return { success: false, error: msg };
+      }
 
-      amount:
-        Number(
-          incomeAmount
-        ),
+      const payload = {
 
-      note:
-        incomeNote,
+        amount:
+          Number(
+            incomeAmount
+          ),
 
-      income_date:
-        `${selectedMonth}-01`,
-    };
+        note:
+          incomeNote,
 
-    if (
-      incomeEditingId
-    ) {
+        income_date:
+          `${selectedMonth}-01`,
+      };
 
-      await updateIncome(
-        incomeEditingId,
-        payload
-      );
+      if (
+        incomeEditingId
+      ) {
 
-      setIncomeEditingId(
-        null
-      );
+        const err = await updateIncome(
+          incomeEditingId,
+          payload
+        );
 
-    } else {
+        if (err) {
+          const msg = err.message || "Failed to update income";
+          setIncomeError(msg);
+          return { success: false, error: msg };
+        }
 
-      await createIncome(
-        payload
-      );
+        setIncomeEditingId(
+          null
+        );
+
+      } else {
+
+        const err = await createIncome(
+          payload
+        );
+
+        if (err) {
+          const msg = err.message || "Failed to create income";
+          setIncomeError(msg);
+          return { success: false, error: msg };
+        }
+      }
+
+      setIncomeAmount("");
+
+      setIncomeNote("");
+
+      await fetchIncome();
+
+      return { success: true, message: incomeEditingId ? "Income updated successfully" : "Income added successfully" };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to add income";
+      setIncomeError(msg);
+      return { success: false, error: msg };
+    } finally {
+      setIncomeLoading(false);
     }
-
-    setIncomeAmount("");
-
-    setIncomeNote("");
-
-    fetchIncome();
   }
 
   async function deleteIncome(
     id:number
   ) {
 
-    await removeIncome(id);
+    try {
+      setIncomeLoading(true);
+      setIncomeError("");
 
-    fetchIncome();
+      const err = await removeIncome(id);
+
+      if (err) {
+        const msg = err.message || "Failed to delete income";
+        setIncomeError(msg);
+        return { success: false, error: msg };
+      }
+
+      await fetchIncome();
+
+      return { success: true, message: "Income deleted successfully" };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to delete income";
+      setIncomeError(msg);
+      return { success: false, error: msg };
+    } finally {
+      setIncomeLoading(false);
+    }
   }
 
   function startEditIncome(
@@ -126,6 +185,9 @@ export default function useIncome(
     setIncomeNote,
 
     incomeEditingId,
+
+    incomeLoading,
+    incomeError,
 
     fetchIncome,
 

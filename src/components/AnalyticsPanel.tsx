@@ -42,7 +42,7 @@ export default function AnalyticsPanel({
       key: "savings",
       label: "Savings",
       value: analytics.savings,
-      color: "#22c55e", // green
+      color: "#06b6d4", // cyan
     },
   ];
 
@@ -51,8 +51,8 @@ export default function AnalyticsPanel({
     <div
       className="
         bg-zinc-900
-        border
-        border-zinc-800
+        border-2
+        border-zinc-700
         rounded-3xl
         p-5
         sm:p-6

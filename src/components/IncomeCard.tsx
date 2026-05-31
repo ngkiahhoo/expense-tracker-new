@@ -25,6 +25,8 @@ export default function IncomeCard({
 
     <div className="
       bg-zinc-900
+      border-2
+      border-zinc-700
       rounded-3xl
       p-5
       flex
@@ -65,9 +67,12 @@ export default function IncomeCard({
             startEditIncome(income)
           }
           className="
-            bg-zinc-800
+            bg-white
+            text-black
             p-3
             rounded-xl
+            hover:opacity-90
+            transition-opacity
           "
         >
           <Pencil size={16}/>
@@ -78,9 +83,12 @@ export default function IncomeCard({
             deleteIncome(income.id)
           }
           className="
-            bg-red-500
+            bg-white
+            text-black
             p-3
             rounded-xl
+            hover:opacity-90
+            transition-opacity
           "
         >
           <Trash2 size={16}/>

@@ -1,4 +1,6 @@
 import "./globals.css";
+import { ToastProvider } from "@/contexts/ToastContext";
+import { ToastContainer } from "@/components/ToastContainer";
 
 export const metadata = {
   title: "Expense Tracker",
@@ -25,7 +27,10 @@ export default function RootLayout({
         <link rel="manifest" href="/site.webmanifest" />
       </head>
       <body>
-        {children}
+        <ToastProvider>
+          {children}
+          <ToastContainer />
+        </ToastProvider>
       </body>
     </html>
   );

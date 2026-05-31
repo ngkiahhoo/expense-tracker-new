@@ -8,6 +8,7 @@ import {
 import type {
   Category,
 } from "../types/category";
+import { getTypeColor } from "../utils/typeColors";
 
 interface CategoryPanelProps {
   showCategories: boolean;
@@ -16,9 +17,9 @@ interface CategoryPanelProps {
   selectedType: string;
   setSelectedType: (value: string) => void;
   editingCategoryId: number | null;
-  addCategory: () => void | Promise<void>;
+  addCategory: () => Promise<any>;
   editCategory: (category: Category) => void;
-  deleteCategory: (id: number) => void | Promise<void>;
+  deleteCategory: (id: number) => Promise<any>;
   categories: Category[];
 }
 
@@ -161,6 +162,8 @@ export default function CategoryPanel({
                   key={cat.id}
                   className="
                     bg-black
+                    border-2
+                    border-zinc-700
                     rounded-2xl
                     p-4
                     grid
@@ -180,11 +183,11 @@ export default function CategoryPanel({
                     </p>
 
                     <p
-                      className="
+                      className={`
                         text-sm
-                        text-zinc-400
                         truncate
-                      "
+                        ${getTypeColor(cat.types?.name)}
+                      `}
                     >
                       {cat.types?.name || "No type"}
                     </p>
@@ -208,11 +211,14 @@ export default function CategoryPanel({
                         items-center
                         justify-center
                         gap-2
-                        bg-zinc-800
+                        bg-white
+                        text-black
                         px-4
                         py-3
                         rounded-xl
                         font-bold
+                        hover:opacity-90
+                        transition-opacity
                       "
                     >
                       <Pencil size={15}/>
@@ -230,11 +236,14 @@ export default function CategoryPanel({
                         items-center
                         justify-center
                         gap-2
-                        bg-red-500
+                        bg-white
+                        text-black
                         px-4
                         py-3
                         rounded-xl
                         font-bold
+                        hover:opacity-90
+                        transition-opacity
                       "
                     >
                       <Trash2 size={15}/>

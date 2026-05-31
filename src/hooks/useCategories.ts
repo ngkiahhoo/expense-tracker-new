@@ -34,78 +34,136 @@ export default function useCategories() {
     setEditingCategoryId,
   ] = useState<number | null>(null);
 
+  const [categoryLoading, setCategoryLoading] =
+    useState(false);
+
+  const [categoryError, setCategoryError] =
+    useState("");
+
   async function fetchCategories() {
 
-    const data =
-      await getCategories();
+    try {
+      setCategoryLoading(true);
+      const data =
+        await getCategories();
 
-    setCategories(data);
+      setCategories(data);
+      setCategoryError("");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to fetch categories";
+      setCategoryError(msg);
+    } finally {
+      setCategoryLoading(false);
+    }
   }
 
   async function addCategory() {
 
-    if (!newCategory)
-      return;
+    try {
+      setCategoryLoading(true);
+      setCategoryError("");
 
-    const typeId =
-      await getTypeId(
-        selectedType
+      if (!newCategory) {
+        const msg = "Please enter category name";
+        setCategoryError(msg);
+        return { success: false, error: msg };
+      }
+
+      const typeId =
+        await getTypeId(
+          selectedType
+        );
+
+      if (!typeId) {
+        const msg = "Invalid category type";
+        setCategoryError(msg);
+        return { success: false, error: msg };
+      }
+
+      const payload = {
+
+        name:
+          newCategory,
+
+        type_id:
+          typeId,
+      };
+
+      if (
+        editingCategoryId
+      ) {
+
+        const err = await updateCategory(
+          editingCategoryId,
+          payload
+        );
+
+        if (err) {
+          const msg = err.message || "Failed to update category";
+          setCategoryError(msg);
+          return { success: false, error: msg };
+        }
+
+      } else {
+
+        const err = await createCategory(
+          payload
+        );
+
+        if (err) {
+          const msg = err.message || "Failed to create category";
+          setCategoryError(msg);
+          return { success: false, error: msg };
+        }
+      }
+
+      setNewCategory("");
+
+      setEditingCategoryId(
+        null
       );
 
-    if (!typeId)
-      return;
+      await fetchCategories();
 
-    const payload = {
-
-      name:
-        newCategory,
-
-      type_id:
-        typeId,
-    };
-
-    if (
-      editingCategoryId
-    ) {
-
-      await updateCategory(
-        editingCategoryId,
-        payload
-      );
-
-    } else {
-
-      await createCategory(
-        payload
-      );
+      return { success: true, message: editingCategoryId ? "Category updated successfully" : "Category added successfully" };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to add category";
+      setCategoryError(msg);
+      return { success: false, error: msg };
+    } finally {
+      setCategoryLoading(false);
     }
-
-    setNewCategory("");
-
-    setEditingCategoryId(
-      null
-    );
-
-    fetchCategories();
   }
 
   async function deleteCategory(
     id:number
   ) {
 
-    const error =
-      await removeCategory(id);
+    try {
+      setCategoryLoading(true);
+      setCategoryError("");
 
-    if (error) {
+      const error =
+        await removeCategory(id);
 
-      alert(
-        "Category is being used by expenses."
-      );
+      if (error) {
 
-      return;
+        const msg = "Category is being used by expenses.";
+        setCategoryError(msg);
+
+        return { success: false, error: msg };
+      }
+
+      await fetchCategories();
+
+      return { success: true, message: "Category deleted successfully" };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to delete category";
+      setCategoryError(msg);
+      return { success: false, error: msg };
+    } finally {
+      setCategoryLoading(false);
     }
-
-    fetchCategories();
   }
 
   function editCategory(
@@ -137,6 +195,9 @@ export default function useCategories() {
     setSelectedType,
 
     editingCategoryId,
+
+    categoryLoading,
+    categoryError,
 
     fetchCategories,
 

@@ -7,6 +7,7 @@ import {
 import type {
   Expense,
 } from "../types/expense";
+import { getTypeColor } from "../utils/typeColors";
 
 interface ExpenseCardProps {
   expense: Expense;
@@ -23,8 +24,8 @@ export default function ExpenseCard({
     <div
       className="
         bg-zinc-900
-        border
-        border-zinc-800
+        border-2
+        border-zinc-700
         rounded-2xl
         p-4
         h-full
@@ -61,8 +62,10 @@ export default function ExpenseCard({
             {expense.categories?.name ||
               "Uncategorized"}
             {" - "}
-            {expense.categories?.types?.name ||
-              "Type"}
+            <span className={getTypeColor(expense.categories?.types?.name)}>
+              {expense.categories?.types?.name ||
+                "Type"}
+            </span>
           </p>
 
           <p
@@ -114,9 +117,12 @@ export default function ExpenseCard({
               title="Edit expense"
               aria-label="Edit expense"
               className="
-                bg-zinc-800
+                bg-white
+                text-black
                 p-2
                 rounded-xl
+                hover:opacity-90
+                transition-opacity
               "
             >
               <Pencil size={16}/>
@@ -131,9 +137,12 @@ export default function ExpenseCard({
               title="Delete expense"
               aria-label="Delete expense"
               className="
-                bg-red-500
+                bg-white
+                text-black
                 p-2
                 rounded-xl
+                hover:opacity-90
+                transition-opacity
               "
             >
               <Trash2 size={16}/>

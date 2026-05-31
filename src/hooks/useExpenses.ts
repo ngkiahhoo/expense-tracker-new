@@ -93,11 +93,14 @@ export default function useExpenses(
         !selectedCategory
       ) {
 
+        const errorMsg =
+          "Please fill all fields";
+
         setError(
-          "Please fill all fields"
+          errorMsg
         );
 
-        return false;
+        return { success: false, error: errorMsg };
       }
 
       const payload = {
@@ -127,7 +130,9 @@ export default function useExpenses(
             );
 
       if (saveError) {
-        throw saveError;
+        const errorMsg = saveError.message || "Failed to save expense";
+        setError(errorMsg);
+        throw errorMsg;
       }
 
       if (editingId) {
@@ -138,15 +143,16 @@ export default function useExpenses(
 
       await fetchExpenses();
 
-      return true;
+      return { success: true, message: editingId ? "Expense updated successfully" : "Expense added successfully" };
 
-    } catch {
+    } catch (err) {
 
+      const errorMsg = err instanceof Error ? err.message : "Failed to save expense";
       setError(
-        "Failed to save expense"
+        errorMsg
       );
 
-      return false;
+      return { success: false, error: errorMsg };
 
     } finally {
 
@@ -175,15 +181,26 @@ export default function useExpenses(
 
     try {
 
-      await removeExpense(id);
+      const error = await removeExpense(id);
 
-      fetchExpenses();
+      if (error) {
+        const msg = error.message || "Failed to delete expense";
+        setError(msg);
+        return { success: false, error: msg };
+      }
 
-    } catch {
+      await fetchExpenses();
 
+      return { success: true, message: "Expense deleted successfully" };
+
+    } catch (err) {
+
+      const msg = err instanceof Error ? err.message : "Failed to delete expense";
       setError(
-        "Failed to delete expense"
+        msg
       );
+
+      return { success: false, error: msg };
     }
   }
 

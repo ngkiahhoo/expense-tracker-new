@@ -99,7 +99,8 @@ export default function ExpensePanel({
           }
           className="
             w-full
-            bg-zinc-900
+            bg-white
+            text-black
             rounded-2xl
             p-4
             mb-5
@@ -108,6 +109,8 @@ export default function ExpensePanel({
             justify-center
             items-center
             gap-2
+            hover:opacity-90
+            transition-opacity
           "
         >
 

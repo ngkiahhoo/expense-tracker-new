@@ -13,6 +13,7 @@ import type {
 import type {
   RecurringExpense,
 } from "../types/recurringExpense";
+import { getTypeColor } from "../utils/typeColors";
 
 interface RecurringExpensePanelProps {
   recurringExpenses: RecurringExpense[];
@@ -94,6 +95,8 @@ export default function RecurringExpensePanel({
       <div
         className="
           bg-zinc-900
+          border-2
+          border-zinc-700
           rounded-3xl
           p-5
           space-y-3
@@ -349,9 +352,12 @@ export default function RecurringExpensePanel({
               title="Cancel edit"
               aria-label="Cancel edit"
               className="
-                bg-zinc-800
+                bg-white
+                text-black
                 rounded-2xl
                 px-5
+                hover:opacity-90
+                transition-opacity
               "
             >
               <X size={18}/>
@@ -415,8 +421,8 @@ export default function RecurringExpensePanel({
               key={expense.id}
               className="
                 bg-zinc-900
-                border
-                border-zinc-800
+                border-2
+                border-zinc-700
                 rounded-2xl
                 p-4
               "
@@ -454,12 +460,12 @@ export default function RecurringExpensePanel({
                   </p>
 
                   <p
-                    className="
+                    className={`
                       mt-1
                       text-sm
-                      text-zinc-400
                       truncate
-                    "
+                      ${getTypeColor(expense.categories?.types?.name)}
+                    `}
                   >
                     {expense.categories?.name ||
                       "Uncategorized"}
@@ -532,9 +538,12 @@ export default function RecurringExpensePanel({
                       title="Edit recurring expense"
                       aria-label="Edit recurring expense"
                       className="
-                        bg-zinc-800
+                        bg-white
+                        text-black
                         p-2
                         rounded-xl
+                        hover:opacity-90
+                        transition-opacity
                       "
                     >
                       <Pencil size={16}/>
@@ -549,9 +558,12 @@ export default function RecurringExpensePanel({
                       title="Delete recurring expense"
                       aria-label="Delete recurring expense"
                       className="
-                        bg-red-500
+                        bg-white
+                        text-black
                         p-2
                         rounded-xl
+                        hover:opacity-90
+                        transition-opacity
                       "
                     >
                       <Trash2 size={16}/>
