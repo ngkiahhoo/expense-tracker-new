@@ -9,7 +9,9 @@ import {
   generateRecurringExpensesForMonth,
   getRecurringExpenses,
   removeRecurringExpense,
+  updateGeneratedExpenseForRecurring,
   updateRecurringExpense,
+  getRecurringExpenseDate,
 } from "../services/recurringExpenseService";
 
 import type {
@@ -105,6 +107,11 @@ export default function useRecurringExpenses(
   ] = useState<number | null>(null);
 
   const [
+    recurringEditingOriginal,
+    setRecurringEditingOriginal,
+  ] = useState<RecurringExpense | null>(null);
+
+  const [
     recurringLoading,
     setRecurringLoading,
   ] = useState(false);
@@ -131,6 +138,7 @@ export default function useRecurringExpenses(
       )
     );
     setRecurringIsActive(true);
+    setRecurringEditingOriginal(null);
   }
 
   async function fetchRecurringExpenses() {
@@ -235,6 +243,37 @@ export default function useRecurringExpenses(
         return { success: false, error: msg };
       }
 
+      if (
+        recurringEditingId &&
+        recurringEditingOriginal
+      ) {
+        const syncError =
+          await updateGeneratedExpenseForRecurring(
+            selectedMonth,
+            recurringEditingOriginal,
+            {
+              amount: payload.amount,
+              note: payload.note,
+              expense_date:
+                getRecurringExpenseDate(
+                  selectedMonth,
+                  payload.repeat_day
+                ),
+              category_id:
+                payload.category_id,
+            }
+          );
+
+        if (syncError) {
+          const msg = recurringErrorMessage(
+            "Could not update generated expense",
+            syncError
+          );
+          setRecurringError(msg);
+          return { success: false, error: msg };
+        }
+      }
+
       setRecurringEditingId(null);
       resetRecurringExpenseForm();
       await fetchRecurringExpenses();
@@ -282,6 +321,9 @@ export default function useRecurringExpenses(
   ) {
     setRecurringEditingId(
       recurringExpense.id
+    );
+    setRecurringEditingOriginal(
+      recurringExpense
     );
     setRecurringName(
       recurringExpense.name

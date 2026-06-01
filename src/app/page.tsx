@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type FocusEvent,
 } from "react";
 
 import PullToRefresh
@@ -123,33 +124,32 @@ export default function Home() {
   const [activeTool, setActiveTool] =
     useState<BottomTool | null>(null);
 
-  // draggable sheet state for activeTool panels
-  const sheetDialogRef = useRef<HTMLDivElement | null>(null);
-  const sheetHeaderRef = useRef<HTMLDivElement | null>(null);
-  const [sheetPos, setSheetPos] = useState<{ x: number; y: number } | null>(null);
-  const sheetDragging = useRef(false);
-  const sheetDragStart = useRef({ x: 0, y: 0 });
-  const sheetDialogStart = useRef({ x: 0, y: 0 });
-
-  useEffect(() => {
-    function onMove(e: MouseEvent) {
-      if (!sheetDragging.current) return;
-      const dx = e.clientX - sheetDragStart.current.x;
-      const dy = e.clientY - sheetDragStart.current.y;
-      setSheetPos({ x: sheetDialogStart.current.x + dx, y: sheetDialogStart.current.y + dy });
+  function handlePopupFocus(
+    event: FocusEvent<HTMLDivElement>
+  ) {
+    if (!(event.target instanceof HTMLElement)) {
+      return;
     }
 
-    function onUp() {
-      sheetDragging.current = false;
-    }
+    const target = event.target;
 
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, []);
+    const tagName = target.tagName;
+    if (
+      tagName === "INPUT" ||
+      tagName === "TEXTAREA" ||
+      tagName === "SELECT"
+    ) {
+      setTimeout(() => {
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+      }, 150);
+    }
+  }
+
+  // sheet panel state for activeTool panels
 
   const [showExpenseForm, setShowExpenseForm] =
     useState(true);
@@ -386,12 +386,8 @@ export default function Home() {
       await saveRecurringExpense();
 
     if (result.success) {
-      const createdCount =
-        await generateDueRecurringExpenses();
-
-      if (createdCount > 0) {
-        await fetchExpenses();
-      }
+      await generateDueRecurringExpenses();
+      await fetchExpenses();
       toast.showToast(result.message || "Recurring expense saved successfully", "success");
     } else {
       toast.showToast(result.error || "Failed to save recurring expense", "error");
@@ -947,10 +943,9 @@ export default function Home() {
               lg:max-w-[calc(100vw-2rem)]
               ${sheetWidthClass}
             `}
+            onFocusCapture={handlePopupFocus}
           >
             <div
-              ref={sheetDialogRef}
-              style={sheetPos ? { position: "fixed", left: sheetPos.x, top: sheetPos.y } : undefined}
               className="
                 w-full
                 max-w-md
@@ -970,17 +965,6 @@ export default function Home() {
             >
 
               <div
-                ref={sheetHeaderRef}
-                onMouseDown={(e) => {
-                  const el = sheetDialogRef.current;
-                  if (!el) return;
-                  const rect = el.getBoundingClientRect();
-                  sheetDragging.current = true;
-                  sheetDragStart.current = { x: e.clientX, y: e.clientY };
-                  sheetDialogStart.current = { x: rect.left, y: rect.top };
-                  setSheetPos({ x: rect.left, y: rect.top });
-                  e.preventDefault();
-                }}
                 className="
                   sticky
                   top-0
@@ -993,7 +977,6 @@ export default function Home() {
                   border-b
                   border-zinc-800
                   p-4
-                  cursor-grab
                 "
               >
                 <div>

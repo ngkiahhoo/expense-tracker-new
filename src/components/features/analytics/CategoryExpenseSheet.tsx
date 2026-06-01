@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FocusEvent,
+} from "react";
 
 import type { Expense } from "../../../types/expense";
 import { getExpensesByCategory } from "../../../services/expenseService";
@@ -35,12 +41,6 @@ export default function CategoryExpenseSheet({
   onDelete,
 }: CategoryExpenseSheetProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
-  const headerRef = useRef<HTMLDivElement | null>(null);
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
-  const dragging = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0 });
-  const dialogStart = useRef({ x: 0, y: 0 });
-
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [sortField, setSortField] = useState<'expense_date' | 'amount'>('expense_date');
@@ -51,25 +51,30 @@ export default function CategoryExpenseSheet({
 
   const offset = (page - 1) * PAGE_SIZE;
 
-  useEffect(() => {
-    function onMove(e: MouseEvent) {
-      if (!dragging.current) return;
-      const dx = e.clientX - dragStart.current.x;
-      const dy = e.clientY - dragStart.current.y;
-      setPos({ x: dialogStart.current.x + dx, y: dialogStart.current.y + dy });
+  function handleDialogFocus(
+    event: FocusEvent<HTMLDivElement>
+  ) {
+    if (!(event.target instanceof HTMLElement)) {
+      return;
     }
 
-    function onUp() {
-      dragging.current = false;
-    }
+    const target = event.target;
 
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, []);
+    const tagName = target.tagName;
+    if (
+      tagName === "INPUT" ||
+      tagName === "TEXTAREA" ||
+      tagName === "SELECT"
+    ) {
+      setTimeout(() => {
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+      }, 150);
+    }
+  }
 
   useEffect(() => {
     if (!isOpen) return;
@@ -118,23 +123,12 @@ export default function CategoryExpenseSheet({
     >
       <div
         ref={dialogRef}
-        style={pos ? { position: "fixed", left: pos.x, top: pos.y } : undefined}
         className="w-full max-w-3xl overflow-hidden rounded-t-3xl border border-zinc-800 bg-zinc-950 shadow-2xl"
         onClick={(event) => event.stopPropagation()}
+        onFocusCapture={handleDialogFocus}
       >
         <div
-          ref={headerRef}
-          onMouseDown={(e) => {
-            const el = dialogRef.current;
-            if (!el) return;
-            const rect = el.getBoundingClientRect();
-            dragging.current = true;
-            dragStart.current = { x: e.clientX, y: e.clientY };
-            dialogStart.current = { x: rect.left, y: rect.top };
-            setPos({ x: rect.left, y: rect.top });
-            e.preventDefault();
-          }}
-          className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950 p-4 cursor-grab"
+          className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950 p-4"
         >
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Category details</p>
@@ -225,3 +219,5 @@ export default function CategoryExpenseSheet({
     </div>
   );
 }
+
+// end of component

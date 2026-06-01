@@ -147,6 +147,55 @@ export async function getRecurringExpenses() {
   };
 }
 
+export async function updateGeneratedExpenseForRecurring(
+  selectedMonth:string,
+  recurringExpense:RecurringExpense,
+  payload:{
+    amount:number;
+    note:string;
+    expense_date:string;
+    category_id:number;
+  }
+) {
+  const expenseDate =
+    getRecurringExpenseDate(
+      selectedMonth,
+      recurringExpense.repeat_day
+    );
+
+  const originalNote =
+    formatRecurringExpenseNote(
+      recurringExpense.name,
+      recurringExpense.description || ""
+    );
+
+  const { data, error } =
+    await supabase
+      .from("expenses")
+      .select("id")
+      .eq("expense_date", expenseDate)
+      .eq("category_id", recurringExpense.category_id)
+      .eq("amount", Number(recurringExpense.amount))
+      .eq("note", originalNote)
+      .limit(1);
+
+  if (error) {
+    return error;
+  }
+
+  if (!data || data.length === 0) {
+    return null;
+  }
+
+  const { error:updateError } =
+    await supabase
+      .from("expenses")
+      .update(payload)
+      .eq("id", data[0].id);
+
+  return updateError;
+}
+
 export async function createRecurringExpense(
   payload:RecurringExpensePayload
 ) {

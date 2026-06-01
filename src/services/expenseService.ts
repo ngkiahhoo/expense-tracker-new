@@ -4,11 +4,11 @@ export async function getExpenses(
   selectedMonth:string
 ) {
 
-  const start =
-    `${selectedMonth}-01`;
-
-  const end =
-    `${selectedMonth}-31`;
+  const [year, month] = selectedMonth.split("-").map(Number);
+  const start = `${selectedMonth}-01`;
+  const end = `${selectedMonth}-${String(
+    new Date(year, month, 0).getDate()
+  ).padStart(2, "0")}`;
 
   const { data, error } =
     await supabase
@@ -87,8 +87,11 @@ export async function getExpensesByCategory(
   sortField = 'expense_date',
   sortDirection: 'asc' | 'desc' = 'desc'
 ) {
+  const [year, month] = selectedMonth.split("-").map(Number);
   const start = `${selectedMonth}-01`;
-  const end = `${selectedMonth}-31`;
+  const end = `${selectedMonth}-${String(
+    new Date(year, month, 0).getDate()
+  ).padStart(2, "0")}`;
 
   let query = supabase
     .from('expenses')
