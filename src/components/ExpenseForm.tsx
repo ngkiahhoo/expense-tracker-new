@@ -10,6 +10,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { confirmDelete } from "../utils/confirm";
 
 import type {
   Category,
@@ -111,11 +112,14 @@ export default function ExpenseForm({
       return;
     }
 
-    deleteSavedNote?.(
-      selectedSavedNote
-    );
-
-    setSelectedSavedNote("");
+    if (
+      confirmDelete("确定要删除已保存的笔记吗？")
+    ) {
+      deleteSavedNote?.(
+        selectedSavedNote
+      );
+      setSelectedSavedNote("");
+    }
   }
 
   return (

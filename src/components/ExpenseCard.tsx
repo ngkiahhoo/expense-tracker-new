@@ -3,6 +3,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
+import { confirmDelete } from "../utils/confirm";
 
 import type {
   Expense,
@@ -129,11 +130,17 @@ export default function ExpenseCard({
             </button>
 
             <button
-              onClick={() =>
-                deleteExpense(
-                  expense.id
-                )
-              }
+              onClick={() => {
+                if (
+                  confirmDelete(
+                    "确定要删除这笔支出吗？"
+                  )
+                ) {
+                  deleteExpense(
+                    expense.id
+                  );
+                }
+              }}
               title="Delete expense"
               aria-label="Delete expense"
               className="

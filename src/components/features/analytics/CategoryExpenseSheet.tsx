@@ -10,6 +10,7 @@ import {
 
 import type { Expense } from "../../../types/expense";
 import { getExpensesByCategory } from "../../../services/expenseService";
+import { confirmDelete } from "../../../utils/confirm";
 
 interface CategoryExpenseSheetProps {
   isOpen: boolean;
@@ -195,7 +196,18 @@ export default function CategoryExpenseSheet({
 
                         <div className="flex gap-2">
                           <button onClick={() => onEdit(expense)} className="rounded-2xl bg-zinc-800 px-3 py-2 text-sm">Edit</button>
-                          <button onClick={() => onDelete(expense.id)} className="rounded-2xl bg-red-600 px-3 py-2 text-sm">Delete</button>
+                          <button
+                            onClick={() => {
+                              if (
+                                confirmDelete(
+                                  "确定要删除这笔支出吗？"
+                                )
+                              ) {
+                                onDelete(expense.id);
+                              }
+                            }}
+                            className="rounded-2xl bg-red-600 px-3 py-2 text-sm"
+                          >Delete</button>
                         </div>
                       </div>
                     </div>

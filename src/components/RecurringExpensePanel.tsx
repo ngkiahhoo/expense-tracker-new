@@ -6,6 +6,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { confirmDelete } from "../utils/confirm";
 
 import type {
   Category,
@@ -550,10 +551,17 @@ export default function RecurringExpensePanel({
                     </button>
 
                     <button
-                      onClick={() =>
-                        deleteRecurringExpense(
-                          expense.id
-                        )
+                      onClick={() => {
+                        if (
+                          confirmDelete(
+                            "确定要删除这个循环支出规则吗？"
+                          )
+                        ) {
+                          deleteRecurringExpense(
+                            expense.id
+                          );
+                        }
+                      }
                       }
                       title="Delete recurring expense"
                       aria-label="Delete recurring expense"

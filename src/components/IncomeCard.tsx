@@ -4,6 +4,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
+import { confirmDelete } from "../utils/confirm";
 
 import type {
   Income,
@@ -79,9 +80,13 @@ export default function IncomeCard({
         </button>
 
         <button
-          onClick={() =>
-            deleteIncome(income.id)
-          }
+          onClick={() => {
+            if (
+              confirmDelete("确定要删除这笔收入吗？")
+            ) {
+              deleteIncome(income.id);
+            }
+          }}
           className="
             bg-white
             text-black
