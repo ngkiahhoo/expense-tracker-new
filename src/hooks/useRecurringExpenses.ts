@@ -13,6 +13,7 @@ import {
   updateRecurringExpense,
   getRecurringExpenseDate,
 } from "../services/recurringExpenseService";
+import { formatRecurringExpenseNote } from "../services/recurringExpenseService";
 
 import type {
   RecurringExpense,
@@ -253,7 +254,7 @@ export default function useRecurringExpenses(
             recurringEditingOriginal,
             {
               amount: payload.amount,
-              note: payload.note,
+              note: formatRecurringExpenseNote(payload.name, payload.description || null),
               expense_date:
                 getRecurringExpenseDate(
                   selectedMonth,
