@@ -60,7 +60,8 @@ function recurringErrorMessage(
 }
 
 export default function useRecurringExpenses(
-  selectedMonth:string
+  selectedMonth:string,
+  currentMonth:string
 ) {
   const [
     recurringExpenses,
@@ -250,14 +251,14 @@ export default function useRecurringExpenses(
       ) {
         const syncError =
           await updateGeneratedExpenseForRecurring(
-            selectedMonth,
+            currentMonth,
             recurringEditingOriginal,
             {
               amount: payload.amount,
               note: formatRecurringExpenseNote(payload.name, payload.description || null),
               expense_date:
                 getRecurringExpenseDate(
-                  selectedMonth,
+                  currentMonth,
                   payload.repeat_day
                 ),
               category_id:
@@ -352,7 +353,7 @@ export default function useRecurringExpenses(
         createdCount,
         error,
       } = await generateRecurringExpensesForMonth(
-        selectedMonth
+        currentMonth
       );
 
       if (error) {

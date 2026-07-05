@@ -11,10 +11,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  Trash2,
 } from "lucide-react";
 
 import ExpenseCard
 from "./ExpenseCard";
+import { confirmDelete } from "../utils/confirm";
 
 import type {
   Expense,
@@ -35,6 +37,8 @@ interface ExpenseRecordsPanelProps {
   loading: boolean;
   startEdit: (expense: Expense) => void;
   deleteExpense: (id: number) => void;
+  deleteMonthExpenses: (selectedMonth: string) => Promise<{ success: boolean; error?: string }>;
+  selectedMonth: string;
 }
 
 const PAGE_SIZE = 10;
@@ -88,6 +92,8 @@ export default function ExpenseRecordsPanel({
   loading,
   startEdit,
   deleteExpense,
+  deleteMonthExpenses,
+  selectedMonth,
 }: ExpenseRecordsPanelProps) {
   const [query, setQuery] =
     useState("");
@@ -237,60 +243,91 @@ export default function ExpenseRecordsPanel({
             gap-2
           "
         >
-          <select
-            value={sortField}
-            onChange={(event) => {
-              setSortField(
-                event.target.value as SortField
-              );
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <select
+                value={sortField}
+                onChange={(event) => {
+                  setSortField(
+                    event.target.value as SortField
+                  );
 
-              setPage(1);
-            }}
-            className="
-              min-w-0
-              bg-black
-              rounded-2xl
-              p-4
-              outline-none
-              text-sm
-            "
-          >
-            <option value="name">
-              Sort by Name
-            </option>
-            <option value="category">
-              Sort by Category
-            </option>
-            <option value="date">
-              Sort by Date
-            </option>
-            <option value="note">
-              Sort by Note
-            </option>
-          </select>
+                  setPage(1);
+                }}
+                className="
+                  min-w-0
+                  bg-black
+                  rounded-2xl
+                  p-4
+                  outline-none
+                  text-sm
+                "
+              >
+                <option value="name">
+                  Sort by Name
+                </option>
+                <option value="category">
+                  Sort by Category
+                </option>
+                <option value="date">
+                  Sort by Date
+                </option>
+                <option value="note">
+                  Sort by Note
+                </option>
+              </select>
 
-          <button
-            onClick={() => {
-              setSortDirection((current) =>
-                current === "asc"
-                  ? "desc"
-                  : "asc"
-              );
+              <button
+                onClick={() => {
+                  if (
+                    confirmDelete(
+                      "确定要删除本月所有支出记录吗？"
+                    )
+                  ) {
+                    deleteMonthExpenses(
+                      selectedMonth
+                    );
+                  }
+                }}
+                title="Delete current month expenses"
+                aria-label="Delete current month expenses"
+                className="
+                  bg-red-600
+                  text-white
+                  rounded-2xl
+                  p-3
+                  hover:opacity-90
+                  transition-opacity
+                "
+              >
+                <Trash2 size={16}/>
+              </button>
+            </div>
 
-              setPage(1);
-            }}
-            title="Toggle sort direction"
-            aria-label="Toggle sort direction"
-            className="
-              bg-black
-              rounded-2xl
-              px-4
-            "
-          >
-            {sortDirection === "asc"
-              ? <ArrowUpAZ size={18}/>
-              : <ArrowDownAZ size={18}/>}
-          </button>
+            <button
+              onClick={() => {
+                setSortDirection((current) =>
+                  current === "asc"
+                    ? "desc"
+                    : "asc"
+                );
+
+                setPage(1);
+              }}
+              title="Toggle sort direction"
+              aria-label="Toggle sort direction"
+              className="
+                bg-black
+                rounded-2xl
+                px-4
+              "
+            >
+              {sortDirection === "asc"
+                ? <ArrowUpAZ size={18}/>
+                : <ArrowDownAZ size={18}/>
+              }
+            </button>
+          </div>
         </div>
       </div>
 

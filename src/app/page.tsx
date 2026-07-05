@@ -187,6 +187,7 @@ export default function Home() {
     fetchExpenses,
     saveExpense,
     deleteExpense,
+    deleteMonthExpenses,
     startEdit,
     resetExpenseForm,
   } = useExpenses(
@@ -271,7 +272,8 @@ export default function Home() {
     resetRecurringExpenseForm,
     generateDueRecurringExpenses,
   } = useRecurringExpenses(
-    selectedMonth
+    selectedMonth,
+    currentMonth
   );
 
   const {
@@ -334,10 +336,6 @@ export default function Home() {
 
   // Auto-generate recurring expenses every hour
   useEffect(() => {
-    // Check immediately on mount
-    generateDueRecurringExpenses();
-
-    // Then check every hour
     const interval = setInterval(
       async () => {
         const createdCount = await generateDueRecurringExpenses();
@@ -1117,6 +1115,8 @@ export default function Home() {
                     loading={loading}
                     startEdit={handleStartEdit}
                     deleteExpense={handleDeleteExpense}
+                    deleteMonthExpenses={deleteMonthExpenses}
+                    selectedMonth={selectedMonth}
                   />
                 )}
               </div>

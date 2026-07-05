@@ -78,6 +78,25 @@ export async function removeExpense(
   return error;
 }
 
+export async function removeExpensesByMonth(
+  selectedMonth:string
+) {
+  const [year, month] = selectedMonth.split("-").map(Number);
+  const start = `${selectedMonth}-01`;
+  const end = `${selectedMonth}-${String(
+    new Date(year, month, 0).getDate()
+  ).padStart(2, "0")}`;
+
+  const { error } =
+    await supabase
+      .from("expenses")
+      .delete()
+      .gte("expense_date", start)
+      .lte("expense_date", end);
+
+  return error;
+}
+
 export async function getExpensesByCategory(
   selectedMonth: string,
   categoryId: number | null,

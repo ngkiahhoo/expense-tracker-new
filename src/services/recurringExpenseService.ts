@@ -163,14 +163,32 @@ export async function updateGeneratedExpenseForRecurring(
       recurringExpense.repeat_day
     );
 
-  const originalNote =
-    formatRecurringExpenseNote(
-      recurringExpense.name,
-      recurringExpense.description || ""
-    );
+  const [year, month] = selectedMonth
+    .split("-")
+    .map(Number);
+  const start = `${selectedMonth}-01`;
+  const end = `${selectedMonth}-${String(
+    new Date(year, month, 0).getDate()
+  ).padStart(2, "0")}`;
 
-  const { data, error } =
-    await supabase
+  let query = supabase
+    .from("expenses")
+    .select("id")
+    .eq("recurring_expense_id", recurringExpense.id)
+    .gte("expense_date", start)
+    .lte("expense_date", end)
+    .limit(1);
+
+  let result = await query;
+
+  if (result.error) {
+    const originalNote =
+      formatRecurringExpenseNote(
+        recurringExpense.name,
+        recurringExpense.description || ""
+      );
+
+    result = await supabase
       .from("expenses")
       .select("id")
       .eq("expense_date", expenseDate)
@@ -178,12 +196,13 @@ export async function updateGeneratedExpenseForRecurring(
       .eq("amount", Number(recurringExpense.amount))
       .eq("note", originalNote)
       .limit(1);
-
-  if (error) {
-    return error;
   }
 
-  if (!data || data.length === 0) {
+  if (result.error) {
+    return result.error;
+  }
+
+  if (!result.data || result.data.length === 0) {
     return null;
   }
 
@@ -191,7 +210,7 @@ export async function updateGeneratedExpenseForRecurring(
     await supabase
       .from("expenses")
       .update(payload)
-      .eq("id", data[0].id);
+      .eq("id", result.data[0].id);
 
   return updateError;
 }
@@ -238,10 +257,21 @@ async function generatedExpenseExists(
     note:string;
     expense_date:string;
     category_id:number;
+    recurring_expense_id:number;
   }
 ) {
-  const { data, error } =
-    await supabase
+  let result = await supabase
+    .from("expenses")
+    .select("id")
+    .eq("recurring_expense_id", payload.recurring_expense_id)
+    .eq(
+      "expense_date",
+      payload.expense_date
+    )
+    .limit(1);
+
+  if (result.error) {
+    result = await supabase
       .from("expenses")
       .select("id")
       .eq(
@@ -261,19 +291,22 @@ async function generatedExpenseExists(
         payload.category_id
       )
       .limit(1);
+  }
 
-  if (error) {
+  if (result.error) {
     return {
       exists:false,
-      error,
+      id:null,
+      error: result.error,
     };
   }
 
   return {
     exists:
       Boolean(
-        data?.length
+        result.data?.length
       ),
+    id: result.data?.[0]?.id ?? null,
     error:null,
   };
 }
@@ -327,6 +360,8 @@ export async function generateRecurringExpensesForMonth(
         Number(
           recurringExpense.category_id
         ),
+      recurring_expense_id:
+        recurringExpense.id,
     };
 
     const existing =
@@ -343,6 +378,26 @@ export async function generateRecurringExpensesForMonth(
     }
 
     if (existing.exists) {
+      if (existing.id !== null) {
+        const { error:updateError } =
+          await supabase
+            .from("expenses")
+            .update({
+              amount: payload.amount,
+              note: payload.note,
+              expense_date: payload.expense_date,
+              category_id: payload.category_id,
+            })
+            .eq("id", existing.id);
+
+        if (updateError) {
+          return {
+            createdCount,
+            error: updateError,
+          };
+        }
+      }
+
       continue;
     }
 

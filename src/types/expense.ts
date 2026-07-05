@@ -13,5 +13,7 @@ export interface Expense {
 
   category_id:number;
 
+  recurring_expense_id?: number;
+
   categories?:Category;
 }

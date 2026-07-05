@@ -81,6 +81,16 @@ end $$;
 alter table public.recurring_expenses
 alter column category_id set not null;
 
+alter table if exists public.expenses
+add column if not exists recurring_expense_id bigint;
+
+alter table if exists public.expenses
+add constraint if not exists expenses_recurring_expense_id_fkey
+foreign key (recurring_expense_id)
+references public.recurring_expenses(id)
+on update cascade
+on delete set null;
+
 do $$
 begin
   if not exists (

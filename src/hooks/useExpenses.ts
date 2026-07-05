@@ -18,6 +18,8 @@ import {
 
   removeExpense,
 
+  removeExpensesByMonth,
+
 } from "../services/expenseService";
 
 export default function useExpenses(
@@ -204,6 +206,29 @@ export default function useExpenses(
     }
   }
 
+  async function deleteMonthExpenses(
+    selectedMonth:string
+  ) {
+    try {
+      const error = await removeExpensesByMonth(
+        selectedMonth
+      );
+
+      if (error) {
+        const msg = error.message || "Failed to delete monthly expenses";
+        setError(msg);
+        return { success: false, error: msg };
+      }
+
+      await fetchExpenses();
+      return { success: true, message: "Monthly expenses deleted successfully" };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to delete monthly expenses";
+      setError(msg);
+      return { success: false, error: msg };
+    }
+  }
+
   function startEdit(
     expense:Expense
   ) {
@@ -262,6 +287,8 @@ export default function useExpenses(
     saveExpense,
 
     deleteExpense,
+
+    deleteMonthExpenses,
 
     startEdit,
 
