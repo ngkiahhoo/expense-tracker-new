@@ -13,6 +13,15 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input, Select, Textarea } from "@/components/ui/Field";
+import {
+  buttonStyles,
+  cardStyles,
+  cn,
+  overlayStyles,
+} from "@/components/ui/styles";
 import { useToast } from "@/contexts/ToastContext";
 import useMonthlySummary from "@/hooks/useMonthlySummary";
 import {
@@ -55,7 +64,6 @@ export default function AssetsPage() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const previousMonthKey = useMemo(() => getPreviousMonthKey(selectedMonth), [selectedMonth]);
 
-  const { summary: selectedSummary } = useMonthlySummary(selectedMonth);
   const { summary: previousSummary } = useMonthlySummary(previousMonthKey);
 
   const [records, setRecords] = useState<AssetDistribution[]>([]);
@@ -129,10 +137,8 @@ export default function AssetsPage() {
     return Array.from(map.entries()).map(([name, total]) => ({ name, total }));
   }, [detailRecords, distributionCategories]);
 
-  const availableAllocationAmount = Math.max(
-    0,
-    previousSummary.balance - allocationRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0)
-  );
+  const availableAllocationAmount =
+    previousSummary.balance - allocationRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0);
 
   function openCreateModal(source: DistributionSource) {
     setEditorMode(source);
@@ -156,8 +162,8 @@ export default function AssetsPage() {
   async function handleSubmit() {
     const parsedAmount = Number(form.amount);
 
-    if (Number.isNaN(parsedAmount) || parsedAmount < 0) {
-      toast.showToast("Please enter a valid amount.", "error");
+    if (Number.isNaN(parsedAmount) || (parsedAmount === 0 && !editingRecord)) {
+      toast.showToast("Please enter a non-zero amount.", "error");
       return;
     }
 
@@ -173,7 +179,7 @@ export default function AssetsPage() {
         toast.showToast("Allocation amount cannot exceed the previous month balance.", "error");
         return;
       }
-      if (!editingRecord && availableAllocationAmount === 0) {
+      if (!editingRecord && parsedAmount === 0 && availableAllocationAmount === 0) {
         toast.showToast("Available allocation amount is already zero.", "error");
         return;
       }
@@ -285,9 +291,9 @@ export default function AssetsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white px-4 pt-4 pb-28 sm:px-6 sm:pt-6 md:px-8">
-      <div className="max-w-6xl mx-auto grid gap-5">
-        <section className="bg-zinc-900/90 border border-zinc-800 rounded-3xl p-5 sm:p-6">
+    <main className="min-h-screen bg-black px-4 pt-4 pb-28 text-white sm:px-6 sm:pt-6 md:px-8">
+      <div className="mx-auto grid max-w-6xl gap-5">
+        <Card variant="panel" padding="lg">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="flex items-center gap-2 text-zinc-400 mb-2">
@@ -295,67 +301,72 @@ export default function AssetsPage() {
                 <span>Asset Management</span>
               </div>
             </div>
-            <Link href="/" className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-black font-bold hover:opacity-90">
+            <Link
+              href="/"
+              className={cn(
+                buttonStyles.base,
+                buttonStyles.variants.primary,
+                buttonStyles.sizes.md
+              )}
+            >
               <ArrowUpRight size={18} />
               Back to Cash Flow
             </Link>
           </div>
-        </section>
+        </Card>
 
         <section className="grid gap-4 lg:grid-cols-4">
-          <button
-            onClick={() => setDetailType("Liquid Assets")}
-            className="text-left bg-zinc-900 border border-cyan-500/30 rounded-3xl p-5"
-          >
-            <div className="flex items-center gap-2 text-zinc-400 mb-3">
-              <Wallet size={18} />
-              Available Assets
-            </div>
-            <div className="text-3xl font-bold text-cyan-400">RM {allLiquidRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0).toFixed(2)}</div>
-            <p className="text-sm text-zinc-400 mt-2">{allLiquidRecords.length} record{allLiquidRecords.length === 1 ? "" : "s"}</p>
-          </button>
+          <Card className="text-left cursor-pointer" variant="info">
+            <button onClick={() => setDetailType("Liquid Assets")} className="w-full text-left">
+              <div className="flex items-center gap-2 text-zinc-400 mb-3">
+                <Wallet size={18} />
+                Available Assets
+              </div>
+              <div className="text-3xl font-bold text-cyan-400">RM {allLiquidRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0).toFixed(2)}</div>
+              <p className="text-sm text-zinc-400 mt-2">{allLiquidRecords.length} record{allLiquidRecords.length === 1 ? "" : "s"}</p>
+            </button>
+          </Card>
 
-          <button
-            onClick={() => setDetailType("Allocated Assets")}
-            className="text-left bg-zinc-900 border border-violet-500/30 rounded-3xl p-5"
-          >
-            <div className="flex items-center gap-2 text-zinc-400 mb-3">
-              <Sparkles size={18} />
-              Fixed Assets
-            </div>
-            <div className="text-3xl font-bold text-violet-400">RM {allAllocatedRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0).toFixed(2)}</div>
-            <p className="text-sm text-zinc-400 mt-2">{allAllocatedRecords.length} record{allAllocatedRecords.length === 1 ? "" : "s"}</p>
-          </button>
+          <Card className="text-left cursor-pointer" variant="accent">
+            <button onClick={() => setDetailType("Allocated Assets")} className="w-full text-left">
+              <div className="flex items-center gap-2 text-zinc-400 mb-3">
+                <Sparkles size={18} />
+                Fixed Assets
+              </div>
+              <div className="text-3xl font-bold text-violet-400">RM {allAllocatedRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0).toFixed(2)}</div>
+              <p className="text-sm text-zinc-400 mt-2">{allAllocatedRecords.length} record{allAllocatedRecords.length === 1 ? "" : "s"}</p>
+            </button>
+          </Card>
 
-          <div className="bg-zinc-900 border border-emerald-500/30 rounded-3xl p-5">
+          <Card variant="success">
             <div className="flex items-center gap-2 text-zinc-400 mb-3">
               <CalendarDays size={18} />
               Balance & Allocation
             </div>
             <div className="text-3xl font-bold text-emerald-400">RM {previousSummary.balance.toFixed(2)}</div>
             <p className="text-sm text-zinc-400 mt-2">Previous month balance from income and expense data</p>
-            <div className="mt-4 rounded-2xl border border-zinc-800 bg-black/70 p-3">
+            <div className={cn(cardStyles.variants.inset, "mt-4 p-3")}>
               <div className="text-sm text-zinc-400">Available allocation amount for {formatMonthLabel(previousMonthKey)}</div>
               <div className="text-2xl font-bold text-emerald-300 mt-1">RM {availableAllocationAmount.toFixed(2)}</div>
             </div>
-            <button
+            <Button
               onClick={() => openCreateModal("allocation")}
               disabled={availableAllocationAmount === 0}
-              className="mt-4 w-full rounded-2xl bg-emerald-500 px-4 py-3 font-bold text-black hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-4 w-full"
+              variant="secondary"
             >
               Add New Distribution
-            </button>
-          </div>
+            </Button>
+          </Card>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
+          <Card>
             <div className="flex items-center gap-2 text-zinc-400 mb-3">
               <Layers size={18} />
               Month
             </div>
-            <select
+            <Select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-4 outline-none"
             >
               {Array.from({ length: 12 }, (_, i) => {
                 const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
@@ -368,35 +379,32 @@ export default function AssetsPage() {
                   </option>
                 );
               })}
-            </select>
-            <div className="mt-4 rounded-2xl border border-zinc-800 bg-black/70 p-3 text-sm text-zinc-400">
+            </Select>
+            <div className={cn(cardStyles.variants.inset, "mt-4 p-3 text-sm text-zinc-400")}>
               Showing records for {formatMonthLabel(selectedMonth)} and {formatMonthLabel(previousMonthKey)}.
             </div>
-          </div>
+          </Card>
         </section>
 
         <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
+          <Card variant="default">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-2xl font-bold">Distribution Records</h2>
                 <p className="text-zinc-400 text-sm">Create manual records or review allocation-backed records here.</p>
               </div>
-              <button
-                onClick={() => openCreateModal("manual")}
-                className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-black font-bold hover:opacity-90"
-              >
+              <Button onClick={() => openCreateModal("manual")} variant="primary" className="gap-2">
                 <Plus size={16} />
                 Add New Distribution
-              </button>
+              </Button>
             </div>
 
             <div className="mt-5 space-y-3">
               {loading ? (
-                <div className="text-zinc-400">Loading records…</div>
+                <div className="text-zinc-400">Loading records...</div>
               ) : visibleRecords.length > 0 ? (
                 visibleRecords.map((record) => (
-                  <div key={record.id} className="rounded-2xl border border-zinc-800 bg-black/70 p-4">
+                  <Card key={record.id} variant="muted" padding="sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="flex items-center gap-2">
@@ -406,70 +414,70 @@ export default function AssetsPage() {
                           </span>
                         </div>
                         <p className="text-sm text-zinc-400 mt-1">{record.note || "No note provided."}</p>
-                          <p className="text-sm text-zinc-400 mt-1">{distributionCategories.find((c) => c.id === record.category_id)?.name || "Uncategorized"}</p>
+                        <p className="text-sm text-zinc-400 mt-1">{distributionCategories.find((c) => c.id === record.category_id)?.name || "Uncategorized"}</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
                         <span className="rounded-full bg-zinc-800 px-2.5 py-1">{formatMonthLabel(record.month)}</span>
                         <span className="rounded-full bg-zinc-800 px-2.5 py-1 capitalize">{record.source}</span>
-                        <button onClick={() => openEditModal(record)} className="rounded-full bg-zinc-800 p-2 hover:bg-zinc-700">
+                        <Button variant="ghost" size="md" onClick={() => openEditModal(record)} className="rounded-full p-2">
                           <Pencil size={14} />
-                        </button>
+                        </Button>
                         {record.source === "manual" && (
-                          <button onClick={() => handleDelete(record)} className="rounded-full bg-zinc-800 p-2 hover:bg-zinc-700">
+                          <Button variant="ghost" size="md" onClick={() => handleDelete(record)} className="rounded-full p-2">
                             <Trash2 size={14} />
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </div>
-                  </div>
+                  </Card>
                 ))
               ) : (
                 <div className="text-zinc-400">No distributions yet for this period.</div>
               )}
             </div>
-          </div>
+          </Card>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5">
+          <Card>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-2xl font-bold">Previous Month Summary</h2>
                 <p className="text-zinc-400 text-sm">This panel stays separate from bookkeeping entries.</p>
               </div>
             </div>
-            <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/70 p-4">
+            <div className={cn(cardStyles.variants.inset, "mt-5 p-4")}>
               <div className="text-sm text-zinc-400">Previous month balance</div>
               <div className="text-3xl font-bold text-emerald-400 mt-1">RM {previousSummary.balance.toFixed(2)}</div>
               <div className="mt-4 h-px bg-zinc-800" />
               <div className="mt-4 text-sm text-zinc-400">Calculated allocation usage</div>
               <div className="text-2xl font-bold text-cyan-400 mt-1">RM {allocationRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0).toFixed(2)}</div>
             </div>
-          </div>
+          </Card>
         </section>
       </div>
 
       {detailType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-xl rounded-3xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl">
+        <div className={overlayStyles.backdrop}>
+          <div className={cn(overlayStyles.modalPanel, "max-w-xl")}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-2xl font-bold">{detailType}</h3>
                 <p className="text-sm text-zinc-400 mt-1">Showing all historical records for this type.</p>
               </div>
-              <button onClick={() => setDetailType(null)} className="rounded-full bg-zinc-800 p-2 hover:bg-zinc-700">
+              <Button variant="ghost" size="md" onClick={() => setDetailType(null)} className="rounded-full p-2">
                 <X size={16} />
-              </button>
+              </Button>
             </div>
             <div className="mt-5 space-y-3">
               {detailTotals.length > 0 ? (
                 detailTotals.map((entry) => (
-                  <div key={entry.name} className="rounded-2xl border border-zinc-800 bg-black/70 p-4">
+                  <Card key={entry.name} variant="muted" className="p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="text-lg font-bold">RM {Number(entry.total).toFixed(2)}</div>
                         <div className="text-sm text-zinc-400 mt-1">{entry.name}</div>
                       </div>
                     </div>
-                  </div>
+                  </Card>
                 ))
               ) : (
                 <div className="text-zinc-400">No totals for this category yet.</div>
@@ -480,8 +488,8 @@ export default function AssetsPage() {
       )}
 
       {editorOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-lg rounded-3xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl">
+        <div className={overlayStyles.backdrop}>
+          <div className={cn(overlayStyles.modalPanel, "max-w-lg")}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-2xl font-bold">{editingRecord ? "Edit Distribution" : "Add Distribution"}</h3>
@@ -491,51 +499,55 @@ export default function AssetsPage() {
                     : "This record is kept separate from the previous month allocation balance."}
                 </p>
               </div>
-              <button onClick={() => setEditorOpen(false)} className="rounded-full bg-zinc-800 p-2 hover:bg-zinc-700">
+              <Button variant="ghost" size="md" onClick={() => setEditorOpen(false)} className="rounded-full p-2">
                 <X size={16} />
-              </button>
+              </Button>
             </div>
 
             <div className="mt-5 space-y-4">
               <div>
                 <label className="text-sm text-zinc-400">Amount</label>
-                <input
+                <Input
                   type="number"
                   value={form.amount}
                   onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
                   placeholder="RM 0.00"
-                  className="mt-2 w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 outline-none"
+                  fieldSize="md"
+                  className="mt-2"
                 />
               </div>
 
-              <div>
-                <label className="text-sm text-zinc-400">Type</label>
-                <select
+            <div>
+              <label className="text-sm text-zinc-400">Type</label>
+              <Select
                   value={form.type}
                   onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value as DistributionType }))}
-                  className="mt-2 w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 outline-none"
+                  fieldSize="md"
+                  className="mt-2"
                 >
                   <option value="Liquid Assets">Liquid Assets</option>
                   <option value="Allocated Assets">Allocated Assets</option>
-                </select>
+                </Select>
               </div>
 
               <div>
                 <label className="text-sm text-zinc-400">Note</label>
-                <textarea
+                <Textarea
                   value={form.note}
                   onChange={(e) => setForm((prev) => ({ ...prev, note: e.target.value }))}
                   placeholder="Add context for this distribution"
-                  className="mt-2 min-h-[120px] w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 outline-none resize-none"
+                  fieldSize="md"
+                  className="mt-2 min-h-[120px]"
                 />
               </div>
 
               <div>
                 <label className="text-sm text-zinc-400">Category</label>
-                <select
+                <Select
                   value={form.category_id}
                   onChange={(e) => setForm((prev) => ({ ...prev, category_id: e.target.value }))}
-                  className="mt-2 w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 outline-none"
+                  fieldSize="md"
+                  className="mt-2"
                 >
                   <option value="">Select Category</option>
                   {distributionCategories.map((cat) => (
@@ -543,55 +555,70 @@ export default function AssetsPage() {
                       {cat.name}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <div className="mt-3 grid gap-2">
-                  <input
+                  <Input
                     value={newDistCategoryName}
                     onChange={(e) => setNewDistCategoryName(e.target.value)}
                     placeholder="New category name"
-                    className="w-full min-w-0 bg-black rounded-2xl p-4"
                   />
 
                   <div className="mt-3 flex items-center gap-2">
-                    <button onClick={addDistributionCategoryInline} className="flex-1 rounded-2xl bg-white px-4 py-3 font-bold text-black hover:opacity-90">
+                    <Button onClick={addDistributionCategoryInline} variant="primary" className="flex-1">
                       {editingDistCategoryId ? "Update Category" : "Add Category"}
-                    </button>
+                    </Button>
                     {editingDistCategoryId && (
-                      <button
+                      <Button
                         onClick={() => {
                           setEditingDistCategoryId(null);
                           setNewDistCategoryName("");
                         }}
-                        className="rounded-2xl border border-zinc-700 px-4 py-3 font-bold text-zinc-300"
+                        variant="outline"
                       >
                         Cancel
-                      </button>
+                      </Button>
                     )}
                   </div>
 
-                  <div className="mt-3 grid gap-2">
-                    {distributionCategories.map((cat) => (
-                      <div key={cat.id} className="flex items-center justify-between gap-3 bg-black border border-zinc-800 rounded-xl p-3">
-                        <div className="min-w-0">
-                          <div className="font-bold truncate">{cat.name}</div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => startEditDistributionCategory(cat)} className="rounded-xl bg-white text-black px-3 py-2 font-bold">Edit</button>
-                          <button onClick={() => deleteDistributionCategoryInline(cat.id)} className="rounded-xl border border-zinc-700 px-3 py-2 font-bold text-zinc-300">Delete</button>
+                  {form.category_id && (
+                    <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-3 rounded-xl border border-zinc-800 bg-black p-3">
+                      <div className="min-w-0">
+                        <div className="font-bold truncate">
+                          {distributionCategories.find((cat) => cat.id === Number(form.category_id))?.name || "Selected category"}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const selected = distributionCategories.find((cat) => cat.id === Number(form.category_id));
+                            if (selected) startEditDistributionCategory(selected);
+                          }}
+                          size="sm"
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => deleteDistributionCategoryInline(Number(form.category_id))}
+                          variant="danger"
+                          size="sm"
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <button onClick={handleSubmit} className="flex-1 rounded-2xl bg-white px-4 py-3 font-bold text-black hover:opacity-90">
+                <Button onClick={handleSubmit} variant="primary" className="flex-1">
                   {editingRecord ? "Save Changes" : "Create Record"}
-                </button>
-                <button onClick={() => setEditorOpen(false)} className="rounded-2xl border border-zinc-700 px-4 py-3 font-bold text-zinc-300">
+                </Button>
+                <Button onClick={() => setEditorOpen(false)} variant="outline">
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           </div>

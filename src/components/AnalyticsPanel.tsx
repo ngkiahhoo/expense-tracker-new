@@ -1,3 +1,6 @@
+import { Card } from "@/components/ui/Card";
+import { toneStyles } from "@/components/ui/styles";
+
 interface SpendingAnalytics {
   needs: number;
   wants: number;
@@ -29,28 +32,19 @@ export default function AnalyticsPanel({
       key: "needs",
       label: "Needs",
       value: analytics.needs,
-      color: "#ef4444", // red
+      color: toneStyles.needs.chart,
     },
     {
       key: "wants",
       label: "Wants",
       value: analytics.wants,
-      color: "#3b82f6", // blue
+      color: toneStyles.wants.chart,
     },
   ];
 
   return (
 
-    <div
-      className="
-        bg-zinc-900
-        border-2
-        border-zinc-700
-        rounded-3xl
-        p-5
-        sm:p-6
-      "
-    >
+    <Card variant="item" padding="lg">
 
       <h2
         className="
@@ -131,6 +125,6 @@ export default function AnalyticsPanel({
 
       </div>
 
-    </div>
+    </Card>
   );
 }

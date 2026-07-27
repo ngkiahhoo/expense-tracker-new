@@ -3,6 +3,8 @@
 import {
   RotateCcw,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Field";
 
 export default function HeaderSection({
 
@@ -55,38 +57,30 @@ export default function HeaderSection({
 
         </div>
 
-        <button
+        <Button
           onClick={refreshAll}
-          className="
-            bg-zinc-900
-            p-4
-            rounded-2xl
-          "
+          variant="ghost"
+          size="iconLg"
+          title="Refresh"
+          aria-label="Refresh"
         >
 
           <RotateCcw size={20}/>
 
-        </button>
+        </Button>
 
       </div>
 
       {/* MONTH SELECT */}
 
-      <select
+      <Select
         value={selectedMonth}
         onChange={(e) =>
           setSelectedMonth(
             e.target.value
           )
         }
-        className="
-          w-full
-          bg-zinc-900
-          rounded-2xl
-          p-4
-          mb-5
-          outline-none
-        "
+        className="mb-5"
       >
 
         {months.map(
@@ -106,7 +100,7 @@ export default function HeaderSection({
           )
         )}
 
-      </select>
+      </Select>
 
     </>
 

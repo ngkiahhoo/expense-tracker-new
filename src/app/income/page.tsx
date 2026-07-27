@@ -1,51 +1,36 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-
-import { supabase } from "../../lib/supabase";
-
 import {
   Pencil,
   Trash2,
   X,
   Wallet,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input, Select } from "@/components/ui/Field";
+import { supabase } from "../../lib/supabase";
 
 export default function IncomePage() {
+  const currentMonth = `${new Date().getFullYear()}-${String(
+    new Date().getMonth() + 1
+  ).padStart(2, "0")}`;
 
-  const currentMonth =
-    `${new Date().getFullYear()}-${String(
-      new Date().getMonth() + 1
-    ).padStart(2, "0")}`;
-
-  const [incomes, setIncomes] =
-    useState<any[]>([]);
-
-  const [amount, setAmount] =
-    useState("");
-
-  const [note, setNote] =
-    useState("");
-
-  const [incomeDate, setIncomeDate] =
-    useState(
-      new Date()
-        .toISOString()
-        .split("T")[0]
-    );
-
-  const [editingId, setEditingId] =
-    useState<number | null>(null);
-
-  const [selectedMonth, setSelectedMonth] =
-    useState(currentMonth);
+  const [incomes, setIncomes] = useState<any[]>([]);
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [incomeDate, setIncomeDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
   useEffect(() => {
     fetchIncome();
   }, [selectedMonth]);
 
   async function fetchIncome() {
-
     const [year, month] = selectedMonth.split("-").map(Number);
     const start = `${selectedMonth}-01`;
     const end = `${selectedMonth}-${String(
@@ -67,73 +52,41 @@ export default function IncomePage() {
   }
 
   async function saveIncome() {
-
     if (!amount) return;
 
     if (editingId) {
-
       await supabase
         .from("incomes")
         .update({
-          amount:
-            Number(amount),
-
+          amount: Number(amount),
           note,
-
-          income_date:
-            incomeDate,
+          income_date: incomeDate,
         })
         .eq("id", editingId);
-
     } else {
-
-      await supabase
-        .from("incomes")
-        .insert([
-          {
-            amount:
-              Number(amount),
-
-            note,
-
-            income_date:
-              incomeDate,
-          },
-        ]);
+      await supabase.from("incomes").insert([
+        {
+          amount: Number(amount),
+          note,
+          income_date: incomeDate,
+        },
+      ]);
     }
 
     resetForm();
-
     fetchIncome();
   }
 
-  async function deleteIncome(
-    id:number
-  ) {
-
-    await supabase
-      .from("incomes")
-      .delete()
-      .eq("id", id);
-
+  async function deleteIncome(id: number) {
+    await supabase.from("incomes").delete().eq("id", id);
     fetchIncome();
   }
 
-  function startEdit(
-    income:any
-  ) {
-
+  function startEdit(income: any) {
     setEditingId(income.id);
-
-    setAmount(
-      income.amount.toString()
-    );
-
+    setAmount(income.amount.toString());
     setNote(income.note || "");
-
-    setIncomeDate(
-      income.income_date
-    );
+    setIncomeDate(income.income_date);
 
     window.scrollTo({
       top: 0,
@@ -142,320 +95,134 @@ export default function IncomePage() {
   }
 
   function resetForm() {
-
     setEditingId(null);
-
     setAmount("");
-
     setNote("");
-
-    setIncomeDate(
-      new Date()
-        .toISOString()
-        .split("T")[0]
-    );
+    setIncomeDate(new Date().toISOString().split("T")[0]);
   }
 
-  const totalIncome =
-    useMemo(() => {
-
-      return incomes.reduce(
-        (sum, item) =>
-          sum + Number(item.amount),
-        0
-      );
-
-    }, [incomes]);
+  const totalIncome = useMemo(() => {
+    return incomes.reduce((sum, item) => sum + Number(item.amount), 0);
+  }, [incomes]);
 
   return (
-
-    <main className="
-      min-h-screen
-      bg-black
-      text-white
-      p-4
-    ">
-
-      <div className="
-        max-w-md
-        mx-auto
-      ">
-
-        <h1 className="
-          text-5xl
-          font-bold
-          mb-2
-        ">
-          Income
-        </h1>
-
-        <p className="
-          text-zinc-400
-          mb-6
-        ">
-          Monthly income tracking
-        </p>
-
-        <select
-          value={selectedMonth}
-          onChange={(e)=>
-            setSelectedMonth(
-              e.target.value
-            )
-          }
-          className="
-            w-full
-            bg-zinc-900
-            border
-            border-zinc-800
-            rounded-2xl
-            p-4
-            mb-5
-          "
-        >
-
-          <option value={currentMonth}>
-            Current Month
-          </option>
-
-          <option value="2026-04">
-            2026-04
-          </option>
-
-          <option value="2026-03">
-            2026-03
-          </option>
-
-        </select>
-
-        <div className="
-          bg-zinc-900
-          rounded-3xl
-          p-6
-          mb-5
-        ">
-
-          <div className="
-            flex
-            items-center
-            gap-2
-            mb-2
-          ">
-
-            <Wallet size={18}/>
-
-            <p className="
-              text-zinc-400
-            ">
-              Total Income
-            </p>
-
-          </div>
-
-          <h2 className="
-            text-5xl
-            font-bold
-          ">
-            RM {totalIncome.toFixed(2)}
-          </h2>
-
+    <main className="min-h-screen bg-black p-4 text-white">
+      <div className="mx-auto grid max-w-md gap-5">
+        <div>
+          <h1 className="mb-2 text-5xl font-bold">Income</h1>
+          <p className="text-zinc-400">Monthly income tracking</p>
         </div>
 
-        <div className="
-          bg-zinc-900
-          rounded-3xl
-          p-5
-          mb-5
-          space-y-3
-        ">
+        <Select
+          value={selectedMonth}
+          onChange={(event) => setSelectedMonth(event.target.value)}
+        >
+          <option value={currentMonth}>Current Month</option>
+          <option value="2026-04">2026-04</option>
+          <option value="2026-03">2026-03</option>
+        </Select>
 
-          <input
+        <Card variant="success" padding="lg">
+          <div className="mb-2 flex items-center gap-2">
+            <Wallet size={18} />
+            <p className="text-zinc-400">Total Income</p>
+          </div>
+
+          <h2 className="text-5xl font-bold">
+            RM {totalIncome.toFixed(2)}
+          </h2>
+        </Card>
+
+        <Card variant="default" padding="md" className="space-y-3">
+          <Input
             type="number"
             placeholder="Income Amount"
             value={amount}
-            onChange={(e)=>
-              setAmount(
-                e.target.value
-              )
-            }
-            className="
-              w-full
-              bg-black
-              rounded-2xl
-              p-4
-            "
+            onChange={(event) => setAmount(event.target.value)}
           />
 
-          <input
+          <Input
             type="text"
             placeholder="Income Note"
             value={note}
-            onChange={(e)=>
-              setNote(
-                e.target.value
-              )
-            }
-            className="
-              w-full
-              bg-black
-              rounded-2xl
-              p-4
-            "
+            onChange={(event) => setNote(event.target.value)}
           />
 
-          <input
+          <Input
             type="date"
             value={incomeDate}
-            onChange={(e)=>
-              setIncomeDate(
-                e.target.value
-              )
-            }
-            className="
-              w-full
-              bg-black
-              rounded-2xl
-              p-4
-            "
+            onChange={(event) => setIncomeDate(event.target.value)}
           />
 
-          <div className="
-            flex
-            gap-3
-          ">
-
-            <button
-              onClick={saveIncome}
-              className="
-                flex-1
-                bg-white
-                text-black
-                rounded-2xl
-                py-4
-                font-bold
-              "
-            >
-
-              {editingId
-                ? "Update Income"
-                : "Add Income"}
-
-            </button>
+          <div className="flex gap-3">
+            <Button onClick={saveIncome} size="lg" className="flex-1">
+              {editingId ? "Update Income" : "Add Income"}
+            </Button>
 
             {editingId && (
-
-              <button
+              <Button
                 onClick={resetForm}
-                className="
-                  bg-zinc-700
-                  px-5
-                  rounded-2xl
-                "
+                variant="subtle"
+                size="iconLg"
+                title="Cancel edit"
+                aria-label="Cancel edit"
               >
-                <X size={18}/>
-              </button>
-
+                <X size={18} />
+              </Button>
             )}
-
           </div>
+        </Card>
 
-        </div>
-
-        <div className="
-          space-y-3
-        ">
-
+        <div className="space-y-3">
           {incomes.map((income) => (
-
-            <div
+            <Card
               key={income.id}
-              className="
-                bg-zinc-900
-                rounded-3xl
-                p-5
-                flex
-                justify-between
-              "
+              variant="default"
+              padding="md"
+              className="flex justify-between gap-4"
             >
-
               <div>
-
-                <p className="
-                  font-bold
-                  text-lg
-                ">
-                  {income.note ||
-                    "Income"}
+                <p className="text-lg font-bold">
+                  {income.note || "Income"}
                 </p>
 
-                <p className="
-                  text-zinc-400
-                  text-sm
-                  mt-1
-                ">
+                <p className="mt-1 text-sm text-zinc-400">
                   {income.income_date}
                 </p>
-
               </div>
 
-              <div className="
-                text-right
-              ">
-
-                <p className="
-                  text-3xl
-                  font-bold
-                  mb-3
-                ">
+              <div className="shrink-0 text-right">
+                <p className="mb-3 text-3xl font-bold">
                   RM {income.amount}
                 </p>
 
-                <div className="
-                  flex
-                  gap-2
-                  justify-end
-                ">
-
-                  <button
-                    onClick={() =>
-                      startEdit(income)
-                    }
-                    className="
-                      bg-zinc-800
-                      p-3
-                      rounded-2xl
-                    "
+                <div className="flex justify-end gap-2">
+                  <Button
+                    onClick={() => startEdit(income)}
+                    variant="subtle"
+                    size="iconLg"
+                    title="Edit income"
+                    aria-label="Edit income"
                   >
-                    <Pencil size={16}/>
-                  </button>
+                    <Pencil size={16} />
+                  </Button>
 
-                  <button
-                    onClick={() =>
-                      deleteIncome(
-                        income.id
-                      )
-                    }
-                    className="
-                      bg-red-500
-                      p-3
-                      rounded-2xl
-                    "
+                  <Button
+                    onClick={() => deleteIncome(income.id)}
+                    variant="danger"
+                    size="iconLg"
+                    title="Delete income"
+                    aria-label="Delete income"
                   >
-                    <Trash2 size={16}/>
-                  </button>
-
+                    <Trash2 size={16} />
+                  </Button>
                 </div>
-
               </div>
-
-            </div>
-
+            </Card>
           ))}
-
         </div>
-
       </div>
-
     </main>
   );
 }
+

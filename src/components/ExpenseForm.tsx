@@ -1,23 +1,19 @@
 "use client";
 
-import {
-  useState,
-} from "react";
-
+import { useState } from "react";
 import {
   BookmarkPlus,
   Pencil,
   Trash2,
   X,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input, Select } from "@/components/ui/Field";
 import { confirmDelete } from "../utils/confirm";
 
-import type {
-  Category,
-} from "../types/category";
-import type {
-  SavedNote,
-} from "../hooks/useSavedNotes";
+import type { Category } from "../types/category";
+import type { SavedNote } from "../hooks/useSavedNotes";
 
 interface ExpenseFormProps {
   amount: string;
@@ -31,62 +27,39 @@ interface ExpenseFormProps {
   categories: Category[];
   editingId: number | null;
   loading: boolean;
-  saveExpense: () =>
-    | void
-    | boolean
-    | Promise<void | boolean>;
+  saveExpense: () => void | boolean | Promise<void | boolean>;
   cancelEdit: () => void;
   savedNotes?: SavedNote[];
   addSavedNote?: (content: string) => void;
-  updateSavedNote?: (
-    id: string,
-    content: string
-  ) => void;
+  updateSavedNote?: (id: string, content: string) => void;
   deleteSavedNote?: (id: string) => void;
 }
 
 export default function ExpenseForm({
   amount,
   setAmount,
-
   note,
   setNote,
-
   expenseDate,
   setExpenseDate,
-
   selectedCategory,
   setSelectedCategory,
-
   categories,
-
   editingId,
   loading,
-
   saveExpense,
   cancelEdit,
-
   savedNotes = [],
   addSavedNote,
   updateSavedNote,
   deleteSavedNote,
 }: ExpenseFormProps) {
+  const [selectedSavedNote, setSelectedSavedNote] = useState("");
 
-  const [
-    selectedSavedNote,
-    setSelectedSavedNote,
-  ] = useState("");
-
-  function handleSavedNoteSelect(
-    id: string
-  ) {
+  function handleSavedNoteSelect(id: string) {
     setSelectedSavedNote(id);
 
-    const selected =
-      savedNotes.find(
-        (item) => item.id === id
-      );
-
+    const selected = savedNotes.find((item) => item.id === id);
     if (selected) {
       setNote(selected.content);
     }
@@ -101,10 +74,7 @@ export default function ExpenseForm({
       return;
     }
 
-    updateSavedNote?.(
-      selectedSavedNote,
-      note
-    );
+    updateSavedNote?.(selectedSavedNote, note);
   }
 
   function handleDeleteSavedNote() {
@@ -112,283 +82,129 @@ export default function ExpenseForm({
       return;
     }
 
-    if (
-      confirmDelete("确定要删除已保存的笔记吗？")
-    ) {
-      deleteSavedNote?.(
-        selectedSavedNote
-      );
+    if (confirmDelete("Delete this saved note?")) {
+      deleteSavedNote?.(selectedSavedNote);
       setSelectedSavedNote("");
     }
   }
 
   return (
-    <div
-      className="
-        bg-zinc-900
-        rounded-3xl
-        p-5
-        space-y-4
-        sm:p-6
-      "
-    >
-
-      <input
+    <Card variant="default" padding="lg" className="space-y-4">
+      <Input
         type="number"
         placeholder="Expense Amount"
         value={amount}
-        onChange={(e) =>
-          setAmount(e.target.value)
-        }
-        className="
-          w-full
-          min-w-0
-          bg-black
-          rounded-2xl
-          p-4
-          outline-none
-        "
+        onChange={(event) => setAmount(event.target.value)}
       />
 
       <div className="space-y-3">
-
-        <div
-          className="
-            flex
-            gap-2
-          "
-        >
-
-          <input
+        <div className="flex gap-2">
+          <Input
             type="text"
             placeholder="Note"
             value={note}
-            onChange={(e) =>
-              setNote(e.target.value)
-            }
-            className="
-              min-w-0
-              flex-1
-              bg-black
-              rounded-2xl
-              p-4
-              outline-none
-            "
+            onChange={(event) => setNote(event.target.value)}
+            className="flex-1"
           />
 
-          <button
+          <Button
             type="button"
             onClick={handleAddSavedNote}
+            size="iconLg"
             title="Save note"
             aria-label="Save note"
-            className="
-              bg-white
-              text-black
-              rounded-2xl
-              px-4
-              font-bold
-              disabled:opacity-40
-              hover:opacity-90
-              transition-opacity
-            "
             disabled={!note.trim()}
           >
-            <BookmarkPlus size={18}/>
-          </button>
-
+            <BookmarkPlus size={18} />
+          </Button>
         </div>
 
-        <select
+        <Select
           value={selectedSavedNote}
-          onChange={(e) =>
-            handleSavedNoteSelect(
-              e.target.value
-            )
-          }
-          className="
-            w-full
-            min-w-0
-            bg-black
-            rounded-2xl
-            p-4
-            outline-none
-          "
+          onChange={(event) => handleSavedNoteSelect(event.target.value)}
         >
           <option value="">
-            {savedNotes.length
-              ? "Choose saved note"
-              : "No saved notes yet"}
+            {savedNotes.length ? "Choose saved note" : "No saved notes yet"}
           </option>
 
-          {savedNotes.map(
-            (savedNote) => (
-              <option
-                key={savedNote.id}
-                value={savedNote.id}
-              >
-                {savedNote.content}
-              </option>
-            )
-          )}
-        </select>
+          {savedNotes.map((savedNote) => (
+            <option key={savedNote.id} value={savedNote.id}>
+              {savedNote.content}
+            </option>
+          ))}
+        </Select>
 
         {selectedSavedNote && (
-          <div
-            className="
-              grid
-              grid-cols-2
-              gap-2
-            "
-          >
-            <button
+          <div className="grid grid-cols-2 gap-2">
+            <Button
               type="button"
               onClick={handleUpdateSavedNote}
-              className="
-                flex
-                items-center
-                justify-center
-                gap-2
-                bg-white
-                text-black
-                rounded-2xl
-                p-3
-                text-sm
-                font-bold
-                hover:opacity-90
-                transition-opacity
-              "
+              size="sm"
             >
-              <Pencil size={15}/>
+              <Pencil size={15} />
               Update Note
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
               onClick={handleDeleteSavedNote}
-              className="
-                flex
-                items-center
-                justify-center
-                gap-2
-                bg-white
-                text-black
-                rounded-2xl
-                p-3
-                text-sm
-                font-bold
-                hover:opacity-90
-                transition-opacity
-              "
+              variant="danger"
+              size="sm"
             >
-              <Trash2 size={15}/>
+              <Trash2 size={15} />
               Delete Note
-            </button>
+            </Button>
           </div>
         )}
-
       </div>
 
-      <input
+      <Input
         type="date"
         value={expenseDate}
-        onChange={(e) =>
-          setExpenseDate(
-            e.target.value
-          )
-        }
-        className="
-          w-full
-          min-w-0
-          bg-black
-          rounded-2xl
-          p-4
-          outline-none
-        "
+        onChange={(event) => setExpenseDate(event.target.value)}
       />
 
-      <select
+      <Select
         value={selectedCategory}
-        onChange={(e) =>
-          setSelectedCategory(
-            e.target.value
-          )
-        }
-        className="
-          w-full
-          min-w-0
-          bg-black
-          rounded-2xl
-          p-4
-          outline-none
-        "
+        onChange={(event) => setSelectedCategory(event.target.value)}
       >
+        <option value="">Select Category</option>
 
-        <option value="">
-          Select Category
-        </option>
+        {categories.map((category) => (
+          <option key={category.id} value={category.id}>
+            {category.name}
+            {" - "}
+            {category.types?.name}
+          </option>
+        ))}
+      </Select>
 
-        {categories.map(
-          (category) => (
-            <option
-              key={category.id}
-              value={category.id}
-            >
-              {category.name}
-              {" · "}
-              {category.types?.name}
-            </option>
-          )
-        )}
-
-      </select>
-
-      <div
-        className="
-          flex
-          gap-3
-        "
-      >
-
-        <button
+      <div className="flex gap-3">
+        <Button
           onClick={saveExpense}
           disabled={loading}
-          className="
-            w-full
-            bg-white
-            text-black
-            rounded-2xl
-            p-4
-            font-bold
-            disabled:opacity-50
-          "
+          size="lg"
+          className="w-full"
         >
-
           {loading
             ? "Saving..."
             : editingId
-            ? "Update Expense"
-            : "Add Expense"}
-
-        </button>
+              ? "Update Expense"
+              : "Add Expense"}
+        </Button>
 
         {editingId && (
-          <button
+          <Button
             onClick={cancelEdit}
-            className="
-              bg-white
-              text-black
-              rounded-2xl
-              px-5
-              hover:opacity-90
-              transition-opacity
-            "
+            size="iconLg"
+            title="Cancel edit"
+            aria-label="Cancel edit"
           >
-            <X size={18}/>
-          </button>
+            <X size={18} />
+          </Button>
         )}
-
       </div>
-
-    </div>
+    </Card>
   );
 }
+

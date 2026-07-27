@@ -3,12 +3,12 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { confirmDelete } from "../utils/confirm";
-
-import type {
-  Expense,
-} from "../types/expense";
 import { getTypeColor } from "../utils/typeColors";
+
+import type { Expense } from "../types/expense";
 
 interface ExpenseCardProps {
   expense: Expense;
@@ -22,145 +22,59 @@ export default function ExpenseCard({
   deleteExpense,
 }: ExpenseCardProps) {
   return (
-    <div
-      className="
-        bg-zinc-900
-        border-2
-        border-zinc-700
-        rounded-2xl
-        p-4
-        h-full
-      "
-    >
-
-      <div
-        className="
-          flex
-          justify-between
-          items-start
-          gap-4
-        "
-      >
-
+    <Card variant="item" padding="sm" className="h-full">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p
-            className="
-              font-bold
-              truncate
-            "
-          >
+          <p className="truncate font-bold">
             {expense.note || "Expense"}
           </p>
 
-          <p
-            className="
-              text-zinc-400
-              text-sm
-              mt-1
-              truncate
-            "
-          >
-            {expense.categories?.name ||
-              "Uncategorized"}
+          <p className="mt-1 truncate text-sm text-zinc-400">
+            {expense.categories?.name || "Uncategorized"}
             {" - "}
             <span className={getTypeColor(expense.categories?.types?.name)}>
-              {expense.categories?.types?.name ||
-                "Type"}
+              {expense.categories?.types?.name || "Type"}
             </span>
           </p>
 
-          <p
-            className="
-              flex
-              items-center
-              gap-1
-              text-xs
-              text-zinc-500
-              mt-2
-            "
-          >
-            <CalendarDays size={12}/>
+          <p className="mt-2 flex items-center gap-1 text-xs text-zinc-500">
+            <CalendarDays size={12} />
             {expense.expense_date}
           </p>
         </div>
 
-        <div
-          className="
-            text-right
-            shrink-0
-            max-w-[45%]
-          "
-        >
-
-          <p
-            className="
-              text-xl
-              font-bold
-              break-words
-            "
-          >
+        <div className="max-w-[45%] shrink-0 text-right">
+          <p className="break-words text-xl font-bold">
             RM {Number(expense.amount).toFixed(2)}
           </p>
 
-          <div
-            className="
-              flex
-              gap-2
-              mt-3
-              justify-end
-            "
-          >
-
-            <button
-              onClick={() =>
-                startEdit(expense)
-              }
+          <div className="mt-3 flex justify-end gap-2">
+            <Button
+              onClick={() => startEdit(expense)}
               title="Edit expense"
               aria-label="Edit expense"
-              className="
-                bg-white
-                text-black
-                p-2
-                rounded-xl
-                hover:opacity-90
-                transition-opacity
-              "
+              size="icon"
             >
-              <Pencil size={16}/>
-            </button>
+              <Pencil size={16} />
+            </Button>
 
-            <button
+            <Button
               onClick={() => {
-                if (
-                  confirmDelete(
-                    "确定要删除这笔支出吗？"
-                  )
-                ) {
-                  deleteExpense(
-                    expense.id
-                  );
+                if (confirmDelete("Delete this expense?")) {
+                  deleteExpense(expense.id);
                 }
               }}
               title="Delete expense"
               aria-label="Delete expense"
-              className="
-                bg-white
-                text-black
-                p-2
-                rounded-xl
-                hover:opacity-90
-                transition-opacity
-              "
+              variant="danger"
+              size="icon"
             >
-              <Trash2 size={16}/>
-            </button>
-
+              <Trash2 size={16} />
+            </Button>
           </div>
-
         </div>
-
       </div>
-
-    </div>
+    </Card>
   );
 }
+

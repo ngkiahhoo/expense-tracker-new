@@ -4,11 +4,12 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-
-import type {
-  Category,
-} from "../types/category";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input, Select } from "@/components/ui/Field";
 import { getTypeColor } from "../utils/typeColors";
+
+import type { Category } from "../types/category";
 
 interface CategoryPanelProps {
   showCategories: boolean;
@@ -24,242 +25,89 @@ interface CategoryPanelProps {
 }
 
 export default function CategoryPanel({
-
   showCategories,
-
   newCategory,
   setNewCategory,
-
   selectedType,
   setSelectedType,
-
   editingCategoryId,
-
   addCategory,
   editCategory,
   deleteCategory,
-
   categories,
-
 }: CategoryPanelProps) {
+  if (!showCategories) {
+    return null;
+  }
 
   return (
+    <Card variant="default" padding="lg" className="mb-5 space-y-3">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px]">
+        <Input
+          value={newCategory}
+          onChange={(event) => setNewCategory(event.target.value)}
+          placeholder="Category Name"
+        />
 
-    <>
-
-
-      {/* CATEGORY PANEL */}
-
-      {showCategories && (
-
-        <div
-          className="
-            bg-zinc-900
-            rounded-3xl
-            p-5
-            mb-5
-            space-y-3
-            sm:p-6
-          "
+        <Select
+          value={selectedType}
+          onChange={(event) => setSelectedType(event.target.value)}
         >
+          <option value="needs">Needs</option>
+          <option value="wants">Wants</option>
+        </Select>
+      </div>
 
-          <div
-            className="
-              grid
-              gap-3
-              sm:grid-cols-[minmax(0,1fr)_160px]
-            "
+      <Button onClick={addCategory} size="lg" className="w-full">
+        {editingCategoryId ? "Update Category" : "Add Category"}
+      </Button>
+
+      <div className="grid gap-3 pt-3 md:grid-cols-2">
+        {categories.map((cat) => (
+          <Card
+            key={cat.id}
+            variant="item"
+            padding="sm"
+            className="grid gap-3"
           >
+            <div className="min-w-0">
+              <p className="truncate font-bold">
+                {cat.name || "Unnamed Category"}
+              </p>
 
-            {/* INPUT */}
+              <p
+                className={`truncate text-sm ${getTypeColor(
+                  cat.types?.name
+                )}`}
+              >
+                {cat.types?.name || "No type"}
+              </p>
+            </div>
 
-            <input
-              value={newCategory}
-              onChange={(e) =>
-                setNewCategory(
-                  e.target.value
-                )
-              }
-              placeholder="Category Name"
-              className="
-                w-full
-                min-w-0
-                bg-black
-                rounded-2xl
-                p-4
-              "
-            />
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={() => editCategory(cat)}
+                size="sm"
+                className="w-full"
+              >
+                <Pencil size={15} />
+                Edit
+              </Button>
 
-            {/* TYPE */}
-
-            <select
-              value={selectedType}
-              onChange={(e) =>
-                setSelectedType(
-                  e.target.value
-                )
-              }
-              className="
-                w-full
-                min-w-0
-                bg-black
-                rounded-2xl
-                p-4
-              "
-            >
-
-              <option value="needs">
-                Needs
-              </option>
-
-              <option value="wants">
-                Wants
-              </option>
-
-            </select>
-
-          </div>
-
-          {/* BUTTON */}
-
-          <button
-            onClick={addCategory}
-            className="
-              w-full
-              bg-white
-              text-black
-              rounded-2xl
-              p-4
-              font-bold
-            "
-          >
-
-            {editingCategoryId
-              ? "Update Category"
-              : "Add Category"}
-
-          </button>
-
-          {/* CATEGORY LIST */}
-
-          <div
-            className="
-              grid
-              gap-3
-              pt-3
-              md:grid-cols-2
-            "
-          >
-
-            {categories.map(
-              (cat) => (
-
-                <div
-                  key={cat.id}
-                  className="
-                    bg-black
-                    border-2
-                    border-zinc-700
-                    rounded-2xl
-                    p-4
-                    grid
-                    gap-3
-                  "
-                >
-
-                  <div className="min-w-0">
-
-                    <p
-                      className="
-                        font-bold
-                        truncate
-                      "
-                    >
-                      {cat.name || "Unnamed Category"}
-                    </p>
-
-                    <p
-                      className={`
-                        text-sm
-                        truncate
-                        ${getTypeColor(cat.types?.name)}
-                      `}
-                    >
-                      {cat.types?.name || "No type"}
-                    </p>
-
-                  </div>
-
-                  <div
-                    className="
-                      grid
-                      grid-cols-2
-                      gap-2
-                    "
-                  >
-
-                    <button
-                      onClick={() =>
-                        editCategory(cat)
-                      }
-                      className="
-                        flex
-                        items-center
-                        justify-center
-                        gap-2
-                        bg-white
-                        text-black
-                        px-4
-                        py-3
-                        rounded-xl
-                        font-bold
-                        hover:opacity-90
-                        transition-opacity
-                      "
-                    >
-                      <Pencil size={15}/>
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        deleteCategory(
-                          cat.id
-                        )
-                      }
-                      className="
-                        flex
-                        items-center
-                        justify-center
-                        gap-2
-                        bg-white
-                        text-black
-                        px-4
-                        py-3
-                        rounded-xl
-                        font-bold
-                        hover:opacity-90
-                        transition-opacity
-                      "
-                    >
-                      <Trash2 size={15}/>
-                      Delete
-                    </button>
-
-                  </div>
-
-                </div>
-
-              )
-            )}
-
-          </div>
-
-        </div>
-
-      )}
-
-    </>
-
+              <Button
+                onClick={() => deleteCategory(cat.id)}
+                variant="danger"
+                size="sm"
+                className="w-full"
+              >
+                <Trash2 size={15} />
+                Delete
+              </Button>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </Card>
   );
 }
+

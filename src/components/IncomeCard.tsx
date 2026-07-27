@@ -4,11 +4,11 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { confirmDelete } from "../utils/confirm";
 
-import type {
-  Income,
-} from "../types/income";
+import type { Income } from "../types/income";
 
 interface IncomeCardProps {
   income: Income;
@@ -21,86 +21,47 @@ export default function IncomeCard({
   startEditIncome,
   deleteIncome,
 }: IncomeCardProps) {
-
   return (
-
-    <div className="
-      bg-zinc-900
-      border-2
-      border-zinc-700
-      rounded-3xl
-      p-5
-      flex
-      gap-3
-      justify-between
-      items-center
-    ">
-
+    <Card
+      variant="item"
+      padding="md"
+      className="flex items-center justify-between gap-3"
+    >
       <div className="min-w-0">
-
-        <p className="
-          text-3xl
-          font-bold
-          break-words
-        ">
+        <p className="break-words text-3xl font-bold">
           RM {income.amount}
         </p>
 
-        <p className="
-          text-zinc-400
-          text-sm
-          mt-1
-          truncate
-        ">
+        <p className="mt-1 truncate text-sm text-zinc-400">
           {income.note || "Income"}
         </p>
-
       </div>
 
-      <div className="
-        flex
-        gap-2
-        shrink-0
-      ">
-
-        <button
-          onClick={() =>
-            startEditIncome(income)
-          }
-          className="
-            bg-white
-            text-black
-            p-3
-            rounded-xl
-            hover:opacity-90
-            transition-opacity
-          "
+      <div className="flex shrink-0 gap-2">
+        <Button
+          onClick={() => startEditIncome(income)}
+          title="Edit income"
+          aria-label="Edit income"
+          size="iconLg"
         >
-          <Pencil size={16}/>
-        </button>
+          <Pencil size={16} />
+        </Button>
 
-        <button
+        <Button
           onClick={() => {
-            if (
-              confirmDelete("确定要删除这笔收入吗？")
-            ) {
+            if (confirmDelete("Delete this income?")) {
               deleteIncome(income.id);
             }
           }}
-          className="
-            bg-white
-            text-black
-            p-3
-            rounded-xl
-            hover:opacity-90
-            transition-opacity
-          "
+          title="Delete income"
+          aria-label="Delete income"
+          variant="danger"
+          size="iconLg"
         >
-          <Trash2 size={16}/>
-        </button>
-
+          <Trash2 size={16} />
+        </Button>
       </div>
-
-    </div>
+    </Card>
   );
 }
+

@@ -4,6 +4,7 @@ import {
   Plus,
   X,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 
 import ExpenseForm
 from "./ExpenseForm";
@@ -91,27 +92,14 @@ export default function ExpensePanel({
 
       {showToggle && (
 
-        <button
+        <Button
           onClick={() =>
             setShowExpenseForm(
               !showExpenseForm
             )
           }
-          className="
-            w-full
-            bg-white
-            text-black
-            rounded-2xl
-            p-4
-            mb-5
-            font-bold
-            flex
-            justify-center
-            items-center
-            gap-2
-            hover:opacity-90
-            transition-opacity
-          "
+          size="lg"
+          className="mb-5 w-full"
         >
 
           {showExpenseForm ? (
@@ -126,7 +114,7 @@ export default function ExpensePanel({
             </>
           )}
 
-        </button>
+        </Button>
 
       )}
 

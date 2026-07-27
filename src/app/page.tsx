@@ -2,9 +2,9 @@
 
 import {
   useEffect,
-  useRef,
   useState,
   type FocusEvent,
+  type ReactNode,
 } from "react";
 
 import PullToRefresh
@@ -18,7 +18,6 @@ import {
   Pencil,
   FolderTree,
   Plus,
-  TrendingDown,
   Layers,
   type LucideIcon,
   Wallet,
@@ -27,6 +26,16 @@ import {
 
 import Link from "next/link";
 import { useToast } from "@/contexts/ToastContext";
+import { Button } from "@/components/ui/Button";
+import { Card, type CardVariant } from "@/components/ui/Card";
+import { Select, Textarea } from "@/components/ui/Field";
+import {
+  buttonStyles,
+  cn,
+  overlayStyles,
+  toneStyles,
+  type UiTone,
+} from "@/components/ui/styles";
 
 import ExpensePanel
 from "../components/ExpensePanel";
@@ -580,15 +589,10 @@ export default function Home() {
             "
           >
 
-            <section
-              className="
-                bg-zinc-900/90
-                border
-                border-zinc-800
-                rounded-3xl
-                p-4
-                sm:p-5
-              "
+            <Card
+              variant="panel"
+              padding="none"
+              className="p-4 sm:p-5"
             >
 
               <div
@@ -610,20 +614,11 @@ export default function Home() {
 
                 <Link
                   href="/assets"
-                  className="
-                    inline-flex
-                    items-center
-                    gap-2
-                    bg-white
-                    text-black
-                    rounded-2xl
-                    px-4
-                    py-3
-                    text-sm
-                    font-bold
-                    hover:opacity-90
-                    transition-opacity
-                  "
+                  className={cn(
+                    buttonStyles.base,
+                    buttonStyles.variants.primary,
+                    buttonStyles.sizes.md
+                  )}
                 >
                   <Layers size={16}/>
                   Open Asset Dashboard
@@ -651,24 +646,14 @@ export default function Home() {
                   </span>
                 </div>
 
-                <select
+                <Select
                   value={selectedMonth}
                   onChange={(e) =>
                     setSelectedMonth(
                       e.target.value
                     )
                   }
-                  className="
-                    w-full
-                    bg-black
-                    border
-                    border-zinc-800
-                    rounded-2xl
-                    p-4
-                    outline-none
-                    text-base
-                    sm:text-lg
-                  "
+                  className="text-base sm:text-lg"
                 >
 
                 {months.map((month) => (
@@ -685,196 +670,54 @@ export default function Home() {
 
                 ))}
 
-              </select>
+              </Select>
 
             </div>
 
-            </section>
+            </Card>
 
             {error && (
 
               <div
-                className="
-                  bg-red-500
-                  text-white
-                  p-4
-                  rounded-2xl
-                "
+                className={cn(
+                  "rounded-2xl border p-4 text-sm text-red-200",
+                  toneStyles.danger.subtleSurface
+                )}
               >
                 {error}
               </div>
 
             )}
 
-            <section
-              className="
-                bg-zinc-900/90
-                border
-                border-emerald-500/30
-                rounded-3xl
-                p-3
-                sm:p-4
-                min-h-[104px]
-                flex
-                flex-col
-                justify-between
-              "
-            >
-
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div
-                    className="
-                      flex
-                      items-center
-                      gap-2
-                      text-zinc-400
-                    "
-                  >
-                    <Wallet size={18}/>
-                    <span>
-                      Monthly Income
-                    </span>
-                  </div>
-
-                  <h2
-                    className="
-                      text-3xl
-                      font-bold
-                      mt-2
-                      text-emerald-400
-                      leading-tight
-                    "
-                  >
-                    <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
-                      <span className="text-base text-zinc-400">RM</span>
-                      <span>{totalIncome.toFixed(2)}</span>
-                    </span>
-                  </h2>
-                </div>
-
-                <button
-                  onClick={openIncomeCrud}
-                  className="
-                    inline-flex
-                    items-center
-                    gap-2
-                    bg-white
-                    text-black
-                    rounded-2xl
-                    px-3
-                    py-2
-                    text-sm
-                    font-bold
-                    shrink-0
-                  "
-                >
+            <MetricCard
+              variant="success"
+              tone="success"
+              icon={Wallet}
+              label="Monthly Income"
+              amount={totalIncome}
+              action={
+                <Button onClick={openIncomeCrud} size="sm">
                   <Pencil size={16}/>
                   Manage Income
-                </button>
-              </div>
+                </Button>
+              }
+            />
 
-            </section>
+            <MetricCard
+              variant="danger"
+              tone="danger"
+              label="Total Spending"
+              amount={totalSpending}
+              helper={`${spendingPercent}% of income`}
+            />
 
-            <section
-              className="
-                bg-zinc-900/90
-                border
-                border-red-500/30
-                rounded-3xl
-                p-3
-                sm:p-4
-                min-h-[104px]
-                flex
-                flex-col
-                justify-between
-              "
-            >
-
-              <div
-                className="
-                  text-zinc-400
-                  mb-2
-                "
-              >
-                Total Spending
-              </div>
-
-              <h2
-                className="
-                  text-3xl
-                  font-bold
-                  text-red-400
-                  leading-tight
-                "
-              >
-                <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
-                  <span className="text-base text-zinc-400">RM</span>
-                  <span>{totalSpending.toFixed(2)}</span>
-                </span>
-              </h2>
-
-              <p
-                className="
-                  text-sm
-                  text-zinc-400
-                  mt-1
-                "
-              >
-                {spendingPercent}% of income
-              </p>
-
-            </section>
-
-            <section
-              className="
-                bg-zinc-900/90
-                border
-                border-blue-500/30
-                rounded-3xl
-                p-3
-                sm:p-4
-                min-h-[104px]
-                flex
-                flex-col
-                justify-between
-              "
-            >
-
-              <div
-                className="
-                  text-zinc-400
-                  mb-2
-                "
-              >
-                Balance
-              </div>
-
-              <h2
-                className="
-                  text-3xl
-                  font-bold
-                  text-sky-400
-                  leading-tight
-                "
-              >
-                <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
-                  <span className="text-base text-zinc-400">RM</span>
-                  <span>{balance.toFixed(2)}</span>
-                </span>
-              </h2>
-
-              <p
-                className="
-                  text-sm
-                  text-zinc-400
-                  mt-1
-                "
-              >
-                {balancePercent}% of income
-              </p>
-
-            </section>
+            <MetricCard
+              variant="balance"
+              tone="balance"
+              label="Balance"
+              amount={balance}
+              helper={`${balancePercent}% of income`}
+            />
 
             <section
               className="
@@ -920,30 +763,18 @@ export default function Home() {
                     </span>
                   )}
 
-                  <button
+                  <Button
                     onClick={handleCopyAIExport}
                     disabled={exportLoading}
-                    className={`
-                      rounded-2xl
-                      px-3
-                      py-2
-                      text-sm
-                      font-bold
-                      transition
-                      disabled:opacity-60
-                      ${
-                        exportCopied
-                          ? "bg-emerald-500 text-black"
-                          : "bg-white text-black"
-                      }
-                    `}
+                    variant={exportCopied ? "secondary" : "primary"}
+                    size="sm"
                   >
                     {exportLoading
                       ? "Copying..."
                       : exportCopied
                       ? "Copied!"
                       : "Export for AI"}
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -993,39 +824,14 @@ export default function Home() {
             onFocusCapture={handlePopupFocus}
           >
             <div
-              className="
-                w-full
-                max-w-md
-                mx-auto
-                max-h-[68vh]
-                overflow-y-auto
-                bg-zinc-950
-                border
-                border-zinc-800
-                rounded-3xl
-                shadow-2xl
-                md:max-w-2xl
-                md:max-h-[72vh]
-                lg:max-w-none
-                lg:max-h-full
-              "
+              className={cn(
+                "mx-auto max-h-[68vh] w-full max-w-md overflow-y-auto md:max-w-2xl md:max-h-[72vh] lg:max-w-none lg:max-h-full",
+                overlayStyles.sheetPanel,
+                "rounded-3xl"
+              )}
             >
 
-              <div
-                className="
-                  sticky
-                  top-0
-                  z-10
-                  flex
-                  items-center
-                  justify-between
-                  gap-3
-                  bg-zinc-950
-                  border-b
-                  border-zinc-800
-                  p-4
-                "
-              >
+              <div className={overlayStyles.stickyHeader}>
                 <div>
                   <p
                     className="
@@ -1048,24 +854,16 @@ export default function Home() {
                   </h2>
                 </div>
 
-                <button
+                <Button
                   onClick={() =>
                     setActiveTool(null)
                   }
                   title="Close panel"
                   aria-label="Close panel"
-                  className="
-                    bg-white
-                    text-black
-                    rounded-2xl
-                    p-3
-                    shrink-0
-                    hover:opacity-90
-                    transition-opacity
-                  "
+                  size="iconLg"
                 >
                   <X size={18}/>
-                </button>
+                </Button>
               </div>
 
               <div className="p-4">
@@ -1260,67 +1058,37 @@ export default function Home() {
 
       {showExportModal && exportPayload && (
         <div
-          className="
-            fixed
-            inset-0
-            bg-black/80
-            flex
-            items-center
-            justify-center
-            z-50
-            p-4
-          "
+          className={overlayStyles.backdrop}
           onClick={() => setShowExportModal(false)}
         >
-          <div
-            className="
-              bg-zinc-900
-              border
-              border-zinc-800
-              rounded-3xl
-              p-6
-              w-full
-              max-w-2xl
-              max-h-[80vh]
-              overflow-y-auto
-              flex
-              flex-col
-              gap-4
-            "
+          <Card
+            variant="default"
+            padding="lg"
+            className="flex max-h-[80vh] w-full max-w-2xl flex-col gap-4 overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center gap-4">
+            <div className="flex items-center justify-between gap-4">
               <h2 className="text-xl font-bold">Export Data</h2>
-              <button
+              <Button
                 onClick={() => setShowExportModal(false)}
-                className="text-zinc-400 hover:text-white text-2xl leading-none"
+                variant="ghost"
+                size="icon"
+                title="Close export modal"
+                aria-label="Close export modal"
               >
-                ×
-              </button>
+                <X size={16}/>
+              </Button>
             </div>
 
-            <textarea
+            <Textarea
               value={exportPayload}
               readOnly
-              className="
-                bg-zinc-800
-                border
-                border-zinc-700
-                rounded-2xl
-                p-4
-                text-sm
-                font-mono
-                text-zinc-300
-                w-full
-                flex-1
-                resize-none
-                focus:outline-none
-                focus:border-zinc-600
-              "
+              fieldSize="md"
+              className="min-h-[320px] flex-1 bg-zinc-800 font-mono text-zinc-300"
             />
 
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={() => {
                   navigator.clipboard.writeText(exportPayload).then(() => {
                     setExportModalCopied(true);
@@ -1329,44 +1097,81 @@ export default function Home() {
                     alert('Failed to copy. Please select text and copy manually.');
                   });
                 }}
-                className={`
-                  flex-1
-                  rounded-2xl
-                  px-4
-                  py-3
-                  font-bold
-                  transition
-                  ${
-                    exportModalCopied
-                      ? "bg-emerald-500 text-black"
-                      : "bg-emerald-600 text-white hover:bg-emerald-700"
-                  }
-                `}
+                variant={exportModalCopied ? "secondary" : "primary"}
+                size="lg"
+                className="flex-1"
               >
                 {exportModalCopied ? 'Copied!' : 'Copy Text'}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setShowExportModal(false)}
-                className="
-                  flex-1
-                  bg-zinc-800
-                  text-white
-                  rounded-2xl
-                  px-4
-                  py-3
-                  font-bold
-                  hover:bg-zinc-700
-                  transition
-                "
+                variant="subtle"
+                size="lg"
+                className="flex-1"
               >
                 Close
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
     </PullToRefresh>
+  );
+}
+
+function MetricCard({
+  variant,
+  tone,
+  icon: Icon,
+  label,
+  amount,
+  helper,
+  action,
+}: {
+  variant: CardVariant;
+  tone: UiTone;
+  icon?: LucideIcon;
+  label: string;
+  amount: number;
+  helper?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <Card
+      variant={variant}
+      padding="sm"
+      className="flex min-h-[104px] flex-col justify-between"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-zinc-400">
+            {Icon && <Icon size={18}/>}
+            <span>{label}</span>
+          </div>
+
+          <h2
+            className={cn(
+              "mt-2 text-3xl font-bold leading-tight",
+              toneStyles[tone].text
+            )}
+          >
+            <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+              <span className="text-base text-zinc-400">RM</span>
+              <span>{amount.toFixed(2)}</span>
+            </span>
+          </h2>
+        </div>
+
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
+
+      {helper && (
+        <p className="mt-1 text-sm text-zinc-400">
+          {helper}
+        </p>
+      )}
+    </Card>
   );
 }
 

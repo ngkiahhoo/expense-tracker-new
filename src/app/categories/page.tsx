@@ -1,23 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input, Select } from "@/components/ui/Field";
 import { supabase } from "../../lib/supabase";
 
 export default function CategoriesPage() {
-  const [categories, setCategories] =
-    useState<any[]>([]);
-
-  const [name, setName] =
-    useState("");
-
-  const [typeId, setTypeId] =
-    useState("");
-
-  const [types, setTypes] =
-    useState<any[]>([]);
-
-  const [editingId, setEditingId] =
-    useState<number | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [name, setName] = useState("");
+  const [typeId, setTypeId] = useState("");
+  const [types, setTypes] = useState<any[]>([]);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchCategories();
@@ -25,9 +20,7 @@ export default function CategoriesPage() {
   }, []);
 
   async function fetchTypes() {
-    const { data } = await supabase
-      .from("types")
-      .select("*");
+    const { data } = await supabase.from("types").select("*");
 
     if (data) {
       setTypes(data);
@@ -37,12 +30,14 @@ export default function CategoriesPage() {
   async function fetchCategories() {
     const { data } = await supabase
       .from("categories")
-      .select(`
+      .select(
+        `
         *,
         types (
           name
         )
-      `)
+      `
+      )
       .order("name");
 
     if (data) {
@@ -62,149 +57,111 @@ export default function CategoriesPage() {
         })
         .eq("id", editingId);
     } else {
-      await supabase
-        .from("categories")
-        .insert({
-          name,
-          type_id: Number(typeId),
-        });
+      await supabase.from("categories").insert({
+        name,
+        type_id: Number(typeId),
+      });
     }
 
     resetForm();
     fetchCategories();
   }
 
-  async function deleteCategory(
-    id: number
-  ) {
-    await supabase
-      .from("categories")
-      .delete()
-      .eq("id", id);
-
+  async function deleteCategory(id: number) {
+    await supabase.from("categories").delete().eq("id", id);
     fetchCategories();
   }
 
   function startEdit(cat: any) {
     setEditingId(cat.id);
-
     setName(cat.name);
-
-    setTypeId(
-      cat.type_id.toString()
-    );
+    setTypeId(cat.type_id.toString());
   }
 
   function resetForm() {
     setEditingId(null);
-
     setName("");
-
     setTypeId("");
   }
 
   return (
-    <main className="min-h-screen bg-black text-white p-4">
-      <div className="max-w-md mx-auto">
+    <main className="min-h-screen bg-black p-4 text-white">
+      <div className="mx-auto grid max-w-md gap-5">
+        <h1 className="text-4xl font-bold">Categories</h1>
 
-        <h1 className="text-4xl font-bold mb-6">
-          Categories
-        </h1>
-
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-4 mb-6 space-y-3">
-
-          <input
+        <Card variant="default" padding="sm" className="space-y-3">
+          <Input
             value={name}
-            onChange={(e) =>
-              setName(e.target.value)
-            }
+            onChange={(event) => setName(event.target.value)}
             placeholder="Category Name"
-            className="w-full bg-black border border-zinc-800 rounded-2xl p-4"
           />
 
-          <select
+          <Select
             value={typeId}
-            onChange={(e) =>
-              setTypeId(e.target.value)
-            }
-            className="w-full bg-black border border-zinc-800 rounded-2xl p-4"
+            onChange={(event) => setTypeId(event.target.value)}
           >
-            <option value="">
-              Select Type
-            </option>
+            <option value="">Select Type</option>
 
             {types.map((type) => (
-              <option
-                key={type.id}
-                value={type.id}
-              >
+              <option key={type.id} value={type.id}>
                 {type.name}
               </option>
             ))}
-          </select>
+          </Select>
 
           <div className="flex gap-3">
-            <button
-              onClick={saveCategory}
-              className="flex-1 bg-white text-black rounded-2xl p-4 font-bold"
-            >
-              {editingId
-                ? "Update"
-                : "Add"}
-            </button>
+            <Button onClick={saveCategory} size="lg" className="flex-1">
+              {editingId ? "Update" : "Add"}
+            </Button>
 
             {editingId && (
-              <button
-                onClick={resetForm}
-                className="bg-zinc-700 px-4 rounded-2xl"
-              >
+              <Button onClick={resetForm} variant="subtle" size="lg">
                 Cancel
-              </button>
+              </Button>
             )}
           </div>
-
-        </div>
+        </Card>
 
         <div className="space-y-3">
           {categories.map((cat) => (
-            <div
+            <Card
               key={cat.id}
-              className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex justify-between"
+              variant="default"
+              padding="sm"
+              className="flex justify-between gap-4"
             >
-              <div>
-                <p className="font-medium">
-                  {cat.name}
-                </p>
+              <div className="min-w-0">
+                <p className="font-medium">{cat.name}</p>
 
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-zinc-400">
                   {cat.types?.name}
                 </p>
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() =>
-                    startEdit(cat)
-                  }
-                  className="bg-blue-500 px-3 rounded-xl"
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  onClick={() => startEdit(cat)}
+                  variant="subtle"
+                  size="sm"
                 >
+                  <Pencil size={14} />
                   Edit
-                </button>
+                </Button>
 
-                <button
-                  onClick={() =>
-                    deleteCategory(cat.id)
-                  }
-                  className="bg-red-500 px-3 rounded-xl"
+                <Button
+                  onClick={() => deleteCategory(cat.id)}
+                  variant="danger"
+                  size="sm"
                 >
+                  <Trash2 size={14} />
                   Delete
-                </button>
+                </Button>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
-
       </div>
     </main>
   );
 }
+

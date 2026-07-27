@@ -7,6 +7,8 @@ import {
   Tooltip,
   Cell,
 } from "recharts";
+import { Card } from "@/components/ui/Card";
+import { emptyStateStyles } from "@/components/ui/styles";
 
 import type { CategoryBreakdownItem } from "../../../types/analytics";
 
@@ -26,7 +28,7 @@ function renderTooltip({ active, payload }: any) {
   const item = payload[0].payload as CategoryBreakdownItem;
 
   return (
-    <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-3 text-sm text-white shadow-xl">
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-3 text-sm text-white shadow-xl">
       <p className="font-bold mb-1">{item.categoryName}</p>
       <p className="text-zinc-400">RM {item.totalAmount.toFixed(2)}</p>
       <p className="text-zinc-400">{item.percentage}%</p>
@@ -41,7 +43,7 @@ export default function ExpenseCategoryBreakdown({
 }: ExpenseCategoryBreakdownProps) {
   if (loading) {
     return (
-      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-6">
+      <Card variant="default" padding="lg">
         <div className="animate-pulse space-y-4">
           <div className="h-6 w-40 rounded-full bg-zinc-800" />
           <div className="grid gap-4 md:grid-cols-2">
@@ -53,12 +55,12 @@ export default function ExpenseCategoryBreakdown({
             </div>
           </div>
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 sm:p-6">
+    <Card variant="default" padding="lg">
       <div className="flex items-center justify-between gap-3 mb-5">
         <div>
           <p className="text-sm text-zinc-400 uppercase tracking-[0.2em]">
@@ -69,7 +71,7 @@ export default function ExpenseCategoryBreakdown({
       </div>
 
       {breakdown.length === 0 ? (
-        <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-8 text-center text-zinc-400">
+        <div className={emptyStateStyles}>
           <p className="text-lg font-semibold text-white">
             No expenses this month
           </p>
@@ -116,7 +118,7 @@ export default function ExpenseCategoryBreakdown({
                 key={item.categoryId ?? item.categoryName}
                 type="button"
                 onClick={() => onSelectCategory(item)}
-                className="w-full rounded-3xl border border-zinc-800 bg-zinc-950 p-4 text-left transition hover:border-white"
+                className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-left transition hover:border-white"
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm text-zinc-400">
@@ -142,6 +144,6 @@ export default function ExpenseCategoryBreakdown({
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 }
