@@ -25,7 +25,11 @@ export async function createAssetDistribution(payload: AssetDistributionPayload)
     .select()
     .single();
 
-  return { data: data as AssetDistribution | null, error };
+  if (error) {
+    throw error;
+  }
+
+  return data as AssetDistribution;
 }
 
 export async function updateAssetDistribution(id: number, payload: Partial<AssetDistributionPayload>) {
@@ -34,7 +38,11 @@ export async function updateAssetDistribution(id: number, payload: Partial<Asset
     .update(payload)
     .eq("id", id);
 
-  return error;
+  if (error) {
+    throw error;
+  }
+
+  return null;
 }
 
 export async function removeAssetDistribution(id: number) {

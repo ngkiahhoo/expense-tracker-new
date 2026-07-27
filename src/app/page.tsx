@@ -679,7 +679,7 @@ export default function Home() {
                     className="bg-black"
                   >
                     {month === currentMonth
-                      ? "Current Month"
+                      ? `${month} (Current)`
                       : month}
                   </option>
 

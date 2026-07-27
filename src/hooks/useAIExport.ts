@@ -9,6 +9,8 @@ import {
   fetchCategories,
   fetchExpensesRange,
   fetchIncomesRange,
+  fetchAssetDistributionsRange,
+  fetchAssetDistributionCategories,
 } from "../services/exportService";
 import {
   formatAIExport,
@@ -24,6 +26,12 @@ import type {
 import type {
   Income,
 } from "../types/income";
+import type {
+  AssetDistribution,
+} from "../types/asset";
+import type {
+  DistributionCategory,
+} from "../types/distribution";
 
 interface MonthlyAccumulator {
   income:number;
@@ -71,10 +79,12 @@ export default function useAIExport() {
 
     try {
       const { start, end } = rangeToDates(range);
-      const [expenses, incomes, categories] = await Promise.all([
+      const [expenses, incomes, categories, distributions, distributionCategories] = await Promise.all([
         fetchExpensesRange(start, end),
         fetchIncomesRange(start, end),
         fetchCategories(),
+        fetchAssetDistributionsRange(start, end),
+        fetchAssetDistributionCategories(),
       ]);
 
       // Build monthly summaries
@@ -146,12 +156,20 @@ export default function useAIExport() {
           };
         });
 
-      const out = formatAIExport(expenses, incomes, categories, monthlySummaries, {
-        includeExpenses: options.includeExpenses,
-        includeMonthlySummary: options.includeMonthlySummary,
-        includeCategories: options.includeCategories,
-        includeAIPrompt: options.includeAIPrompt,
-      });
+      const out = formatAIExport(
+        expenses,
+        incomes,
+        categories,
+        distributions,
+        distributionCategories,
+        monthlySummaries,
+        {
+          includeExpenses: options.includeExpenses,
+          includeMonthlySummary: options.includeMonthlySummary,
+          includeCategories: options.includeCategories,
+          includeAIPrompt: options.includeAIPrompt,
+        }
+      );
 
       setPayload(out);
       setLoading(false);

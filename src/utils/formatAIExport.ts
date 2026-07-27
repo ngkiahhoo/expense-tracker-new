@@ -11,6 +11,12 @@ import type {
 import type {
   Income,
 } from "../types/income";
+import type {
+  AssetDistribution,
+} from "../types/asset";
+import type {
+  DistributionCategory,
+} from "../types/distribution";
 
 function csvEscape(
   value:string | number | null | undefined
@@ -63,6 +69,8 @@ export function formatAIExport(
   expenses:Expense[],
   incomes:Income[],
   categories:Category[],
+  distributions:AssetDistribution[],
+  distributionCategories:DistributionCategory[],
   monthlySummaries:MonthlySummary[],
   options:ExportOptions
 ) {
@@ -149,6 +157,31 @@ export function formatAIExport(
           ),
         ].join(",") + "\n"
       );
+    }
+
+    parts.push("\n");
+  }
+
+  if (distributions.length > 0) {
+    parts.push("=== ASSET DISTRIBUTIONS CSV ===\n");
+    parts.push("month,amount,type,source,category,note\n");
+
+    for (const distribution of distributions) {
+      const month = distribution.month;
+      const categoryName = distribution.category?.name ||
+        distributionCategories.find((cat) => cat.id === distribution.category_id)?.name ||
+        "Uncategorized";
+
+      const line = [
+        month,
+        Number(distribution.amount).toFixed(2),
+        csvEscape(distribution.type),
+        csvEscape(distribution.source),
+        csvEscape(categoryName),
+        csvEscape(distribution.note || ""),
+      ].join(",");
+
+      parts.push(`${line}\n`);
     }
 
     parts.push("\n");

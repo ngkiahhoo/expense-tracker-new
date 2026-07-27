@@ -21,6 +21,8 @@ export interface AssetAllocation {
 
 export type AssetAllocationPayload = Omit<AssetAllocation, "id" | "created_at" | "updated_at" | "asset">;
 
+import type { DistributionCategory } from "./distribution";
+
 export interface AssetDistribution {
   id: number;
   month: string;
@@ -28,8 +30,10 @@ export interface AssetDistribution {
   type: "Liquid Assets" | "Allocated Assets";
   note: string;
   source: "allocation" | "manual";
+  category_id?: number | null;
+  category?: DistributionCategory | null;
   created_at: string;
   updated_at: string;
 }
 
-export type AssetDistributionPayload = Omit<AssetDistribution, "id" | "created_at" | "updated_at">;
+export type AssetDistributionPayload = Omit<AssetDistribution, "id" | "created_at" | "updated_at" | "category">;

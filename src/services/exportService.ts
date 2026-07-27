@@ -2,6 +2,8 @@ import { supabase } from "../lib/supabase";
 import type { Expense } from "../types/expense";
 import type { Income } from "../types/income";
 import type { Category } from "../types/category";
+import type { AssetDistribution } from "../types/asset";
+import type { DistributionCategory } from "../types/distribution";
 
 export async function fetchExpensesRange(start: string, end: string) {
   const { data, error } = await supabase
@@ -47,4 +49,37 @@ export async function fetchCategories() {
   }
 
   return (data || []) as unknown as Category[];
+}
+
+export async function fetchAssetDistributionsRange(start: string, end: string) {
+  const startMonth = start.slice(0, 7);
+  const endMonth = end.slice(0, 7);
+
+  const { data, error } = await supabase
+    .from("asset_distribution_records")
+    .select(`*, asset_distribution_categories ( id, name )`)
+    .gte("month", startMonth)
+    .lte("month", endMonth)
+    .order("month", { ascending: false });
+
+  if (error) {
+    console.log(error);
+    return [] as AssetDistribution[];
+  }
+
+  return (data || []) as AssetDistribution[];
+}
+
+export async function fetchAssetDistributionCategories() {
+  const { data, error } = await supabase
+    .from("asset_distribution_categories")
+    .select(`id, name`)
+    .order("name");
+
+  if (error) {
+    console.log(error);
+    return [] as DistributionCategory[];
+  }
+
+  return (data || []) as DistributionCategory[];
 }

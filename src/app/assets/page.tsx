@@ -22,6 +22,13 @@ import {
   updateAssetDistribution,
 } from "@/services/assetDistributionService";
 import type { AssetDistribution, AssetDistributionPayload } from "@/types/asset";
+import type { DistributionCategory } from "@/types/distribution";
+import {
+  getDistributionCategories,
+  createDistributionCategory,
+  updateDistributionCategory,
+  removeDistributionCategory,
+} from "@/services/distributionCategoryService";
 
 type DistributionType = AssetDistribution["type"];
 type DistributionSource = AssetDistribution["source"];
@@ -61,11 +68,20 @@ export default function AssetsPage() {
     amount: "",
     type: "Liquid Assets" as DistributionType,
     note: "",
+    category_id: "",
   });
+
+  const [distributionCategories, setDistributionCategories] = useState<DistributionCategory[]>([]);
+  const [newDistCategoryName, setNewDistCategoryName] = useState("");
+  const [editingDistCategoryId, setEditingDistCategoryId] = useState<number | null>(null);
 
   useEffect(() => {
     void loadRecords();
   }, [selectedMonth]);
+
+  useEffect(() => {
+    void loadDistributionCategories();
+  }, []);
 
   async function loadRecords() {
     setLoading(true);
@@ -104,6 +120,15 @@ export default function AssetsPage() {
     [detailType, allLiquidRecords, allAllocatedRecords]
   );
 
+  const detailTotals = useMemo(() => {
+    const map = new Map<string, number>();
+    detailRecords.forEach((r) => {
+      const name = distributionCategories.find((c) => c.id === r.category_id)?.name || "Uncategorized";
+      map.set(name, (map.get(name) || 0) + Number(r.amount || 0));
+    });
+    return Array.from(map.entries()).map(([name, total]) => ({ name, total }));
+  }, [detailRecords, distributionCategories]);
+
   const availableAllocationAmount = Math.max(
     0,
     previousSummary.balance - allocationRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0)
@@ -112,14 +137,19 @@ export default function AssetsPage() {
   function openCreateModal(source: DistributionSource) {
     setEditorMode(source);
     setEditingRecord(null);
-    setForm({ amount: "", type: "Liquid Assets", note: "" });
+    setForm({ amount: "", type: "Liquid Assets", note: "", category_id: "" });
     setEditorOpen(true);
   }
 
   function openEditModal(record: AssetDistribution) {
     setEditorMode(record.source);
     setEditingRecord(record);
-    setForm({ amount: String(record.amount), type: record.type, note: record.note || "" });
+    setForm({
+      amount: String(record.amount),
+      type: record.type,
+      note: record.note || "",
+      category_id: record.category_id ? String(record.category_id) : "",
+    });
     setEditorOpen(true);
   }
 
@@ -163,6 +193,7 @@ export default function AssetsPage() {
             type: form.type,
             note: form.note.trim(),
             month: targetMonth,
+            category_id: form.category_id ? Number(form.category_id) : null,
           };
           await updateAssetDistribution(editingRecord.id, payload);
           toast.showToast("Distribution updated.", "success");
@@ -173,6 +204,7 @@ export default function AssetsPage() {
           amount: parsedAmount,
           type: form.type,
           note: form.note.trim(),
+          category_id: form.category_id ? Number(form.category_id) : null,
           source: editorMode,
         };
         await createAssetDistribution(payload);
@@ -182,8 +214,10 @@ export default function AssetsPage() {
       setEditorOpen(false);
       setEditingRecord(null);
       await loadRecords();
-    } catch {
-      toast.showToast("Something went wrong while saving the distribution.", "error");
+    } catch (error: any) {
+      console.error("Distribution save failed", error);
+      const message = error?.message || error?.error_description || "Something went wrong while saving the distribution.";
+      toast.showToast(message, "error");
     }
   }
 
@@ -202,6 +236,54 @@ export default function AssetsPage() {
     }
   }
 
+  async function loadDistributionCategories() {
+    try {
+      const data = await getDistributionCategories();
+      setDistributionCategories((data || []) as DistributionCategory[]);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  async function addDistributionCategoryInline() {
+    if (!newDistCategoryName.trim()) {
+      toast.showToast("Enter a category name.", "error");
+      return;
+    }
+
+    try {
+      if (editingDistCategoryId) {
+        await updateDistributionCategory(editingDistCategoryId, { name: newDistCategoryName });
+        toast.showToast("Category updated.", "success");
+        setEditingDistCategoryId(null);
+      } else {
+        await createDistributionCategory({ name: newDistCategoryName });
+        toast.showToast("Category added.", "success");
+      }
+      setNewDistCategoryName("");
+      await loadDistributionCategories();
+    } catch (err) {
+      console.log(err);
+      toast.showToast("Failed to save category.", "error");
+    }
+  }
+
+  async function startEditDistributionCategory(cat: DistributionCategory) {
+    setEditingDistCategoryId(cat.id);
+    setNewDistCategoryName(cat.name || "");
+  }
+
+  async function deleteDistributionCategoryInline(id: number) {
+    try {
+      await removeDistributionCategory(id);
+      toast.showToast("Category deleted.", "success");
+      await loadDistributionCategories();
+    } catch (err) {
+      console.log(err);
+      toast.showToast("Failed to delete category.", "error");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-black text-white px-4 pt-4 pb-28 sm:px-6 sm:pt-6 md:px-8">
       <div className="max-w-6xl mx-auto grid gap-5">
@@ -212,10 +294,6 @@ export default function AssetsPage() {
                 <Layers size={18} />
                 <span>Asset Management</span>
               </div>
-              <h1 className="text-4xl font-bold">Distribution Dashboard</h1>
-              <p className="text-zinc-400 mt-2 max-w-2xl">
-                Track the previous month&apos;s balance, create allocation records, and manage distribution history without touching income or expense entries.
-              </p>
             </div>
             <Link href="/" className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-black font-bold hover:opacity-90">
               <ArrowUpRight size={18} />
@@ -328,6 +406,7 @@ export default function AssetsPage() {
                           </span>
                         </div>
                         <p className="text-sm text-zinc-400 mt-1">{record.note || "No note provided."}</p>
+                          <p className="text-sm text-zinc-400 mt-1">{distributionCategories.find((c) => c.id === record.category_id)?.name || "Uncategorized"}</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
                         <span className="rounded-full bg-zinc-800 px-2.5 py-1">{formatMonthLabel(record.month)}</span>
@@ -381,20 +460,19 @@ export default function AssetsPage() {
               </button>
             </div>
             <div className="mt-5 space-y-3">
-              {detailRecords.length > 0 ? (
-                detailRecords.map((record) => (
-                  <div key={record.id} className="rounded-2xl border border-zinc-800 bg-black/70 p-4">
+              {detailTotals.length > 0 ? (
+                detailTotals.map((entry) => (
+                  <div key={entry.name} className="rounded-2xl border border-zinc-800 bg-black/70 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <div className="text-lg font-bold">RM {Number(record.amount).toFixed(2)}</div>
-                        <div className="text-sm text-zinc-400 mt-1">{record.note || "No note provided."}</div>
+                        <div className="text-lg font-bold">RM {Number(entry.total).toFixed(2)}</div>
+                        <div className="text-sm text-zinc-400 mt-1">{entry.name}</div>
                       </div>
-                      <div className="text-sm text-zinc-400">{formatMonthLabel(record.month)}</div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-zinc-400">No records for this category yet.</div>
+                <div className="text-zinc-400">No totals for this category yet.</div>
               )}
             </div>
           </div>
@@ -450,6 +528,61 @@ export default function AssetsPage() {
                   placeholder="Add context for this distribution"
                   className="mt-2 min-h-[120px] w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 outline-none resize-none"
                 />
+              </div>
+
+              <div>
+                <label className="text-sm text-zinc-400">Category</label>
+                <select
+                  value={form.category_id}
+                  onChange={(e) => setForm((prev) => ({ ...prev, category_id: e.target.value }))}
+                  className="mt-2 w-full rounded-2xl border border-zinc-800 bg-black px-4 py-3 outline-none"
+                >
+                  <option value="">Select Category</option>
+                  {distributionCategories.map((cat) => (
+                    <option key={cat.id} value={String(cat.id)}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-3 grid gap-2">
+                  <input
+                    value={newDistCategoryName}
+                    onChange={(e) => setNewDistCategoryName(e.target.value)}
+                    placeholder="New category name"
+                    className="w-full min-w-0 bg-black rounded-2xl p-4"
+                  />
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <button onClick={addDistributionCategoryInline} className="flex-1 rounded-2xl bg-white px-4 py-3 font-bold text-black hover:opacity-90">
+                      {editingDistCategoryId ? "Update Category" : "Add Category"}
+                    </button>
+                    {editingDistCategoryId && (
+                      <button
+                        onClick={() => {
+                          setEditingDistCategoryId(null);
+                          setNewDistCategoryName("");
+                        }}
+                        className="rounded-2xl border border-zinc-700 px-4 py-3 font-bold text-zinc-300"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-3 grid gap-2">
+                    {distributionCategories.map((cat) => (
+                      <div key={cat.id} className="flex items-center justify-between gap-3 bg-black border border-zinc-800 rounded-xl p-3">
+                        <div className="min-w-0">
+                          <div className="font-bold truncate">{cat.name}</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => startEditDistributionCategory(cat)} className="rounded-xl bg-white text-black px-3 py-2 font-bold">Edit</button>
+                          <button onClick={() => deleteDistributionCategoryInline(cat.id)} className="rounded-xl border border-zinc-700 px-3 py-2 font-bold text-zinc-300">Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center gap-3">
