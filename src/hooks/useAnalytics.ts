@@ -64,8 +64,6 @@ export default function useAnalytics(
         needs:0,
 
         wants:0,
-
-        savings:0,
       };
 
       expenses.forEach(
@@ -94,16 +92,6 @@ export default function useAnalytics(
           ) {
 
             result.wants +=
-              Number(
-                expense.amount
-              );
-
-          } else if (
-            typeName ===
-            "savings"
-          ) {
-
-            result.savings +=
               Number(
                 expense.amount
               );

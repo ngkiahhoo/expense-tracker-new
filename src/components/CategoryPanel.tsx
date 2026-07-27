@@ -116,10 +116,6 @@ export default function CategoryPanel({
                 Wants
               </option>
 
-              <option value="savings">
-                Savings
-              </option>
-
             </select>
 
           </div>

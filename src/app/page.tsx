@@ -19,11 +19,13 @@ import {
   FolderTree,
   Plus,
   TrendingDown,
+  Layers,
   type LucideIcon,
   Wallet,
   X,
 } from "lucide-react";
 
+import Link from "next/link";
 import { useToast } from "@/contexts/ToastContext";
 
 import ExpensePanel
@@ -593,36 +595,81 @@ export default function Home() {
                 className="
                   flex
                   items-center
-                  gap-2
+                  justify-between
+                  gap-3
                   text-zinc-400
                   mb-3
                 "
               >
-                <CalendarDays size={18}/>
-                <span>
-                  View Month
-                </span>
+                <div className="flex items-center gap-2">
+                  <Layers size={18}/>
+                  <span>
+                    Assets Module
+                  </span>
+                </div>
+
+                <Link
+                  href="/assets"
+                  className="
+                    inline-flex
+                    items-center
+                    gap-2
+                    bg-white
+                    text-black
+                    rounded-2xl
+                    px-4
+                    py-3
+                    text-sm
+                    font-bold
+                    hover:opacity-90
+                    transition-opacity
+                  "
+                >
+                  <Layers size={16}/>
+                  Open Asset Dashboard
+                </Link>
               </div>
 
-              <select
-                value={selectedMonth}
-                onChange={(e) =>
-                  setSelectedMonth(
-                    e.target.value
-                  )
-                }
+              <div
                 className="
-                  w-full
-                  bg-black
-                  border
-                  border-zinc-800
-                  rounded-2xl
-                  p-4
-                  outline-none
-                  text-base
-                  sm:text-lg
+                  flex
+                  flex-col
+                  gap-3
                 "
               >
+                <div
+                  className="
+                    flex
+                    items-center
+                    gap-2
+                    text-zinc-400
+                  "
+                >
+                  <CalendarDays size={18}/>
+                  <span>
+                    View Month
+                  </span>
+                </div>
+
+                <select
+                  value={selectedMonth}
+                  onChange={(e) =>
+                    setSelectedMonth(
+                      e.target.value
+                    )
+                  }
+                  className="
+                    w-full
+                    bg-black
+                    border
+                    border-zinc-800
+                    rounded-2xl
+                    p-4
+                    outline-none
+                    text-base
+                    sm:text-lg
+                  "
+                >
 
                 {months.map((month) => (
 
@@ -639,6 +686,8 @@ export default function Home() {
                 ))}
 
               </select>
+
+            </div>
 
             </section>
 

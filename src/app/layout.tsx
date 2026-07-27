@@ -3,8 +3,8 @@ import { ToastProvider } from "@/contexts/ToastContext";
 import { ToastContainer } from "@/components/ToastContainer";
 
 export const metadata = {
-  title: "Expense Tracker",
-  description: "Personal finance tracker for income, spending, and balance.",
+  title: "Personal Finance Tracker",
+  description: "Personal finance tracker for income, assets, and net worth.",
   themeColor: "#000000",
   manifest: "/site.webmanifest",
   icons: {

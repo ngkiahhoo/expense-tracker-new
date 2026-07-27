@@ -13,7 +13,6 @@ export interface MonthlySummary {
   saving_rate:number;
   needs_ratio:number;
   wants_ratio:number;
-  savings_ratio:number;
   transaction_count:number;
 }
 

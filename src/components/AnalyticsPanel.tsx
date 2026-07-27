@@ -1,7 +1,6 @@
 interface SpendingAnalytics {
   needs: number;
   wants: number;
-  savings: number;
 }
 
 export default function AnalyticsPanel({
@@ -37,12 +36,6 @@ export default function AnalyticsPanel({
       label: "Wants",
       value: analytics.wants,
       color: "#3b82f6", // blue
-    },
-    {
-      key: "savings",
-      label: "Savings",
-      value: analytics.savings,
-      color: "#06b6d4", // cyan
     },
   ];
 
