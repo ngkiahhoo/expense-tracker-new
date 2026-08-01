@@ -13,12 +13,21 @@ import { formatCurrencyAmount } from "../../../utils/currency";
 
 import type { CategoryBreakdownItem } from "../../../types/analytics";
 
+interface MonthlyTrendItem {
+  monthKey: string;
+  label: string;
+  income: number;
+  expense: number;
+  balance: number;
+}
+
 interface ExpenseCategoryBreakdownProps {
   breakdown: CategoryBreakdownItem[];
   loading: boolean;
-  onSelectCategory: (
-    item: CategoryBreakdownItem
-  ) => void;
+  onSelectCategory?: (item: CategoryBreakdownItem) => void;
+  onSelectMonthExpense?: (monthKey: string) => void;
+  monthlySeries?: MonthlyTrendItem[];
+  currency?: string;
 }
 
 function renderTooltip({ active, payload }: any) {
@@ -41,6 +50,9 @@ export default function ExpenseCategoryBreakdown({
   breakdown,
   loading,
   onSelectCategory,
+  onSelectMonthExpense,
+  monthlySeries = [],
+  currency,
 }: ExpenseCategoryBreakdownProps) {
   if (loading) {
     return (
@@ -59,6 +71,31 @@ export default function ExpenseCategoryBreakdown({
       </Card>
     );
   }
+
+  const trendItems = [...monthlySeries].reverse();
+  const summaryCards = [
+    {
+      title: "Income",
+      subtitle: "Recent months",
+      colorClass: "bg-emerald-500",
+      textClass: "text-emerald-400",
+      valueKey: "income" as const,
+    },
+    {
+      title: "Expense",
+      subtitle: "Recent months",
+      colorClass: "bg-rose-500",
+      textClass: "text-rose-400",
+      valueKey: "expense" as const,
+    },
+    {
+      title: "Balance",
+      subtitle: "Recent months",
+      colorClass: "bg-sky-500",
+      textClass: "text-sky-400",
+      valueKey: "balance" as const,
+    },
+  ];
 
   return (
     <Card variant="default" padding="lg">
@@ -95,7 +132,7 @@ export default function ExpenseCategoryBreakdown({
                   startAngle={90}
                   endAngle={-270}
                   onClick={(data) => {
-                    if (data?.payload) {
+                    if (data?.payload && onSelectCategory) {
                       onSelectCategory(data.payload as CategoryBreakdownItem);
                     }
                   }}
@@ -118,7 +155,7 @@ export default function ExpenseCategoryBreakdown({
               <button
                 key={item.categoryId ?? item.categoryName}
                 type="button"
-                onClick={() => onSelectCategory(item)}
+                onClick={() => onSelectCategory?.(item)}
                 className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 p-4 text-left transition hover:border-white"
               >
                 <div className="flex items-center justify-between gap-3">
@@ -145,6 +182,84 @@ export default function ExpenseCategoryBreakdown({
           </div>
         </div>
       )}
+
+      <div className="mt-8 border-t border-zinc-800/70 pt-6">
+        <div className="mb-4">
+          <p className="text-sm uppercase tracking-[0.2em] text-zinc-400">
+            Monthly Trends
+          </p>
+          <h3 className="text-xl font-semibold text-white">
+            Income, Expense & Balance
+          </h3>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-3">
+          {summaryCards.map((card) => {
+            const startIndex = trendItems.findIndex((item) => Math.abs(item[card.valueKey]) > 0);
+            const visibleItems = startIndex >= 0 ? trendItems.slice(startIndex) : [];
+
+            return (
+              <div
+                key={card.title}
+                className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`h-3 w-3 rounded-full ${card.colorClass}`} />
+                  <h4 className={`text-sm font-semibold ${card.textClass}`}>{card.title}</h4>
+                </div>
+
+                {visibleItems.length === 0 ? (
+                  <div className="mt-4 rounded-xl border border-dashed border-zinc-800 p-4 text-sm text-zinc-500">
+                    No data yet
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {visibleItems.map((item) => {
+                      const value = item[card.valueKey];
+                      const incomeValue = item.income;
+                      const referenceValue = incomeValue > 0 ? incomeValue : 1;
+                      const normalizedWidth =
+                        card.valueKey === "income"
+                          ? 100
+                          : Math.min(100, Math.max(8, (Math.abs(value) / referenceValue) * 100));
+
+                      const isExpenseRow = card.valueKey === "expense";
+
+                      return (
+                        <button
+                          key={`${card.title}-${item.label}`}
+                          type="button"
+                          onClick={() => {
+                            if (isExpenseRow && onSelectMonthExpense) {
+                              onSelectMonthExpense(item.monthKey);
+                            }
+                          }}
+                          className={`w-full rounded-xl border border-zinc-800/70 bg-zinc-900/60 px-3 py-2 text-left transition ${isExpenseRow ? "cursor-pointer hover:border-white" : "cursor-default"}`}
+                        >
+                          <div className="flex items-center justify-between gap-3 text-sm">
+                            <span className="text-zinc-400">{item.label}</span>
+                            <span className={`font-semibold ${card.textClass}`}>
+                              {formatCurrencyAmount(value, currency)}
+                            </span>
+                          </div>
+                          {card.valueKey !== "income" && (
+                            <div className="mt-2 h-2 rounded-full bg-zinc-800">
+                              <div
+                                className={`h-2 rounded-full ${card.colorClass}`}
+                                style={{ width: `${normalizedWidth}%` }}
+                              />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </Card>
   );
 }

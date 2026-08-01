@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useState,
   type FocusEvent,
   type ReactNode,
@@ -85,6 +86,7 @@ import {
   currencyLabel,
   getStoredCurrency,
 } from "../utils/currency";
+import { supabase } from "@/lib/supabase";
 
 type BottomTool =
   | "expense"
@@ -137,6 +139,12 @@ export default function Home() {
 
   const [selectedMonth, setSelectedMonth] =
     useState(currentMonth);
+
+  const [allExpenses, setAllExpenses] =
+    useState<Expense[]>([]);
+
+  const [allIncomes, setAllIncomes] =
+    useState<Income[]>([]);
 
   const [activeCurrency, setActiveCurrency] =
     useState<Currency>(() => getStoredCurrency());
@@ -334,6 +342,41 @@ export default function Home() {
     activeCurrency
   );
 
+  const monthlySeries = useMemo(() => {
+    const monthKeys = Array.from(
+      new Set([
+        ...allExpenses.map((expense) => expense.expense_date?.split("T")[0]?.slice(0, 7) || ""),
+        ...allIncomes.map((income) => income.income_date?.split("T")[0]?.slice(0, 7) || ""),
+      ].filter(Boolean))
+    ).sort((left, right) => left.localeCompare(right));
+
+    return monthKeys.map((monthKey) => {
+      const monthExpenses = allExpenses.filter((expense) => {
+        const expenseDate = expense.expense_date?.split("T")[0] || "";
+        return expenseDate.startsWith(monthKey);
+      });
+
+      const monthIncomes = allIncomes.filter((income) => {
+        const incomeDate = income.income_date?.split("T")[0] || "";
+        return incomeDate.startsWith(monthKey);
+      });
+
+      const monthlyIncome = monthIncomes.reduce((sum, income) => sum + Number(income.amount || 0), 0);
+      const monthlyExpense = monthExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+
+      return {
+        monthKey,
+        label: new Date(Number(monthKey.split("-")[0]), Number(monthKey.split("-")[1]) - 1, 1).toLocaleDateString("en-US", {
+          month: "short",
+          year: "numeric",
+        }),
+        income: monthlyIncome,
+        expense: monthlyExpense,
+        balance: monthlyIncome - monthlyExpense,
+      };
+    });
+  }, [allExpenses, allIncomes]);
+
   function handleCurrencyChange(value: string) {
     const nextCurrency: Currency =
       value === "SGD"
@@ -344,13 +387,46 @@ export default function Home() {
     window.localStorage.setItem("expense-tracker-currency", nextCurrency);
   }
 
-  const [activeCategory, setActiveCategory] =
-    useState<CategoryBreakdownItem | null>(null);
+  const [showExpenseDrilldown, setShowExpenseDrilldown] = useState(false);
+  const [drilldownMonth, setDrilldownMonth] = useState<string | null>(null);
+  const [drilldownCategoryKey, setDrilldownCategoryKey] = useState<string | null>(null);
+  const [drilldownCategoryName, setDrilldownCategoryName] = useState<string | null>(null);
+  const [drilldownTypeName, setDrilldownTypeName] = useState<string | null>(null);
   const [exportModalCopied, setExportModalCopied] = useState(false);
 
   // Use the modal state from the hook
   const showExportModal = showExportModalFromHook;
   const setShowExportModal = setShowExportModalFromHook;
+
+  async function loadAllHistoryData() {
+    try {
+      const [expensesResponse, incomesResponse] = await Promise.all([
+        supabase
+          .from("expenses")
+          .select("*")
+          .eq("currency", activeCurrency)
+          .order("expense_date", { ascending: true }),
+        supabase
+          .from("incomes")
+          .select("*")
+          .eq("currency", activeCurrency)
+          .order("income_date", { ascending: true }),
+      ]);
+
+      if (expensesResponse.error) {
+        throw expensesResponse.error;
+      }
+
+      if (incomesResponse.error) {
+        throw incomesResponse.error;
+      }
+
+      setAllExpenses((expensesResponse.data as Expense[]) || []);
+      setAllIncomes((incomesResponse.data as Income[]) || []);
+    } catch (error) {
+      console.error("Failed to load full monthly history", error);
+    }
+  }
 
   useEffect(() => {
     async function loadMonthData() {
@@ -362,12 +438,14 @@ export default function Home() {
         fetchCategories(),
         fetchRecurringExpenses(),
       ]);
+
+      await loadAllHistoryData();
     }
 
-    loadMonthData();
-    // Fetch callbacks come from local hooks and intentionally refresh when the month changes.
+    void loadMonthData();
+    // Fetch callbacks come from local hooks and intentionally refresh when the month changes or the currency changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMonth]);
+  }, [selectedMonth, activeCurrency]);
 
   // Auto-generate recurring expenses every hour
   useEffect(() => {
@@ -394,6 +472,8 @@ export default function Home() {
       fetchCategories(),
       fetchRecurringExpenses(),
     ]);
+
+    await loadAllHistoryData();
   }
 
   async function handleSaveExpense() {
@@ -406,6 +486,7 @@ export default function Home() {
       addSavedNote(
         noteToSave
       );
+      await loadAllHistoryData();
       toast.showToast(result.message || "Expense saved successfully", "success");
     } else {
       toast.showToast(result.error || "Failed to save expense", "error");
@@ -442,6 +523,7 @@ export default function Home() {
   async function handleDeleteExpense(id: number) {
     const result = await deleteExpense(id);
     if (result.success) {
+      await loadAllHistoryData();
       toast.showToast(result.message || "Expense deleted successfully", "success");
     } else {
       toast.showToast(result.error || "Failed to delete expense", "error");
@@ -452,6 +534,7 @@ export default function Home() {
   async function handleDeleteIncome(id: number) {
     const result = await deleteIncome(id);
     if (result.success) {
+      await loadAllHistoryData();
       toast.showToast(result.message || "Income deleted successfully", "success");
     } else {
       toast.showToast(result.error || "Failed to delete income", "error");
@@ -461,6 +544,7 @@ export default function Home() {
   async function handleAddIncome() {
     const result = await addIncome();
     if (result.success) {
+      await loadAllHistoryData();
       toast.showToast(result.message || "Income added successfully", "success");
     } else {
       toast.showToast(result.error || "Failed to add income", "error");
@@ -815,7 +899,22 @@ export default function Home() {
               <ExpenseCategoryBreakdown
                 breakdown={categoryBreakdown}
                 loading={loading}
-                onSelectCategory={setActiveCategory}
+                onSelectCategory={(item) => {
+                  setDrilldownCategoryKey(`${item.categoryId ?? "uncategorized"}:${item.categoryName}`);
+                  setDrilldownCategoryName(item.categoryName);
+                  setDrilldownTypeName(item.expenses[0]?.categories?.types?.name || null);
+                  setDrilldownMonth(selectedMonth);
+                  setShowExpenseDrilldown(true);
+                }}
+                onSelectMonthExpense={(monthKey) => {
+                  setDrilldownCategoryKey(null);
+                  setDrilldownCategoryName(null);
+                  setDrilldownTypeName(null);
+                  setDrilldownMonth(monthKey);
+                  setShowExpenseDrilldown(true);
+                }}
+                monthlySeries={monthlySeries}
+                currency={activeCurrency}
               />
             </section>
 
@@ -998,14 +1097,21 @@ export default function Home() {
         )}
 
         <CategoryExpenseSheet
-          isOpen={activeCategory !== null}
-          categoryId={activeCategory?.categoryId ?? null}
-          categoryName={activeCategory?.categoryName ?? ""}
-          categoryTotal={activeCategory?.totalAmount ?? 0}
-          categoryPercent={activeCategory?.percentage ?? 0}
-          selectedMonth={selectedMonth}
+          isOpen={showExpenseDrilldown}
+          selectedMonth={drilldownMonth ?? selectedMonth}
           currency={activeCurrency}
-          onClose={() => setActiveCategory(null)}
+          expenses={allExpenses}
+          categories={categories}
+          initialCategoryKey={drilldownCategoryKey}
+          initialCategoryName={drilldownCategoryName}
+          initialTypeName={drilldownTypeName}
+          onClose={() => {
+            setShowExpenseDrilldown(false);
+            setDrilldownMonth(null);
+            setDrilldownCategoryKey(null);
+            setDrilldownCategoryName(null);
+            setDrilldownTypeName(null);
+          }}
           onEdit={handleStartEdit}
           onDelete={deleteExpense}
         />
