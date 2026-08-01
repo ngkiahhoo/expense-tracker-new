@@ -17,6 +17,7 @@ export type UiTone =
   | "warning"
   | "balance"
   | "needs"
+  | "commitment"
   | "wants";
 
 export const ui = {
@@ -34,6 +35,7 @@ export const ui = {
     accent: "text-violet-400",
     balance: "text-sky-400",
     needs: "text-red-500",
+    commitment: "text-amber-400",
     wants: "text-blue-500",
   },
   surface: {
@@ -55,6 +57,7 @@ export const ui = {
     danger: "border-red-500/30",
     warning: "border-amber-500/30",
     needs: "border-red-500/30",
+    commitment: "border-amber-500/30",
     wants: "border-blue-500/30",
   },
   radius: {
@@ -132,6 +135,13 @@ export const toneStyles: Record<
     surface: ui.surface.panel,
     subtleSurface: "bg-red-500/10 border-red-500/30",
     chart: "#ef4444",
+  },
+  commitment: {
+    text: ui.text.commitment,
+    border: ui.border.commitment,
+    surface: ui.surface.panel,
+    subtleSurface: "bg-amber-500/10 border-amber-500/30",
+    chart: "#f59e0b",
   },
   wants: {
     text: ui.text.wants,

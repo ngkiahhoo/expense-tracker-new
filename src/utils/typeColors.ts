@@ -1,10 +1,11 @@
 import { toneStyles, type UiTone } from "@/components/ui/styles";
 
-export type ExpenseType = "needs" | "wants";
+export type ExpenseType = "needs" | "commitment" | "wants";
 
 function getExpenseTone(typeName: string | undefined): UiTone {
   const normalized = typeName?.toLowerCase().trim();
   if (normalized === "needs") return "needs";
+  if (normalized === "commitment") return "commitment";
   if (normalized === "wants") return "wants";
   return "neutral";
 }

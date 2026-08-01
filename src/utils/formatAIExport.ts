@@ -112,7 +112,7 @@ export function formatAIExport(
 
   if (options.includeMonthlySummary) {
     parts.push("=== MONTHLY SUMMARY CSV ===\n");
-    parts.push("month,income,expense,balance,saving_rate,needs_ratio,wants_ratio,transaction_count\n");
+    parts.push("month,income,expense,balance,saving_rate,needs_ratio,commitment_ratio,wants_ratio,transaction_count\n");
 
     for (const summary of monthlySummaries) {
       const line = [
@@ -131,6 +131,9 @@ export function formatAIExport(
         ).toFixed(1),
         Number(
           summary.needs_ratio || 0
+        ).toFixed(1),
+        Number(
+          summary.commitment_ratio || 0
         ).toFixed(1),
         Number(
           summary.wants_ratio || 0

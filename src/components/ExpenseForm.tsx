@@ -180,30 +180,30 @@ export default function ExpenseForm({
       </Select>
 
       <div className="flex gap-3">
-        <Button
-          onClick={saveExpense}
-          disabled={loading}
-          size="lg"
-          className="w-full"
-        >
-          {loading
-            ? "Saving..."
-            : editingId
-              ? "Update Expense"
-              : "Add Expense"}
-        </Button>
+      <Button
+        onClick={saveExpense}
+        disabled={loading}
+        size="lg"
+        className="flex-1"
+      >
+        {loading
+          ? "Saving..."
+          : editingId
+            ? "Update Expense"
+            : "Add Expense"}
+      </Button>
 
-        {editingId && (
-          <Button
-            onClick={cancelEdit}
-            size="iconLg"
-            title="Cancel edit"
-            aria-label="Cancel edit"
-          >
-            <X size={18} />
-          </Button>
-        )}
-      </div>
+      {editingId && (
+        <Button
+          onClick={cancelEdit}
+          size="iconLg"
+          title="Cancel edit"
+          aria-label="Cancel edit"
+        >
+          <X size={18} />
+        </Button>
+      )}
+    </div>
     </Card>
   );
 }

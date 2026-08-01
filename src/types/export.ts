@@ -12,6 +12,7 @@ export interface MonthlySummary {
   balance:number;
   saving_rate:number;
   needs_ratio:number;
+  commitment_ratio:number;
   wants_ratio:number;
   transaction_count:number;
 }

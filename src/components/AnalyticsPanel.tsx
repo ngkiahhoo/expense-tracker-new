@@ -3,6 +3,7 @@ import { toneStyles } from "@/components/ui/styles";
 
 interface SpendingAnalytics {
   needs: number;
+  commitment: number;
   wants: number;
 }
 
@@ -33,6 +34,12 @@ export default function AnalyticsPanel({
       label: "Needs",
       value: analytics.needs,
       color: toneStyles.needs.chart,
+    },
+    {
+      key: "commitment",
+      label: "Commitment",
+      value: analytics.commitment,
+      color: toneStyles.commitment.chart,
     },
     {
       key: "wants",

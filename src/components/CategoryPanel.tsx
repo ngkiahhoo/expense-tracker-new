@@ -54,6 +54,7 @@ export default function CategoryPanel({
           onChange={(event) => setSelectedType(event.target.value)}
         >
           <option value="needs">Needs</option>
+          <option value="commitment">Commitment</option>
           <option value="wants">Wants</option>
         </Select>
       </div>

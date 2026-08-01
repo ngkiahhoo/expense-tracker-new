@@ -37,6 +37,7 @@ interface MonthlyAccumulator {
   income:number;
   expense:number;
   needs:number;
+  commitment:number;
   wants:number;
   transaction_count:number;
 }
@@ -104,6 +105,7 @@ export default function useAIExport() {
             income: 0,
             expense: 0,
             needs: 0,
+            commitment: 0,
             wants: 0,
             transaction_count: 0,
           };
@@ -119,6 +121,7 @@ export default function useAIExport() {
             income: 0,
             expense: 0,
             needs: 0,
+            commitment: 0,
             wants: 0,
             transaction_count: 0,
           };
@@ -127,6 +130,7 @@ export default function useAIExport() {
         monthlyMap[month].transaction_count += 1;
         const typeName = e.categories?.types?.name?.toLowerCase();
         if (typeName === "needs") monthlyMap[month].needs += Number(e.amount || 0);
+        else if (typeName === "commitment") monthlyMap[month].commitment += Number(e.amount || 0);
         else if (typeName === "wants") monthlyMap[month].wants += Number(e.amount || 0);
       });
 
@@ -140,6 +144,7 @@ export default function useAIExport() {
             income - expense;
           const saving_rate = income > 0 ? (balance / income) * 100 : 0;
           const needs_ratio = income > 0 ? (m.needs / income) * 100 : 0;
+          const commitment_ratio = income > 0 ? (m.commitment / income) * 100 : 0;
           const wants_ratio = income > 0 ? (m.wants / income) * 100 : 0;
           return {
             month,
@@ -151,6 +156,7 @@ export default function useAIExport() {
               ),
             saving_rate: Number(saving_rate.toFixed(1)),
             needs_ratio: Number(needs_ratio.toFixed(1)),
+            commitment_ratio: Number(commitment_ratio.toFixed(1)),
             wants_ratio: Number(wants_ratio.toFixed(1)),
             transaction_count: m.transaction_count || 0,
           };

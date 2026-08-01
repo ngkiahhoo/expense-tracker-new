@@ -63,6 +63,8 @@ export default function useAnalytics(
 
         needs:0,
 
+        commitment:0,
+
         wants:0,
       };
 
@@ -82,6 +84,16 @@ export default function useAnalytics(
           ) {
 
             result.needs +=
+              Number(
+                expense.amount
+              );
+
+          } else if (
+            typeName ===
+            "commitment"
+          ) {
+
+            result.commitment +=
               Number(
                 expense.amount
               );
