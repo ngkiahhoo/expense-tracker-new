@@ -7,6 +7,8 @@ import {
 import {
   Expense,
 } from "../types/expense";
+import type { Currency } from "../types/currency";
+import { DEFAULT_CURRENCY, normalizeCurrency } from "../utils/currency";
 
 import {
 
@@ -23,7 +25,8 @@ import {
 } from "../services/expenseService";
 
 export default function useExpenses(
-  selectedMonth:string
+  selectedMonth:string,
+  activeCurrency:Currency = DEFAULT_CURRENCY
 ) {
 
   const [expenses, setExpenses] =
@@ -49,6 +52,9 @@ export default function useExpenses(
 
   const [editingId, setEditingId] =
     useState<number | null>(null);
+
+  const [editingCurrency, setEditingCurrency] =
+    useState<Currency | null>(null);
 
   const [loading, setLoading] =
     useState(false);
@@ -119,6 +125,10 @@ export default function useExpenses(
           Number(
             selectedCategory
           ),
+
+        currency:
+          editingCurrency ||
+          activeCurrency,
       };
 
       const saveError =
@@ -139,6 +149,7 @@ export default function useExpenses(
 
       if (editingId) {
         setEditingId(null);
+        setEditingCurrency(null);
       }
 
       resetExpenseForm();
@@ -169,6 +180,8 @@ export default function useExpenses(
     setNote("");
 
     setSelectedCategory("");
+
+    setEditingCurrency(null);
 
     setExpenseDate(
       new Date()
@@ -251,6 +264,10 @@ export default function useExpenses(
 
     setSelectedCategory(
       expense.category_id.toString()
+    );
+
+    setEditingCurrency(
+      normalizeCurrency(expense.currency)
     );
 
     window.scrollTo({

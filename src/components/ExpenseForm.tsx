@@ -11,8 +11,10 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
 import { confirmDelete } from "../utils/confirm";
+import { currencyLabel } from "../utils/currency";
 
 import type { Category } from "../types/category";
+import type { Currency } from "../types/currency";
 import type { SavedNote } from "../hooks/useSavedNotes";
 
 interface ExpenseFormProps {
@@ -26,6 +28,7 @@ interface ExpenseFormProps {
   setSelectedCategory: (value: string) => void;
   categories: Category[];
   editingId: number | null;
+  currency: Currency;
   loading: boolean;
   saveExpense: () => void | boolean | Promise<void | boolean>;
   cancelEdit: () => void;
@@ -46,6 +49,7 @@ export default function ExpenseForm({
   setSelectedCategory,
   categories,
   editingId,
+  currency,
   loading,
   saveExpense,
   cancelEdit,
@@ -92,7 +96,7 @@ export default function ExpenseForm({
     <Card variant="default" padding="lg" className="space-y-4">
       <Input
         type="number"
-        placeholder="Expense Amount"
+        placeholder={`${currencyLabel(currency)} Expense Amount`}
         value={amount}
         onChange={(event) => setAmount(event.target.value)}
       />
@@ -207,4 +211,3 @@ export default function ExpenseForm({
     </Card>
   );
 }
-

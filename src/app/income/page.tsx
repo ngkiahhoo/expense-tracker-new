@@ -11,24 +11,41 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
 import { supabase } from "../../lib/supabase";
+import type { Currency } from "../../types/currency";
+import type { Income } from "../../types/income";
+import {
+  CURRENCIES,
+  currencyLabel,
+  formatCurrencyAmount,
+  getStoredCurrency,
+  normalizeCurrency,
+} from "../../utils/currency";
 
 export default function IncomePage() {
   const currentMonth = `${new Date().getFullYear()}-${String(
     new Date().getMonth() + 1
   ).padStart(2, "0")}`;
 
-  const [incomes, setIncomes] = useState<any[]>([]);
+  const [incomes, setIncomes] = useState<Income[]>([]);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [incomeDate, setIncomeDate] = useState(
     new Date().toISOString().split("T")[0]
   );
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingCurrency, setEditingCurrency] = useState<Currency | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [activeCurrency, setActiveCurrency] = useState<Currency>(() => getStoredCurrency());
 
   useEffect(() => {
     fetchIncome();
   }, [selectedMonth]);
+
+  function handleCurrencyChange(value: string) {
+    const nextCurrency: Currency = value === "SGD" ? "SGD" : "MYR";
+    setActiveCurrency(nextCurrency);
+    window.localStorage.setItem("expense-tracker-currency", nextCurrency);
+  }
 
   async function fetchIncome() {
     const [year, month] = selectedMonth.split("-").map(Number);
@@ -47,7 +64,7 @@ export default function IncomePage() {
       });
 
     if (data) {
-      setIncomes(data);
+      setIncomes(data as Income[]);
     }
   }
 
@@ -59,6 +76,7 @@ export default function IncomePage() {
         .from("incomes")
         .update({
           amount: Number(amount),
+          currency: editingCurrency || activeCurrency,
           note,
           income_date: incomeDate,
         })
@@ -67,6 +85,7 @@ export default function IncomePage() {
       await supabase.from("incomes").insert([
         {
           amount: Number(amount),
+          currency: activeCurrency,
           note,
           income_date: incomeDate,
         },
@@ -82,11 +101,12 @@ export default function IncomePage() {
     fetchIncome();
   }
 
-  function startEdit(income: any) {
+  function startEdit(income: Income) {
     setEditingId(income.id);
     setAmount(income.amount.toString());
     setNote(income.note || "");
     setIncomeDate(income.income_date);
+    setEditingCurrency(normalizeCurrency(income.currency));
 
     window.scrollTo({
       top: 0,
@@ -99,11 +119,14 @@ export default function IncomePage() {
     setAmount("");
     setNote("");
     setIncomeDate(new Date().toISOString().split("T")[0]);
+    setEditingCurrency(null);
   }
 
   const totalIncome = useMemo(() => {
-    return incomes.reduce((sum, item) => sum + Number(item.amount), 0);
-  }, [incomes]);
+    return incomes
+      .filter((item) => normalizeCurrency(item.currency) === activeCurrency)
+      .reduce((sum, item) => sum + Number(item.amount), 0);
+  }, [incomes, activeCurrency]);
 
   return (
     <main className="min-h-screen bg-black p-4 text-white">
@@ -122,6 +145,17 @@ export default function IncomePage() {
           <option value="2026-03">2026-03</option>
         </Select>
 
+        <Select
+          value={activeCurrency}
+          onChange={(event) => handleCurrencyChange(event.target.value)}
+        >
+          {CURRENCIES.map((currency) => (
+            <option key={currency} value={currency}>
+              {currencyLabel(currency)}
+            </option>
+          ))}
+        </Select>
+
         <Card variant="success" padding="lg">
           <div className="mb-2 flex items-center gap-2">
             <Wallet size={18} />
@@ -129,7 +163,7 @@ export default function IncomePage() {
           </div>
 
           <h2 className="text-5xl font-bold">
-            RM {totalIncome.toFixed(2)}
+            {formatCurrencyAmount(totalIncome, activeCurrency)}
           </h2>
         </Card>
 
@@ -193,7 +227,7 @@ export default function IncomePage() {
 
               <div className="shrink-0 text-right">
                 <p className="mb-3 text-3xl font-bold">
-                  RM {income.amount}
+                  {formatCurrencyAmount(Number(income.amount), income.currency)}
                 </p>
 
                 <div className="flex justify-end gap-2">
@@ -225,4 +259,3 @@ export default function IncomePage() {
     </main>
   );
 }
-

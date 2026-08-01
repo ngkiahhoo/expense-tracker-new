@@ -31,7 +31,15 @@ import {
   updateAssetDistribution,
 } from "@/services/assetDistributionService";
 import type { AssetDistribution, AssetDistributionPayload } from "@/types/asset";
+import type { Currency } from "@/types/currency";
 import type { DistributionCategory } from "@/types/distribution";
+import {
+  CURRENCIES,
+  currencyLabel,
+  formatCurrencyAmount,
+  getStoredCurrency,
+  normalizeCurrency,
+} from "@/utils/currency";
 import {
   getDistributionCategories,
   createDistributionCategory,
@@ -41,6 +49,11 @@ import {
 
 type DistributionType = AssetDistribution["type"];
 type DistributionSource = AssetDistribution["source"];
+
+interface DistributionDetail {
+  type: DistributionType;
+  currency: Currency;
+}
 
 function formatMonthLabel(monthKey: string) {
   if (!monthKey) return "";
@@ -57,18 +70,43 @@ function getPreviousMonthKey(monthKey: string) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function totalRecordsByCurrency(records: AssetDistribution[]) {
+  return CURRENCIES.reduce(
+    (result, currency) => {
+      const matchingRecords = records.filter(
+        (record) => normalizeCurrency(record.currency) === currency
+      );
+
+      result[currency] = {
+        total: matchingRecords.reduce(
+          (sum, record) => sum + Number(record.amount || 0),
+          0
+        ),
+        count: matchingRecords.length,
+      };
+
+      return result;
+    },
+    {
+      MYR: { total: 0, count: 0 },
+      SGD: { total: 0, count: 0 },
+    } as Record<Currency, { total: number; count: number }>
+  );
+}
+
 export default function AssetsPage() {
   const toast = useToast();
   const today = new Date();
   const currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [activeCurrency, setActiveCurrency] = useState<Currency>(() => getStoredCurrency());
   const previousMonthKey = useMemo(() => getPreviousMonthKey(selectedMonth), [selectedMonth]);
 
-  const { summary: previousSummary } = useMonthlySummary(previousMonthKey);
+  const { summary: previousSummary } = useMonthlySummary(previousMonthKey, activeCurrency);
 
   const [records, setRecords] = useState<AssetDistribution[]>([]);
   const [loading, setLoading] = useState(false);
-  const [detailType, setDetailType] = useState<DistributionType | null>(null);
+  const [detailType, setDetailType] = useState<DistributionDetail | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<DistributionSource>("manual");
   const [editingRecord, setEditingRecord] = useState<AssetDistribution | null>(null);
@@ -90,6 +128,16 @@ export default function AssetsPage() {
   useEffect(() => {
     void loadDistributionCategories();
   }, []);
+
+  function handleCurrencyChange(value: string) {
+    const nextCurrency: Currency =
+      value === "SGD"
+        ? "SGD"
+        : "MYR";
+
+    setActiveCurrency(nextCurrency);
+    window.localStorage.setItem("expense-tracker-currency", nextCurrency);
+  }
 
   async function loadRecords() {
     setLoading(true);
@@ -119,13 +167,35 @@ export default function AssetsPage() {
   );
 
   const allocationRecords = useMemo(
-    () => records.filter((record) => record.source === "allocation" && record.month === previousMonthKey),
-    [records, previousMonthKey]
+    () =>
+      records.filter(
+        (record) =>
+          record.source === "allocation" &&
+          record.month === previousMonthKey &&
+          normalizeCurrency(record.currency) === activeCurrency
+      ),
+    [records, previousMonthKey, activeCurrency]
   );
 
   const detailRecords = useMemo(
-    () => (detailType === "Liquid Assets" ? allLiquidRecords : allAllocatedRecords),
-    [detailType, allLiquidRecords, allAllocatedRecords]
+    () =>
+      records.filter(
+        (record) =>
+          detailType !== null &&
+          record.type === detailType.type &&
+          normalizeCurrency(record.currency) === detailType.currency
+      ),
+    [detailType, records]
+  );
+
+  const liquidTotalsByCurrency = useMemo(
+    () => totalRecordsByCurrency(allLiquidRecords),
+    [allLiquidRecords]
+  );
+
+  const allocatedTotalsByCurrency = useMemo(
+    () => totalRecordsByCurrency(allAllocatedRecords),
+    [allAllocatedRecords]
   );
 
   const detailTotals = useMemo(() => {
@@ -139,6 +209,16 @@ export default function AssetsPage() {
 
   const availableAllocationAmount =
     previousSummary.balance - allocationRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0);
+
+  const hasLiquidAssets = useMemo(
+    () => CURRENCIES.some((currency) => liquidTotalsByCurrency[currency].total > 0),
+    [liquidTotalsByCurrency]
+  );
+
+  const hasAllocatedAssets = useMemo(
+    () => CURRENCIES.some((currency) => allocatedTotalsByCurrency[currency].total > 0),
+    [allocatedTotalsByCurrency]
+  );
 
   function openCreateModal(source: DistributionSource) {
     setEditorMode(source);
@@ -200,6 +280,7 @@ export default function AssetsPage() {
             note: form.note.trim(),
             month: targetMonth,
             category_id: form.category_id ? Number(form.category_id) : null,
+            currency: normalizeCurrency(editingRecord.currency),
           };
           await updateAssetDistribution(editingRecord.id, payload);
           toast.showToast("Distribution updated.", "success");
@@ -212,6 +293,7 @@ export default function AssetsPage() {
           note: form.note.trim(),
           category_id: form.category_id ? Number(form.category_id) : null,
           source: editorMode,
+          currency: activeCurrency,
         };
         await createAssetDistribution(payload);
         toast.showToast("Distribution added.", "success");
@@ -220,9 +302,12 @@ export default function AssetsPage() {
       setEditorOpen(false);
       setEditingRecord(null);
       await loadRecords();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Distribution save failed", error);
-      const message = error?.message || error?.error_description || "Something went wrong while saving the distribution.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while saving the distribution.";
       toast.showToast(message, "error");
     }
   }
@@ -315,78 +400,132 @@ export default function AssetsPage() {
           </div>
         </Card>
 
-        <section className="grid gap-4 lg:grid-cols-4">
-          <Card className="text-left cursor-pointer" variant="info">
-            <button onClick={() => setDetailType("Liquid Assets")} className="w-full text-left">
-              <div className="flex items-center gap-2 text-zinc-400 mb-3">
-                <Wallet size={18} />
-                Available Assets
+        <section className="grid gap-4 grid-cols-1">
+          {hasLiquidAssets && (
+            <Card className="text-left" variant="info">
+              <div>
+                <div className="flex items-center gap-2 text-zinc-400 mb-3">
+                  <Wallet size={18} />
+                  Available Assets
+                </div>
+                <div className="space-y-2">
+                  {CURRENCIES.filter((currency) => liquidTotalsByCurrency[currency].total > 0).map((currency) => (
+                    <button
+                      key={currency}
+                      type="button"
+                      onClick={() => setDetailType({ type: "Liquid Assets", currency })}
+                      className="block w-full rounded-xl border border-cyan-500/20 bg-black/30 px-3 py-2 text-left transition hover:border-cyan-300"
+                    >
+                      <div className="text-2xl font-bold text-cyan-400">
+                        {formatCurrencyAmount(liquidTotalsByCurrency[currency].total, currency)}
+                      </div>
+                      <p className="text-xs text-zinc-400">
+                        {liquidTotalsByCurrency[currency].count} record{liquidTotalsByCurrency[currency].count === 1 ? "" : "s"}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-sm text-zinc-400 mt-2">{allLiquidRecords.length} record{allLiquidRecords.length === 1 ? "" : "s"}</p>
               </div>
-              <div className="text-3xl font-bold text-cyan-400">RM {allLiquidRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0).toFixed(2)}</div>
-              <p className="text-sm text-zinc-400 mt-2">{allLiquidRecords.length} record{allLiquidRecords.length === 1 ? "" : "s"}</p>
-            </button>
-          </Card>
+            </Card>
+          )}
 
-          <Card className="text-left cursor-pointer" variant="accent">
-            <button onClick={() => setDetailType("Allocated Assets")} className="w-full text-left">
-              <div className="flex items-center gap-2 text-zinc-400 mb-3">
-                <Sparkles size={18} />
-                Fixed Assets
+          {hasAllocatedAssets && (
+            <Card className="text-left" variant="accent">
+              <div>
+                <div className="flex items-center gap-2 text-zinc-400 mb-3">
+                  <Sparkles size={18} />
+                  Fixed Assets
+                </div>
+                <div className="space-y-2">
+                  {CURRENCIES.filter((currency) => allocatedTotalsByCurrency[currency].total > 0).map((currency) => (
+                    <button
+                      key={currency}
+                      type="button"
+                      onClick={() => setDetailType({ type: "Allocated Assets", currency })}
+                      className="block w-full rounded-xl border border-violet-500/20 bg-black/30 px-3 py-2 text-left transition hover:border-violet-300"
+                    >
+                      <div className="text-2xl font-bold text-violet-400">
+                        {formatCurrencyAmount(allocatedTotalsByCurrency[currency].total, currency)}
+                      </div>
+                      <p className="text-xs text-zinc-400">
+                        {allocatedTotalsByCurrency[currency].count} record{allocatedTotalsByCurrency[currency].count === 1 ? "" : "s"}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-sm text-zinc-400 mt-2">{allAllocatedRecords.length} record{allAllocatedRecords.length === 1 ? "" : "s"}</p>
               </div>
-              <div className="text-3xl font-bold text-violet-400">RM {allAllocatedRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0).toFixed(2)}</div>
-              <p className="text-sm text-zinc-400 mt-2">{allAllocatedRecords.length} record{allAllocatedRecords.length === 1 ? "" : "s"}</p>
-            </button>
-          </Card>
+            </Card>
+          )}
 
-          <Card variant="success">
-            <div className="flex items-center gap-2 text-zinc-400 mb-3">
-              <CalendarDays size={18} />
-              Balance & Allocation
+          <Card variant="success" className="flex flex-col gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-zinc-400 mb-3">
+                <CalendarDays size={18} />
+                Balance & Allocation
+              </div>
+              <div className="text-3xl font-bold text-emerald-400">{formatCurrencyAmount(previousSummary.balance, activeCurrency)}</div>
+              <p className="text-sm text-zinc-400 mt-2">Previous month balance from income and expense data</p>
+              <div className={cn(cardStyles.variants.inset, "mt-4 p-3")}>
+                <div className="text-sm text-zinc-400">Available allocation amount for {formatMonthLabel(previousMonthKey)}</div>
+                <div className="text-2xl font-bold text-emerald-300 mt-1">{formatCurrencyAmount(availableAllocationAmount, activeCurrency)}</div>
+              </div>
             </div>
-            <div className="text-3xl font-bold text-emerald-400">RM {previousSummary.balance.toFixed(2)}</div>
-            <p className="text-sm text-zinc-400 mt-2">Previous month balance from income and expense data</p>
-            <div className={cn(cardStyles.variants.inset, "mt-4 p-3")}>
-              <div className="text-sm text-zinc-400">Available allocation amount for {formatMonthLabel(previousMonthKey)}</div>
-              <div className="text-2xl font-bold text-emerald-300 mt-1">RM {availableAllocationAmount.toFixed(2)}</div>
+
+            <div className="rounded-2xl border border-zinc-800/70 bg-black/20 p-4">
+              <div className="flex items-center gap-2 text-zinc-400">
+                <Layers size={18} />
+                <span>Month</span>
+              </div>
+
+              <div className="mt-3 space-y-3">
+                <Select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                >
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, "0");
+                    const key = `${year}-${month}`;
+                    return (
+                      <option key={key} value={key}>
+                        {key === currentMonth ? `${key} (Current)` : key}
+                      </option>
+                    );
+                  })}
+                </Select>
+
+                <Select
+                  value={activeCurrency}
+                  onChange={(e) => handleCurrencyChange(e.target.value)}
+                >
+                  {CURRENCIES.map((currency) => (
+                    <option key={currency} value={currency}>
+                      {currencyLabel(currency)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div className={cn(cardStyles.variants.inset, "mt-4 p-3 text-sm text-zinc-400")}>
+                Showing records for {formatMonthLabel(selectedMonth)} and {formatMonthLabel(previousMonthKey)}.
+              </div>
             </div>
+
             <Button
               onClick={() => openCreateModal("allocation")}
               disabled={availableAllocationAmount === 0}
-              className="mt-4 w-full"
+              className="w-full"
               variant="secondary"
             >
               Add New Distribution
             </Button>
           </Card>
-
-          <Card>
-            <div className="flex items-center gap-2 text-zinc-400 mb-3">
-              <Layers size={18} />
-              Month
-            </div>
-            <Select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            >
-              {Array.from({ length: 12 }, (_, i) => {
-                const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-                const year = d.getFullYear();
-                const month = String(d.getMonth() + 1).padStart(2, "0");
-                const key = `${year}-${month}`;
-                return (
-                  <option key={key} value={key}>
-                    {key === currentMonth ? `${key} (Current)` : key}
-                  </option>
-                );
-              })}
-            </Select>
-            <div className={cn(cardStyles.variants.inset, "mt-4 p-3 text-sm text-zinc-400")}>
-              Showing records for {formatMonthLabel(selectedMonth)} and {formatMonthLabel(previousMonthKey)}.
-            </div>
-          </Card>
         </section>
 
-        <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
+        <section className="grid gap-5 lg:grid-cols-1">
           <Card variant="default">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -408,7 +547,7 @@ export default function AssetsPage() {
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-bold">RM {Number(record.amount).toFixed(2)}</h3>
+                          <h3 className="text-lg font-bold">{formatCurrencyAmount(Number(record.amount), record.currency)}</h3>
                           <span className="rounded-full border border-zinc-700 px-2.5 py-1 text-xs text-zinc-400">
                             {record.type}
                           </span>
@@ -437,21 +576,6 @@ export default function AssetsPage() {
             </div>
           </Card>
 
-          <Card>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-bold">Previous Month Summary</h2>
-                <p className="text-zinc-400 text-sm">This panel stays separate from bookkeeping entries.</p>
-              </div>
-            </div>
-            <div className={cn(cardStyles.variants.inset, "mt-5 p-4")}>
-              <div className="text-sm text-zinc-400">Previous month balance</div>
-              <div className="text-3xl font-bold text-emerald-400 mt-1">RM {previousSummary.balance.toFixed(2)}</div>
-              <div className="mt-4 h-px bg-zinc-800" />
-              <div className="mt-4 text-sm text-zinc-400">Calculated allocation usage</div>
-              <div className="text-2xl font-bold text-cyan-400 mt-1">RM {allocationRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0).toFixed(2)}</div>
-            </div>
-          </Card>
         </section>
       </div>
 
@@ -460,7 +584,7 @@ export default function AssetsPage() {
           <div className={cn(overlayStyles.modalPanel, "max-w-xl")}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-2xl font-bold">{detailType}</h3>
+                <h3 className="text-2xl font-bold">{detailType.type}</h3>
                 <p className="text-sm text-zinc-400 mt-1">Showing all historical records for this type.</p>
               </div>
               <Button variant="ghost" size="md" onClick={() => setDetailType(null)} className="rounded-full p-2">
@@ -473,7 +597,7 @@ export default function AssetsPage() {
                   <Card key={entry.name} variant="muted" className="p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <div className="text-lg font-bold">RM {Number(entry.total).toFixed(2)}</div>
+                        <div className="text-lg font-bold">{formatCurrencyAmount(Number(entry.total), detailType.currency)}</div>
                         <div className="text-sm text-zinc-400 mt-1">{entry.name}</div>
                       </div>
                     </div>
@@ -511,7 +635,7 @@ export default function AssetsPage() {
                   type="number"
                   value={form.amount}
                   onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
-                  placeholder="RM 0.00"
+                  placeholder={`${currencyLabel(editingRecord?.currency || activeCurrency)} 0.00`}
                   fieldSize="md"
                   className="mt-2"
                 />

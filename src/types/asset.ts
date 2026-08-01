@@ -22,11 +22,13 @@ export interface AssetAllocation {
 export type AssetAllocationPayload = Omit<AssetAllocation, "id" | "created_at" | "updated_at" | "asset">;
 
 import type { DistributionCategory } from "./distribution";
+import type { Currency } from "./currency";
 
 export interface AssetDistribution {
   id: number;
   month: string;
   amount: number;
+  currency?: Currency;
   type: "Liquid Assets" | "Allocated Assets";
   note: string;
   source: "allocation" | "manual";

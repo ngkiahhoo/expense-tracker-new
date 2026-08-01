@@ -78,7 +78,7 @@ export function formatAIExport(
 
   if (options.includeExpenses) {
     parts.push("=== EXPENSES CSV ===\n");
-    parts.push("date,month,day_of_week,amount,category,type,note\n");
+    parts.push("date,month,day_of_week,amount,currency,category,type,note\n");
 
     for (const expense of expenses) {
       const date =
@@ -91,6 +91,9 @@ export function formatAIExport(
         Number(
           expense.amount
         ).toFixed(2),
+        csvEscape(
+          expense.currency || "MYR"
+        ),
         csvEscape(
           expense.categories?.name ||
           "Uncategorized"
@@ -112,11 +115,12 @@ export function formatAIExport(
 
   if (options.includeMonthlySummary) {
     parts.push("=== MONTHLY SUMMARY CSV ===\n");
-    parts.push("month,income,expense,balance,saving_rate,needs_ratio,commitment_ratio,wants_ratio,transaction_count\n");
+    parts.push("month,currency,income,expense,balance,saving_rate,needs_ratio,commitment_ratio,wants_ratio,transaction_count\n");
 
     for (const summary of monthlySummaries) {
       const line = [
         summary.month,
+        csvEscape(summary.currency || "MYR"),
         Number(
           summary.income || 0
         ).toFixed(2),
@@ -167,7 +171,7 @@ export function formatAIExport(
 
   if (distributions.length > 0) {
     parts.push("=== ASSET DISTRIBUTIONS CSV ===\n");
-    parts.push("month,amount,type,source,category,note\n");
+    parts.push("month,amount,currency,type,source,category,note\n");
 
     for (const distribution of distributions) {
       const month = distribution.month;
@@ -178,6 +182,7 @@ export function formatAIExport(
       const line = [
         month,
         Number(distribution.amount).toFixed(2),
+        csvEscape(distribution.currency || "MYR"),
         csvEscape(distribution.type),
         csvEscape(distribution.source),
         csvEscape(categoryName),

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { confirmDelete } from "../utils/confirm";
 import { getTypeColor } from "../utils/typeColors";
+import { formatCurrencyAmount } from "../utils/currency";
 
 import type { Expense } from "../types/expense";
 
@@ -45,7 +46,7 @@ export default function ExpenseCard({
 
         <div className="max-w-[45%] shrink-0 text-right">
           <p className="break-words text-xl font-bold">
-            RM {Number(expense.amount).toFixed(2)}
+            {formatCurrencyAmount(Number(expense.amount), expense.currency)}
           </p>
 
           <div className="mt-3 flex justify-end gap-2">
@@ -77,4 +78,3 @@ export default function ExpenseCard({
     </Card>
   );
 }
-

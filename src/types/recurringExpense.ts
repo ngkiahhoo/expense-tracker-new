@@ -1,5 +1,6 @@
 import { Category }
 from "./category";
+import type { Currency } from "./currency";
 
 export interface RecurringExpense {
 
@@ -8,6 +9,8 @@ export interface RecurringExpense {
   name:string;
 
   amount:number;
+
+  currency?:Currency;
 
   description:string | null;
 
@@ -29,6 +32,8 @@ export interface RecurringExpensePayload {
   name:string;
 
   amount:number;
+
+  currency:Currency;
 
   description:string | null;
 

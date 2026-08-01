@@ -25,6 +25,8 @@ import { getExpensesByCategory } from "../../../services/expenseService";
 import { confirmDelete } from "../../../utils/confirm";
 
 import type { Expense } from "../../../types/expense";
+import type { Currency } from "../../../types/currency";
+import { currencyLabel, formatCurrencyAmount } from "../../../utils/currency";
 
 interface CategoryExpenseSheetProps {
   isOpen: boolean;
@@ -33,6 +35,7 @@ interface CategoryExpenseSheetProps {
   categoryTotal: number;
   categoryPercent: number;
   selectedMonth: string;
+  currency: Currency;
   onClose: () => void;
   onEdit: (expense: Expense) => void;
   onDelete: (id: number) => void;
@@ -51,6 +54,7 @@ export default function CategoryExpenseSheet({
   categoryTotal,
   categoryPercent,
   selectedMonth,
+  currency,
   onClose,
   onEdit,
   onDelete,
@@ -105,7 +109,8 @@ export default function CategoryExpenseSheet({
         PAGE_SIZE,
         offset,
         sortField,
-        sortDirection
+        sortDirection,
+        currency
       );
 
       if (!mounted) return;
@@ -128,6 +133,7 @@ export default function CategoryExpenseSheet({
     page,
     sortField,
     sortDirection,
+    currency,
     offset,
   ]);
 
@@ -159,7 +165,7 @@ export default function CategoryExpenseSheet({
             </p>
             <h2 className="text-xl font-bold text-white">{categoryName}</h2>
             <p className="text-sm text-zinc-400">
-              RM {categoryTotal.toFixed(2)} - {categoryPercent}% of month
+              {currencyLabel(currency)} {categoryTotal.toFixed(2)} - {categoryPercent}% of month
               spending
             </p>
           </div>
@@ -263,7 +269,7 @@ export default function CategoryExpenseSheet({
                       <div className="flex items-center gap-3 text-right">
                         <div className="text-right">
                           <p className="text-lg font-bold text-white">
-                            RM {Number(expense.amount).toFixed(2)}
+                            {formatCurrencyAmount(Number(expense.amount), expense.currency)}
                           </p>
                           <p className="text-sm text-zinc-500">
                             {formatDate(expense.expense_date)}
@@ -330,4 +336,3 @@ export default function CategoryExpenseSheet({
     </div>
   );
 }
-

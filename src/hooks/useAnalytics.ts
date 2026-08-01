@@ -3,16 +3,41 @@
 import {
   useMemo,
 } from "react";
+import type { Currency } from "../types/currency";
+import { DEFAULT_CURRENCY, normalizeCurrency } from "../utils/currency";
 
 export default function useAnalytics(
   expenses:any[],
-  incomes:any[]
+  incomes:any[],
+  activeCurrency:Currency = DEFAULT_CURRENCY
 ) {
+
+  const currencyExpenses =
+    useMemo(
+      () =>
+        expenses.filter(
+          (item) =>
+            normalizeCurrency(item.currency) ===
+            activeCurrency
+        ),
+      [expenses, activeCurrency]
+    );
+
+  const currencyIncomes =
+    useMemo(
+      () =>
+        incomes.filter(
+          (item) =>
+            normalizeCurrency(item.currency) ===
+            activeCurrency
+        ),
+      [incomes, activeCurrency]
+    );
 
   const totalSpending =
     useMemo(() => {
 
-      return expenses.reduce(
+      return currencyExpenses.reduce(
         (sum, item) =>
           sum +
           Number(
@@ -21,12 +46,12 @@ export default function useAnalytics(
         0
       );
 
-    }, [expenses]);
+    }, [currencyExpenses]);
 
   const totalIncome =
     useMemo(() => {
 
-      return incomes.reduce(
+      return currencyIncomes.reduce(
         (sum, item) =>
           sum +
           Number(
@@ -35,7 +60,7 @@ export default function useAnalytics(
         0
       );
 
-    }, [incomes]);
+    }, [currencyIncomes]);
 
   const spendingPercent =
     useMemo(() => {
@@ -68,7 +93,7 @@ export default function useAnalytics(
         wants:0,
       };
 
-      expenses.forEach(
+      currencyExpenses.forEach(
         (expense) => {
 
           const typeName =
@@ -113,7 +138,7 @@ export default function useAnalytics(
 
       return result;
 
-    }, [expenses]);
+    }, [currencyExpenses]);
 
   return {
 

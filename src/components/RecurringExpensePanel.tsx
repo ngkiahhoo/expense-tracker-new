@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/styles";
 import { confirmDelete } from "../utils/confirm";
 import { getTypeColor } from "../utils/typeColors";
+import { formatCurrencyAmount } from "../utils/currency";
 
 import type { Category } from "../types/category";
+import type { Currency } from "../types/currency";
 import type { RecurringExpense } from "../types/recurringExpense";
 
 interface RecurringExpensePanelProps {
@@ -40,6 +42,7 @@ interface RecurringExpensePanelProps {
   recurringLoading: boolean;
   recurringError: string;
   generatedRecurringCount: number;
+  currency: Currency;
   categories: Category[];
   refreshRecurringExpenses: () => Promise<boolean>;
   saveRecurringExpense: () => Promise<boolean>;
@@ -69,6 +72,7 @@ export default function RecurringExpensePanel({
   recurringLoading,
   recurringError,
   generatedRecurringCount,
+  currency,
   categories,
   refreshRecurringExpenses,
   saveRecurringExpense,
@@ -125,7 +129,7 @@ export default function RecurringExpensePanel({
 
           <Input
             type="number"
-            placeholder="Price"
+            placeholder={`${currency === "SGD" ? "SGD" : "RM"} Price`}
             value={recurringAmount}
             onChange={(event) => setRecurringAmount(event.target.value)}
           />
@@ -258,7 +262,7 @@ export default function RecurringExpensePanel({
 
               <div className="max-w-[45%] shrink-0 text-right">
                 <p className="break-words text-xl font-bold">
-                  RM {Number(expense.amount).toFixed(2)}
+                  {formatCurrencyAmount(Number(expense.amount), expense.currency)}
                 </p>
 
                 <p
@@ -303,4 +307,3 @@ export default function RecurringExpensePanel({
     </div>
   );
 }
-

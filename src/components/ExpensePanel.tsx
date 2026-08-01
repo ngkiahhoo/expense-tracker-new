@@ -12,6 +12,7 @@ from "./ExpenseForm";
 import type {
   Category,
 } from "../types/category";
+import type { Currency } from "../types/currency";
 import type {
   SavedNote,
 } from "../hooks/useSavedNotes";
@@ -29,6 +30,7 @@ interface ExpensePanelProps {
   setSelectedCategory: (value: string) => void;
   categories: Category[];
   editingId: number | null;
+  currency: Currency;
   loading: boolean;
   saveExpense: () =>
     | void
@@ -66,6 +68,8 @@ export default function ExpensePanel({
   categories,
 
   editingId,
+
+  currency,
 
   loading,
 
@@ -148,6 +152,8 @@ export default function ExpensePanel({
             categories={categories}
 
             editingId={editingId}
+
+            currency={currency}
 
             loading={loading}
 

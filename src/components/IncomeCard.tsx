@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { confirmDelete } from "../utils/confirm";
+import { formatCurrencyAmount } from "../utils/currency";
 
 import type { Income } from "../types/income";
 
@@ -25,19 +26,19 @@ export default function IncomeCard({
     <Card
       variant="item"
       padding="md"
-      className="flex items-center justify-between gap-3"
+      className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
-      <div className="min-w-0">
-        <p className="break-words text-3xl font-bold">
-          RM {income.amount}
+      <div className="min-w-0 flex-1">
+        <p className="break-words text-2xl font-semibold sm:text-3xl">
+          {formatCurrencyAmount(Number(income.amount), income.currency)}
         </p>
 
-        <p className="mt-1 truncate text-sm text-zinc-400">
+        <p className="mt-1 text-sm text-zinc-400">
           {income.note || "Income"}
         </p>
       </div>
 
-      <div className="flex shrink-0 gap-2">
+      <div className="flex shrink-0 gap-2 self-end sm:self-auto">
         <Button
           onClick={() => startEditIncome(income)}
           title="Edit income"
@@ -64,4 +65,3 @@ export default function IncomeCard({
     </Card>
   );
 }
-

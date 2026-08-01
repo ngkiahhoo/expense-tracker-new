@@ -7,6 +7,7 @@ export interface ExportOptions {
 
 export interface MonthlySummary {
   month:string;
+  currency:string;
   income:number;
   expense:number;
   balance:number;

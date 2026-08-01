@@ -1,4 +1,6 @@
 import { supabase } from "../lib/supabase";
+import type { Currency } from "../types/currency";
+import { DEFAULT_CURRENCY } from "../utils/currency";
 
 export interface MonthlySummary {
   income: number;
@@ -7,7 +9,8 @@ export interface MonthlySummary {
 }
 
 export async function getMonthlySummary(
-  selectedMonth: string
+  selectedMonth: string,
+  currency: Currency = DEFAULT_CURRENCY
 ): Promise<MonthlySummary> {
   const [year, month] = selectedMonth
     .split("-")
@@ -22,11 +25,13 @@ export async function getMonthlySummary(
     supabase
       .from("incomes")
       .select("amount")
+      .eq("currency", currency)
       .gte("income_date", start)
       .lte("income_date", end),
     supabase
       .from("expenses")
       .select("amount")
+      .eq("currency", currency)
       .gte("expense_date", start)
       .lte("expense_date", end),
   ]);

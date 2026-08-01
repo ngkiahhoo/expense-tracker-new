@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Field";
 import IncomeCard from "./IncomeCard";
+import type { Currency } from "../types/currency";
+import { currencyLabel } from "../utils/currency";
 
 import type { Income } from "../types/income";
 
@@ -20,6 +22,7 @@ interface IncomePanelProps {
   incomeNote: string;
   setIncomeNote: (value: string) => void;
   incomeEditingId: number | null;
+  currency: Currency;
   addIncome: () => Promise<any>;
   startEditIncome: (income: Income) => void;
   deleteIncome: (id: number) => Promise<any>;
@@ -37,6 +40,7 @@ export default function IncomePanel({
   incomeNote,
   setIncomeNote,
   incomeEditingId,
+  currency,
   addIncome,
   startEditIncome,
   deleteIncome,
@@ -54,7 +58,7 @@ export default function IncomePanel({
         </div>
 
         <h2 className="mt-2 text-5xl font-bold tracking-tight text-white">
-          RM{" "}
+          {currencyLabel(currency)}{" "}
           {totalIncome.toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
@@ -67,7 +71,7 @@ export default function IncomePanel({
       </button>
 
       {showIncomeList && (
-        <div className="mt-5 grid gap-3 md:grid-cols-2">
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
           {incomes.length > 0 ? (
             incomes.map((income) => (
               <IncomeCard

@@ -1,5 +1,7 @@
 import { Card } from "@/components/ui/Card";
 import { toneStyles } from "@/components/ui/styles";
+import type { Currency } from "@/types/currency";
+import { currencyLabel } from "@/utils/currency";
 
 interface SpendingAnalytics {
   needs: number;
@@ -9,12 +11,12 @@ interface SpendingAnalytics {
 
 export default function AnalyticsPanel({
   analytics,
-  totalSpending,
   totalIncome,
+  currency,
 }: {
   analytics: SpendingAnalytics;
-  totalSpending: number;
   totalIncome: number;
+  currency: Currency;
 }) {
 
   function percent(value: number) {
@@ -95,7 +97,7 @@ export default function AnalyticsPanel({
                   text-zinc-300
                 "
               >
-                {percent(row.value)}% - RM {row.value.toFixed(2)}
+                {percent(row.value)}% - {currencyLabel(currency)} {row.value.toFixed(2)}
               </span>
 
             </div>

@@ -34,6 +34,7 @@ import type {
 } from "../types/distribution";
 
 interface MonthlyAccumulator {
+  currency:string;
   income:number;
   expense:number;
   needs:number;
@@ -100,8 +101,12 @@ export default function useAIExport() {
           return;
         }
 
-        monthlyMap[month] =
-          monthlyMap[month] || {
+        const currency = inc.currency || "MYR";
+        const key = `${month}-${currency}`;
+
+        monthlyMap[key] =
+          monthlyMap[key] || {
+            currency,
             income: 0,
             expense: 0,
             needs: 0,
@@ -110,14 +115,17 @@ export default function useAIExport() {
             transaction_count: 0,
           };
 
-        monthlyMap[month].income += Number(inc.amount || 0);
+        monthlyMap[key].income += Number(inc.amount || 0);
       });
 
       expenses.forEach((e: Expense) => {
         const month = e.expense_date.slice(0, 7);
+        const currency = e.currency || "MYR";
+        const key = `${month}-${currency}`;
 
-        monthlyMap[month] =
-          monthlyMap[month] || {
+        monthlyMap[key] =
+          monthlyMap[key] || {
+            currency,
             income: 0,
             expense: 0,
             needs: 0,
@@ -126,18 +134,19 @@ export default function useAIExport() {
             transaction_count: 0,
           };
 
-        monthlyMap[month].expense += Number(e.amount || 0);
-        monthlyMap[month].transaction_count += 1;
+        monthlyMap[key].expense += Number(e.amount || 0);
+        monthlyMap[key].transaction_count += 1;
         const typeName = e.categories?.types?.name?.toLowerCase();
-        if (typeName === "needs") monthlyMap[month].needs += Number(e.amount || 0);
-        else if (typeName === "commitment") monthlyMap[month].commitment += Number(e.amount || 0);
-        else if (typeName === "wants") monthlyMap[month].wants += Number(e.amount || 0);
+        if (typeName === "needs") monthlyMap[key].needs += Number(e.amount || 0);
+        else if (typeName === "commitment") monthlyMap[key].commitment += Number(e.amount || 0);
+        else if (typeName === "wants") monthlyMap[key].wants += Number(e.amount || 0);
       });
 
       const monthlySummaries: MonthlySummary[] = Object.keys(monthlyMap)
         .sort()
-        .map((month) => {
-          const m = monthlyMap[month];
+        .map((key) => {
+          const m = monthlyMap[key];
+          const month = key.slice(0, 7);
           const income = m.income || 0;
           const expense = m.expense || 0;
           const balance =
@@ -148,6 +157,7 @@ export default function useAIExport() {
           const wants_ratio = income > 0 ? (m.wants / income) * 100 : 0;
           return {
             month,
+            currency: m.currency,
             income,
             expense,
             balance:

@@ -152,6 +152,7 @@ export async function updateGeneratedExpenseForRecurring(
   recurringExpense:RecurringExpense,
   payload:{
     amount:number;
+    currency:string;
     note:string;
     expense_date:string;
     category_id:number;
@@ -254,6 +255,7 @@ export async function removeRecurringExpense(
 async function generatedExpenseExists(
   payload:{
     amount:number;
+    currency:string;
     note:string;
     expense_date:string;
     category_id:number;
@@ -277,6 +279,10 @@ async function generatedExpenseExists(
       .eq(
         "amount",
         payload.amount
+      )
+      .eq(
+        "currency",
+        payload.currency
       )
       .eq(
         "note",
@@ -346,6 +352,8 @@ export async function generateRecurringExpensesForMonth(
         Number(
           recurringExpense.amount
         ),
+      currency:
+        recurringExpense.currency || "MYR",
       note:
         formatRecurringExpenseNote(
           recurringExpense.name,
@@ -384,6 +392,7 @@ export async function generateRecurringExpensesForMonth(
             .from("expenses")
             .update({
               amount: payload.amount,
+              currency: payload.currency,
               note: payload.note,
               expense_date: payload.expense_date,
               category_id: payload.category_id,

@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import { Card } from "@/components/ui/Card";
 import { emptyStateStyles } from "@/components/ui/styles";
+import { formatCurrencyAmount } from "../../../utils/currency";
 
 import type { CategoryBreakdownItem } from "../../../types/analytics";
 
@@ -30,7 +31,7 @@ function renderTooltip({ active, payload }: any) {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-3 text-sm text-white shadow-xl">
       <p className="font-bold mb-1">{item.categoryName}</p>
-      <p className="text-zinc-400">RM {item.totalAmount.toFixed(2)}</p>
+      <p className="text-zinc-400">{formatCurrencyAmount(item.totalAmount, item.expenses[0]?.currency)}</p>
       <p className="text-zinc-400">{item.percentage}%</p>
     </div>
   );
@@ -130,7 +131,7 @@ export default function ExpenseCategoryBreakdown({
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <span className="text-base font-bold text-white">
-                    RM {item.totalAmount.toFixed(2)}
+                    {formatCurrencyAmount(item.totalAmount, item.expenses[0]?.currency)}
                   </span>
                   <span
                     className="inline-flex h-3 flex-1 rounded-full"

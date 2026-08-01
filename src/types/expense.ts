@@ -1,11 +1,14 @@
 import { Category }
 from "./category";
+import type { Currency } from "./currency";
 
 export interface Expense {
 
   id:number;
 
   amount:number;
+
+  currency?:Currency;
 
   note:string;
 

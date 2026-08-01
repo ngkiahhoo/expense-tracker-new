@@ -15,13 +15,17 @@ import {
   removeIncome,
 
 } from "../services/incomeService";
+import type { Income } from "../types/income";
+import type { Currency } from "../types/currency";
+import { DEFAULT_CURRENCY, normalizeCurrency } from "../utils/currency";
 
 export default function useIncome(
-  selectedMonth:string
+  selectedMonth:string,
+  activeCurrency:Currency = DEFAULT_CURRENCY
 ) {
 
   const [incomes, setIncomes] =
-    useState<any[]>([]);
+    useState<Income[]>([]);
 
   const [incomeAmount, setIncomeAmount] =
     useState("");
@@ -31,6 +35,9 @@ export default function useIncome(
 
   const [incomeEditingId, setIncomeEditingId] =
     useState<number | null>(null);
+
+  const [incomeEditingCurrency, setIncomeEditingCurrency] =
+    useState<Currency | null>(null);
 
   const [incomeLoading, setIncomeLoading] =
     useState(false);
@@ -78,6 +85,10 @@ export default function useIncome(
 
         income_date:
           `${selectedMonth}-01`,
+
+        currency:
+          incomeEditingCurrency ||
+          activeCurrency,
       };
 
       if (
@@ -99,6 +110,10 @@ export default function useIncome(
           null
         );
 
+        setIncomeEditingCurrency(
+          null
+        );
+
       } else {
 
         const err = await createIncome(
@@ -115,6 +130,8 @@ export default function useIncome(
       setIncomeAmount("");
 
       setIncomeNote("");
+
+      setIncomeEditingCurrency(null);
 
       await fetchIncome();
 
@@ -157,7 +174,7 @@ export default function useIncome(
   }
 
   function startEditIncome(
-    income:any
+    income:Income
   ) {
 
     setIncomeEditingId(
@@ -171,6 +188,10 @@ export default function useIncome(
 
     setIncomeNote(
       income.note || ""
+    );
+
+    setIncomeEditingCurrency(
+      normalizeCurrency(income.currency)
     );
   }
 

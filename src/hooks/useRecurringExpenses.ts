@@ -19,6 +19,8 @@ import type {
   RecurringExpense,
   RecurringExpensePayload,
 } from "../types/recurringExpense";
+import type { Currency } from "../types/currency";
+import { DEFAULT_CURRENCY, normalizeCurrency } from "../utils/currency";
 
 function getErrorMessage(
   error:unknown
@@ -61,7 +63,8 @@ function recurringErrorMessage(
 
 export default function useRecurringExpenses(
   selectedMonth:string,
-  currentMonth:string
+  currentMonth:string,
+  activeCurrency:Currency = DEFAULT_CURRENCY
 ) {
   const [
     recurringExpenses,
@@ -114,6 +117,11 @@ export default function useRecurringExpenses(
   ] = useState<RecurringExpense | null>(null);
 
   const [
+    recurringEditingCurrency,
+    setRecurringEditingCurrency,
+  ] = useState<Currency | null>(null);
+
+  const [
     recurringLoading,
     setRecurringLoading,
   ] = useState(false);
@@ -141,6 +149,7 @@ export default function useRecurringExpenses(
     );
     setRecurringIsActive(true);
     setRecurringEditingOriginal(null);
+    setRecurringEditingCurrency(null);
   }
 
   async function fetchRecurringExpenses() {
@@ -213,6 +222,9 @@ export default function useRecurringExpenses(
         name:
           recurringName.trim(),
         amount,
+        currency:
+          recurringEditingCurrency ||
+          activeCurrency,
         description:
           recurringDescription.trim() ||
           null,
@@ -263,6 +275,8 @@ export default function useRecurringExpenses(
                 ),
               category_id:
                 payload.category_id,
+              currency:
+                payload.currency,
             }
           );
 
@@ -344,6 +358,9 @@ export default function useRecurringExpenses(
     );
     setRecurringIsActive(
       recurringExpense.is_active
+    );
+    setRecurringEditingCurrency(
+      normalizeCurrency(recurringExpense.currency)
     );
   }
 

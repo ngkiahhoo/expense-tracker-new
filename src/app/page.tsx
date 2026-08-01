@@ -79,6 +79,12 @@ import type {
 import type {
   CategoryBreakdownItem,
 } from "../types/analytics";
+import type { Currency } from "../types/currency";
+import {
+  CURRENCIES,
+  currencyLabel,
+  getStoredCurrency,
+} from "../utils/currency";
 
 type BottomTool =
   | "expense"
@@ -131,6 +137,9 @@ export default function Home() {
 
   const [selectedMonth, setSelectedMonth] =
     useState(currentMonth);
+
+  const [activeCurrency, setActiveCurrency] =
+    useState<Currency>(() => getStoredCurrency());
 
   const [activeTool, setActiveTool] =
     useState<BottomTool | null>(null);
@@ -202,7 +211,8 @@ export default function Home() {
     startEdit,
     resetExpenseForm,
   } = useExpenses(
-    selectedMonth
+    selectedMonth,
+    activeCurrency
   );
 
   const {
@@ -221,7 +231,8 @@ export default function Home() {
     deleteIncome,
     startEditIncome,
   } = useIncome(
-    selectedMonth
+    selectedMonth,
+    activeCurrency
   );
 
   const {
@@ -284,7 +295,8 @@ export default function Home() {
     generateDueRecurringExpenses,
   } = useRecurringExpenses(
     selectedMonth,
-    currentMonth
+    currentMonth,
+    activeCurrency
   );
 
   const {
@@ -305,7 +317,8 @@ export default function Home() {
     spendingPercent,
   } = useAnalytics(
     expenses,
-    incomes
+    incomes,
+    activeCurrency
   );
 
   const balance =
@@ -317,8 +330,19 @@ export default function Home() {
 
   const categoryBreakdown = useCategoryBreakdown(
     expenses,
-    categories
+    categories,
+    activeCurrency
   );
+
+  function handleCurrencyChange(value: string) {
+    const nextCurrency: Currency =
+      value === "SGD"
+        ? "SGD"
+        : "MYR";
+
+    setActiveCurrency(nextCurrency);
+    window.localStorage.setItem("expense-tracker-currency", nextCurrency);
+  }
 
   const [activeCategory, setActiveCategory] =
     useState<CategoryBreakdownItem | null>(null);
@@ -595,83 +619,63 @@ export default function Home() {
               className="p-4 sm:p-5"
             >
 
-              <div
-                className="
-                  flex
-                  items-center
-                  justify-between
-                  gap-3
-                  text-zinc-400
-                  mb-3
-                "
-              >
-                <div className="flex items-center gap-2">
-                  <Layers size={18}/>
-                  <span>
-                    Assets Module
-                  </span>
-                </div>
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3 rounded-2xl border border-zinc-800/70 bg-zinc-950/50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2 text-zinc-400">
+                    <Layers size={18}/>
+                    <span>
+                      Assets Module
+                    </span>
+                  </div>
 
-                <Link
-                  href="/assets"
-                  className={cn(
-                    buttonStyles.base,
-                    buttonStyles.variants.primary,
-                    buttonStyles.sizes.md
-                  )}
-                >
-                  <Layers size={16}/>
-                  Open Asset Dashboard
-                </Link>
-              </div>
-
-              <div
-                className="
-                  flex
-                  flex-col
-                  gap-3
-                "
-              >
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-2
-                    text-zinc-400
-                  "
-                >
-                  <CalendarDays size={18}/>
-                  <span>
-                    View Month
-                  </span>
-                </div>
-
-                <Select
-                  value={selectedMonth}
-                  onChange={(e) =>
-                    setSelectedMonth(
-                      e.target.value
-                    )
-                  }
-                  className="text-base sm:text-lg"
-                >
-
-                {months.map((month) => (
-
-                  <option
-                    key={month}
-                    value={month}
-                    className="bg-black"
+                  <Link
+                    href="/assets"
+                    className={cn(
+                      buttonStyles.base,
+                      buttonStyles.variants.primary,
+                      buttonStyles.sizes.md,
+                      "w-full justify-center sm:w-auto"
+                    )}
                   >
-                    {month === currentMonth
-                      ? `${month} (Current)`
-                      : month}
-                  </option>
+                    <Layers size={16}/>
+                    Open Asset Dashboard
+                  </Link>
+                </div>
 
-                ))}
+                <div className="rounded-2xl border border-zinc-800/70 bg-zinc-950/50 p-3">
+                  <div className="flex items-center gap-2 text-zinc-400">
+                    <CalendarDays size={18}/>
+                    <span>
+                      View Month
+                    </span>
+                  </div>
 
-              </Select>
+                  <Select
+                    value={selectedMonth}
+                    onChange={(e) =>
+                      setSelectedMonth(
+                        e.target.value
+                      )
+                    }
+                    className="mt-3 w-full text-base sm:text-lg"
+                  >
 
+                  {months.map((month) => (
+
+                    <option
+                      key={month}
+                      value={month}
+                      className="bg-black"
+                    >
+                      {month === currentMonth
+                        ? `${month} (Current)`
+                        : month}
+                    </option>
+
+                  ))}
+
+                </Select>
+              </div>
             </div>
 
             </Card>
@@ -695,6 +699,7 @@ export default function Home() {
               icon={Wallet}
               label="Monthly Income"
               amount={totalIncome}
+              currency={activeCurrency}
               action={
                 <Button onClick={openIncomeCrud} size="sm">
                   <Pencil size={16}/>
@@ -708,6 +713,7 @@ export default function Home() {
               tone="danger"
               label="Total Spending"
               amount={totalSpending}
+              currency={activeCurrency}
               helper={`${spendingPercent}% of income`}
             />
 
@@ -716,6 +722,7 @@ export default function Home() {
               tone="balance"
               label="Balance"
               amount={balance}
+              currency={activeCurrency}
               helper={`${balancePercent}% of income`}
             />
 
@@ -748,6 +755,20 @@ export default function Home() {
                     gap-2
                   "
                 >
+                  <Select
+                    value={activeCurrency}
+                    onChange={(event) => handleCurrencyChange(event.target.value)}
+                    fieldSize="md"
+                    className="w-24"
+                    title="Currency for new records and current dashboard"
+                  >
+                    {CURRENCIES.map((currency) => (
+                      <option key={currency} value={currency}>
+                        {currencyLabel(currency)}
+                      </option>
+                    ))}
+                  </Select>
+
                   {exportError && (
                     <span
                       className="
@@ -780,8 +801,8 @@ export default function Home() {
 
               <AnalyticsPanel
                 analytics={analytics}
-                totalSpending={totalSpending}
                 totalIncome={totalIncome}
+                currency={activeCurrency}
               />
             </section>
 
@@ -882,6 +903,7 @@ export default function Home() {
                     setSelectedCategory={setSelectedCategory}
                     categories={categories}
                     editingId={editingId}
+                    currency={activeCurrency}
                     loading={loading}
                     saveExpense={handleSaveExpense}
                     resetExpenseForm={resetExpenseForm}
@@ -913,6 +935,7 @@ export default function Home() {
                     recurringLoading={recurringLoading}
                     recurringError={recurringError}
                     generatedRecurringCount={generatedRecurringCount}
+                    currency={activeCurrency}
                     categories={categories}
                     refreshRecurringExpenses={fetchRecurringExpenses}
                     saveRecurringExpense={handleSaveRecurringExpense}
@@ -935,6 +958,7 @@ export default function Home() {
                     incomeNote={incomeNote}
                     setIncomeNote={setIncomeNote}
                     incomeEditingId={incomeEditingId}
+                    currency={activeCurrency}
                     addIncome={handleAddIncome}
                     startEditIncome={handleStartEditIncome}
                     deleteIncome={handleDeleteIncome}
@@ -980,6 +1004,7 @@ export default function Home() {
           categoryTotal={activeCategory?.totalAmount ?? 0}
           categoryPercent={activeCategory?.percentage ?? 0}
           selectedMonth={selectedMonth}
+          currency={activeCurrency}
           onClose={() => setActiveCategory(null)}
           onEdit={handleStartEdit}
           onDelete={deleteExpense}
@@ -1126,6 +1151,7 @@ function MetricCard({
   icon: Icon,
   label,
   amount,
+  currency,
   helper,
   action,
 }: {
@@ -1134,6 +1160,7 @@ function MetricCard({
   icon?: LucideIcon;
   label: string;
   amount: number;
+  currency: Currency;
   helper?: string;
   action?: ReactNode;
 }) {
@@ -1157,7 +1184,7 @@ function MetricCard({
             )}
           >
             <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
-              <span className="text-base text-zinc-400">RM</span>
+              <span className="text-base text-zinc-400">{currencyLabel(currency)}</span>
               <span>{amount.toFixed(2)}</span>
             </span>
           </h2>

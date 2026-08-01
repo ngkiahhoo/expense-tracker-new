@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import type { Currency } from "../types/currency";
 
 export async function getExpenses(
   selectedMonth:string
@@ -104,7 +105,8 @@ export async function getExpensesByCategory(
   limit = 10,
   offset = 0,
   sortField = 'expense_date',
-  sortDirection: 'asc' | 'desc' = 'desc'
+  sortDirection: 'asc' | 'desc' = 'desc',
+  currency?: Currency
 ) {
   const [year, month] = selectedMonth.split("-").map(Number);
   const start = `${selectedMonth}-01`;
@@ -130,6 +132,10 @@ export async function getExpensesByCategory(
   if (search) {
     // simple server-side search on note field
     query = query.ilike('note', `%${search}%`);
+  }
+
+  if (currency) {
+    query = query.eq('currency', currency);
   }
 
   const { data, count, error } = await query;
