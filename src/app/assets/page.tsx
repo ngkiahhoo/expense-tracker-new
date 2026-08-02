@@ -378,10 +378,14 @@ export default function AssetsPage() {
   return (
     <main className="min-h-screen bg-black px-4 pt-4 pb-28 text-white sm:px-6 sm:pt-6 md:px-8">
       <div className="mx-auto grid max-w-6xl gap-5">
-        <Card variant="panel" padding="lg">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <Card
+          variant="panel"
+          padding="lg"
+          className="flex h-full min-h-[132px] flex-col justify-center md:min-h-[150px]"
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div>
-              <div className="flex items-center gap-2 text-zinc-400 mb-2">
+              <div className="flex items-center gap-2 text-zinc-400">
                 <Layers size={18} />
                 <span>Asset Management</span>
               </div>
@@ -391,7 +395,8 @@ export default function AssetsPage() {
               className={cn(
                 buttonStyles.base,
                 buttonStyles.variants.primary,
-                buttonStyles.sizes.md
+                buttonStyles.sizes.md,
+                "w-full justify-center sm:w-auto"
               )}
             >
               <ArrowUpRight size={18} />

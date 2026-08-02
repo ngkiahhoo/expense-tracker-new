@@ -692,19 +692,19 @@ export default function Home() {
               w-full
               max-w-5xl
               mx-auto
-              grid
+              flex
+              flex-col
               gap-4
             "
           >
 
-            <Card
-              variant="panel"
-              padding="none"
-              className="p-4 sm:p-5"
-            >
-
-              <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-3 rounded-2xl border border-zinc-800/70 bg-zinc-950/50 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4">
+              <Card
+                variant="panel"
+                padding="none"
+                className="flex h-full min-h-[132px] flex-col justify-center p-4 sm:p-5 md:min-h-[150px]"
+              >
+                <div className="flex h-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <div className="flex items-center gap-2 text-zinc-400">
                     <Layers size={18}/>
                     <span>
@@ -725,27 +725,30 @@ export default function Home() {
                     Open Asset Dashboard
                   </Link>
                 </div>
+              </Card>
 
-                <div className="rounded-2xl border border-zinc-800/70 bg-zinc-950/50 p-3">
-                  <div className="flex items-center gap-2 text-zinc-400">
-                    <CalendarDays size={18}/>
-                    <span>
-                      View Month
-                    </span>
-                  </div>
+              <Card
+                variant="panel"
+                padding="none"
+                className="flex h-full min-h-[132px] flex-col p-4 sm:p-5 md:min-h-[150px]"
+              >
+                <div className="flex items-center gap-2 text-zinc-400">
+                  <CalendarDays size={18}/>
+                  <span>
+                    View Month
+                  </span>
+                </div>
 
-                  <Select
-                    value={selectedMonth}
-                    onChange={(e) =>
-                      setSelectedMonth(
-                        e.target.value
-                      )
-                    }
-                    className="mt-3 w-full text-base sm:text-lg"
-                  >
-
+                <Select
+                  value={selectedMonth}
+                  onChange={(e) =>
+                    setSelectedMonth(
+                      e.target.value
+                    )
+                  }
+                  className="mt-4 w-full text-base sm:text-lg"
+                >
                   {months.map((month) => (
-
                     <option
                       key={month}
                       value={month}
@@ -755,14 +758,10 @@ export default function Home() {
                         ? `${month} (Current)`
                         : month}
                     </option>
-
                   ))}
-
                 </Select>
-              </div>
+              </Card>
             </div>
-
-            </Card>
 
             {error && (
 
@@ -777,45 +776,42 @@ export default function Home() {
 
             )}
 
-            <MetricCard
-              variant="success"
-              tone="success"
-              icon={Wallet}
-              label="Monthly Income"
-              amount={totalIncome}
-              currency={activeCurrency}
-              action={
-                <Button onClick={openIncomeCrud} size="sm">
-                  <Pencil size={16}/>
-                  Manage Income
-                </Button>
-              }
-            />
+            <div className="flex flex-col gap-4">
+              <MetricCard
+                variant="success"
+                tone="success"
+                icon={Wallet}
+                label="Monthly Income"
+                amount={totalIncome}
+                currency={activeCurrency}
+                action={
+                  <Button onClick={openIncomeCrud} size="sm">
+                    <Pencil size={16}/>
+                    Manage Income
+                  </Button>
+                }
+              />
 
-            <MetricCard
-              variant="danger"
-              tone="danger"
-              label="Total Spending"
-              amount={totalSpending}
-              currency={activeCurrency}
-              helper={`${spendingPercent}% of income`}
-            />
+              <MetricCard
+                variant="danger"
+                tone="danger"
+                label="Total Spending"
+                amount={totalSpending}
+                currency={activeCurrency}
+                helper={`${spendingPercent}% of income`}
+              />
 
-            <MetricCard
-              variant="balance"
-              tone="balance"
-              label="Balance"
-              amount={balance}
-              currency={activeCurrency}
-              helper={`${balancePercent}% of income`}
-            />
+              <MetricCard
+                variant="balance"
+                tone="balance"
+                label="Balance"
+                amount={balance}
+                currency={activeCurrency}
+                helper={`${balancePercent}% of income`}
+              />
+            </div>
 
-            <section
-              className="
-                md:col-span-2
-                lg:col-span-3
-              "
-            >
+            <section className="w-full">
               <div
                 className="
                   flex
@@ -890,12 +886,7 @@ export default function Home() {
               />
             </section>
 
-            <section
-              className="
-                md:col-span-2
-                lg:col-span-3
-              "
-            >
+            <section className="w-full">
               <ExpenseCategoryBreakdown
                 breakdown={categoryBreakdown}
                 loading={loading}
@@ -1274,7 +1265,7 @@ function MetricCard({
     <Card
       variant={variant}
       padding="sm"
-      className="flex min-h-[104px] flex-col justify-between"
+      className="flex h-full min-h-[124px] w-full flex-col justify-between md:min-h-[140px]"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
