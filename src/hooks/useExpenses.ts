@@ -156,6 +156,17 @@ export default function useExpenses(
 
       await fetchExpenses();
 
+      // notify listeners (assets page) to refresh distributions
+      try {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("transactions:changed", {
+              detail: { type: "expense", month: selectedMonth },
+            })
+          );
+        }
+      } catch {}
+
       return { success: true, message: editingId ? "Expense updated successfully" : "Expense added successfully" };
 
     } catch (err) {
@@ -206,6 +217,16 @@ export default function useExpenses(
 
       await fetchExpenses();
 
+      try {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("transactions:changed", {
+              detail: { type: "expense", month: selectedMonth },
+            })
+          );
+        }
+      } catch {}
+
       return { success: true, message: "Expense deleted successfully" };
 
     } catch (err) {
@@ -234,6 +255,16 @@ export default function useExpenses(
       }
 
       await fetchExpenses();
+      try {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("transactions:changed", {
+              detail: { type: "expense", month: selectedMonth },
+            })
+          );
+        }
+      } catch {}
+
       return { success: true, message: "Monthly expenses deleted successfully" };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to delete monthly expenses";

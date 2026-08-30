@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from "react";
 
+
+
 import PullToRefresh
 from "react-simple-pull-to-refresh";
 
@@ -29,7 +31,7 @@ import Link from "next/link";
 import { useToast } from "@/contexts/ToastContext";
 import { Button } from "@/components/ui/Button";
 import { Card, type CardVariant } from "@/components/ui/Card";
-import { Select, Textarea } from "@/components/ui/Field";
+import { Input, Select, Textarea } from "@/components/ui/Field";
 import {
   buttonStyles,
   cn,
@@ -65,6 +67,7 @@ import useCategoryBreakdown
 from "../hooks/useCategoryBreakdown";
 import useAnalytics
 from "../hooks/useAnalytics";
+import useAssets from "../hooks/useAssets";
 import useSavedNotes
 from "../hooks/useSavedNotes";
 import useRecurringExpenses
@@ -85,6 +88,7 @@ import {
   CURRENCIES,
   currencyLabel,
   getStoredCurrency,
+  formatCurrencyAmount,
 } from "../utils/currency";
 import { supabase } from "@/lib/supabase";
 
@@ -151,6 +155,8 @@ export default function Home() {
 
   const [activeTool, setActiveTool] =
     useState<BottomTool | null>(null);
+
+  const [showAssetModal, setShowAssetModal] = useState(false);
 
   function handlePopupFocus(
     event: FocusEvent<HTMLDivElement>
@@ -328,6 +334,8 @@ export default function Home() {
     incomes,
     activeCurrency
   );
+
+  const assets = useAssets(selectedMonth);
 
   const balance =
     totalIncome - totalSpending;
@@ -699,7 +707,7 @@ export default function Home() {
           >
 
             <div className="flex flex-col gap-4">
-              <Card
+              {/* <Card
                 variant="panel"
                 padding="none"
                 className="flex h-full min-h-[132px] flex-col justify-center p-4 sm:p-5 md:min-h-[150px]"
@@ -725,7 +733,7 @@ export default function Home() {
                     Open Asset Dashboard
                   </Link>
                 </div>
-              </Card>
+              </Card> */}
 
               <Card
                 variant="panel"
@@ -799,13 +807,6 @@ export default function Home() {
                 amount={totalSpending}
                 currency={activeCurrency}
                 helper={`${spendingPercent}% of income`}
-                onAmountClick={() => {
-                  setDrilldownMonth(selectedMonth);
-                  setDrilldownCategoryKey(null);
-                  setDrilldownCategoryName(null);
-                  setDrilldownTypeName(null);
-                  setShowExpenseDrilldown(true);
-                }}
               />
 
               <MetricCard
@@ -816,6 +817,30 @@ export default function Home() {
                 currency={activeCurrency}
                 helper={`${balancePercent}% of income`}
               />
+              {/* Total Assets card placed under Balance and above Spending Analytics */}
+              <Card
+                className="text-left cursor-pointer"
+                variant="info"
+                onClick={() => setShowAssetModal(true)}
+              >
+            <div>
+              <div className="flex items-center gap-2 text-zinc-400 mb-3">
+                <Wallet size={18} />
+                Total Assets
+              </div>
+              <div className="space-y-2">
+                <div className="block w-full rounded-xl border border-cyan-500/20 bg-black/30 px-3 py-3 text-left transition hover:border-cyan-300">
+                  <div className="text-2xl font-bold text-cyan-400">
+                    {formatCurrencyAmount(
+                      (assets.assets || []).reduce((s, a) => s + Number(a.current_value || 0), 0),
+                      activeCurrency
+                    )}
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-zinc-400 mt-2">{(assets.assets || []).length} record{(assets.assets || []).length === 1 ? "" : "s"}</p>
+            </div>
+          </Card>
             </div>
 
             <section className="w-full">
@@ -1185,6 +1210,201 @@ export default function Home() {
 
       </div>
 
+      {showAssetModal && (
+  <div className={overlayStyles.backdrop}>
+    <div className={cn(overlayStyles.modalPanel, "max-w-3xl")}>
+      
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-2xl font-bold">
+            Asset Details
+          </h3>
+
+          <p className="text-sm text-zinc-400 mt-1">
+            All tracked asset records. Edit values or create new assets here.
+          </p>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="md"
+          onClick={() => setShowAssetModal(false)}
+          className="rounded-full p-2"
+        >
+          <X size={16} />
+        </Button>
+      </div>
+
+      <div className="mt-5 space-y-4">
+
+        {/* Transactions */}
+
+        {/* Assets */}
+
+        {assets.loading ? (
+          <div className="text-zinc-400">
+            Loading assets...
+          </div>
+        ) : assets.assets && assets.assets.length > 0 ? (
+          assets.assets.map((a) => (
+            <Card
+              key={a.id}
+              variant="muted"
+              padding="sm"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-lg">
+                    {a.name}
+                  </div>
+
+                  <div className="text-zinc-400 text-sm">
+                    {a.note}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl font-bold text-emerald-300">
+                    {formatCurrencyAmount(
+                      Number(a.current_value),
+                      activeCurrency
+                    )}
+                  </div>
+
+                  <Button
+                    onClick={() => assets.startEditAsset(a)}
+                    variant="ghost"
+                  >
+                    Edit
+                  </Button>
+
+                  <Button
+                    onClick={async () => {
+                      const res =
+                        await assets.deleteAssetById(a.id);
+
+                      if (res.success) {
+                        toast.showToast(
+                          "Asset deleted.",
+                          "success"
+                        );
+
+                        await assets.fetchAllocatedAmount();
+                      } else {
+                        toast.showToast(
+                          res.error || "Failed to delete",
+                          "error"
+                        );
+                      }
+                    }}
+                    variant="danger"
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))
+        ) : (
+          <div className="text-zinc-400">
+            No assets yet.
+          </div>
+        )}
+
+        {/* Create / Edit Asset */}
+
+        <div className="mt-4 border-t border-zinc-800 pt-4">
+          <h3 className="font-bold">
+            Create / Edit Asset
+          </h3>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            <Input
+              value={assets.assetName}
+              onChange={(e) =>
+                assets.setAssetName(e.target.value)
+              }
+              placeholder="Asset name"
+            />
+
+            <Input
+              type="number"
+              value={assets.assetValue}
+              onChange={(e) =>
+                assets.setAssetValue(e.target.value)
+              }
+              placeholder="Current value"
+            />
+
+            <Select
+              value={activeCurrency}
+              onChange={(e) =>
+                handleCurrencyChange(e.target.value)
+              }
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {currencyLabel(c)}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="mt-3">
+            <Textarea
+              value={assets.assetNote}
+              onChange={(e) =>
+                assets.setAssetNote(e.target.value)
+              }
+              placeholder="Note (optional)"
+            />
+          </div>
+
+          <div className="mt-3 flex gap-2">
+            <Button
+              onClick={async () => {
+                const res =
+                  await assets.saveAsset();
+
+                if (res.success) {
+                  toast.showToast(
+                    "Asset saved.",
+                    "success"
+                  );
+
+                  await assets.fetchAllocatedAmount();
+                } else {
+                  toast.showToast(
+                    res.error || "Failed to save asset",
+                    "error"
+                  );
+                }
+              }}
+              variant="primary"
+            >
+              {assets.assetEditingId
+                ? "Update Asset"
+                : "Create Asset"}
+            </Button>
+
+            {assets.assetEditingId && (
+              <Button
+                onClick={() =>
+                  assets.resetAssetForm()
+                }
+                variant="outline"
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+)}
+
       {showExportModal && exportPayload && (
         <div
           className={overlayStyles.backdrop}
@@ -1258,7 +1478,6 @@ function MetricCard({
   currency,
   helper,
   action,
-  onAmountClick,
 }: {
   variant: CardVariant;
   tone: UiTone;
@@ -1268,15 +1487,7 @@ function MetricCard({
   currency: Currency;
   helper?: string;
   action?: ReactNode;
-  onAmountClick?: () => void;
 }) {
-  const amountContent = (
-    <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
-      <span className="text-base text-zinc-400">{currencyLabel(currency)}</span>
-      <span>{amount.toFixed(2)}</span>
-    </span>
-  );
-
   return (
     <Card
       variant={variant}
@@ -1293,21 +1504,13 @@ function MetricCard({
           <h2
             className={cn(
               "mt-2 text-3xl font-bold leading-tight",
-              toneStyles[tone].text,
-              onAmountClick && "cursor-pointer"
+              toneStyles[tone].text
             )}
           >
-            {onAmountClick ? (
-              <button
-                type="button"
-                onClick={onAmountClick}
-                className="text-left transition hover:opacity-90 focus:outline-none focus-visible:underline"
-              >
-                {amountContent}
-              </button>
-            ) : (
-              amountContent
-            )}
+            <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+              <span className="text-base text-zinc-400">{currencyLabel(currency)}</span>
+              <span>{amount.toFixed(2)}</span>
+            </span>
           </h2>
         </div>
 

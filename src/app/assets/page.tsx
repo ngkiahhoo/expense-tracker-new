@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/styles";
 import { useToast } from "@/contexts/ToastContext";
 import useMonthlySummary from "@/hooks/useMonthlySummary";
+import useAssets from "@/hooks/useAssets";
 import {
   createAssetDistribution,
   getAssetDistributions,
@@ -104,7 +105,9 @@ export default function AssetsPage() {
 
   const { summary: previousSummary } = useMonthlySummary(previousMonthKey, activeCurrency);
 
+  const assets = useAssets(selectedMonth);
   const [records, setRecords] = useState<AssetDistribution[]>([]);
+  const [showAssetModal, setShowAssetModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [detailType, setDetailType] = useState<DistributionDetail | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -124,6 +127,25 @@ export default function AssetsPage() {
   useEffect(() => {
     void loadRecords();
   }, [selectedMonth]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      try {
+        // refresh records when transactions change
+        void loadRecords();
+      } catch {}
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("transactions:changed", handler as EventListener);
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("transactions:changed", handler as EventListener);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     void loadDistributionCategories();
@@ -406,63 +428,25 @@ export default function AssetsPage() {
         </Card>
 
         <section className="grid gap-4 grid-cols-1">
-          {hasLiquidAssets && (
-            <Card className="text-left" variant="info">
-              <div>
-                <div className="flex items-center gap-2 text-zinc-400 mb-3">
-                  <Wallet size={18} />
-                  Available Assets
-                </div>
-                <div className="space-y-2">
-                  {CURRENCIES.filter((currency) => liquidTotalsByCurrency[currency].total > 0).map((currency) => (
-                    <button
-                      key={currency}
-                      type="button"
-                      onClick={() => setDetailType({ type: "Liquid Assets", currency })}
-                      className="block w-full rounded-xl border border-cyan-500/20 bg-black/30 px-3 py-2 text-left transition hover:border-cyan-300"
-                    >
-                      <div className="text-2xl font-bold text-cyan-400">
-                        {formatCurrencyAmount(liquidTotalsByCurrency[currency].total, currency)}
-                      </div>
-                      <p className="text-xs text-zinc-400">
-                        {liquidTotalsByCurrency[currency].count} record{liquidTotalsByCurrency[currency].count === 1 ? "" : "s"}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-                <p className="text-sm text-zinc-400 mt-2">{allLiquidRecords.length} record{allLiquidRecords.length === 1 ? "" : "s"}</p>
+          <Card className="text-left cursor-pointer" variant="info" onClick={async () => { setShowAssetModal(true); await loadRecords(); }}>
+            <div>
+              <div className="flex items-center gap-2 text-zinc-400 mb-3">
+                <Wallet size={18} />
+                Total Assets
               </div>
-            </Card>
-          )}
-
-          {hasAllocatedAssets && (
-            <Card className="text-left" variant="accent">
-              <div>
-                <div className="flex items-center gap-2 text-zinc-400 mb-3">
-                  <Sparkles size={18} />
-                  Fixed Assets
+              <div className="space-y-2">
+                <div className="block w-full rounded-xl border border-cyan-500/20 bg-black/30 px-3 py-3 text-left transition hover:border-cyan-300">
+                  <div className="text-2xl font-bold text-cyan-400">
+                    {formatCurrencyAmount(
+                      (assets.assets || []).reduce((s, a) => s + Number(a.current_value || 0), 0),
+                      activeCurrency
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  {CURRENCIES.filter((currency) => allocatedTotalsByCurrency[currency].total > 0).map((currency) => (
-                    <button
-                      key={currency}
-                      type="button"
-                      onClick={() => setDetailType({ type: "Allocated Assets", currency })}
-                      className="block w-full rounded-xl border border-violet-500/20 bg-black/30 px-3 py-2 text-left transition hover:border-violet-300"
-                    >
-                      <div className="text-2xl font-bold text-violet-400">
-                        {formatCurrencyAmount(allocatedTotalsByCurrency[currency].total, currency)}
-                      </div>
-                      <p className="text-xs text-zinc-400">
-                        {allocatedTotalsByCurrency[currency].count} record{allocatedTotalsByCurrency[currency].count === 1 ? "" : "s"}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-                <p className="text-sm text-zinc-400 mt-2">{allAllocatedRecords.length} record{allAllocatedRecords.length === 1 ? "" : "s"}</p>
               </div>
-            </Card>
-          )}
+              <p className="text-sm text-zinc-400 mt-2">{(assets.assets || []).length} record{(assets.assets || []).length === 1 ? "" : "s"}</p>
+            </div>
+          </Card>
 
           <Card variant="success" className="flex flex-col gap-4">
             <div>
@@ -611,6 +595,95 @@ export default function AssetsPage() {
               ) : (
                 <div className="text-zinc-400">No totals for this category yet.</div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAssetModal && (
+        <div className={overlayStyles.backdrop}>
+          <div className={cn(overlayStyles.modalPanel, "max-w-3xl")}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-2xl font-bold">Asset Details</h3>
+                <p className="text-sm text-zinc-400 mt-1">All tracked asset records. Edit values or create new assets here.</p>
+              </div>
+              <Button variant="ghost" size="md" onClick={() => setShowAssetModal(false)} className="rounded-full p-2">
+                <X size={16} />
+              </Button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <div className="rounded-xl border border-zinc-800 p-4 bg-black/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-zinc-400">Transactions for {formatMonthLabel(selectedMonth)}</div>
+                    <div className="text-2xl font-bold text-emerald-300 mt-1">
+                      {formatCurrencyAmount(
+                        records.filter(r => r.month === selectedMonth && (r.source === 'income' || r.source === 'expense')).reduce((s, r) => s + Number(r.amount || 0), 0),
+                        activeCurrency
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {(records.filter(r => r.month === selectedMonth && (r.source === 'income' || r.source === 'expense'))).length === 0 ? (
+                    <div className="text-zinc-400">No income/expense distributions for this month.</div>
+                  ) : (
+                    (records.filter(r => r.month === selectedMonth && (r.source === 'income' || r.source === 'expense'))).map(rec => (
+                      <div key={rec.id} className="flex items-center justify-between rounded-lg border border-zinc-800 p-3 bg-black">
+                        <div>
+                          <div className="font-medium">{rec.source === 'income' ? 'Income' : 'Expense'}</div>
+                          <div className="text-sm text-zinc-400">{rec.note || ''}</div>
+                        </div>
+                        <div className={`font-bold ${rec.amount < 0 ? 'text-red-400' : 'text-emerald-300'}`}>
+                          {formatCurrencyAmount(Number(rec.amount), rec.currency)}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {assets.loading ? (
+                <div className="text-zinc-400">Loading assets...</div>
+              ) : assets.assets && assets.assets.length > 0 ? (
+                assets.assets.map((a) => (
+                  <Card key={a.id} variant="muted" padding="sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-lg">{a.name}</div>
+                        <div className="text-zinc-400 text-sm">{a.note}</div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl font-bold text-emerald-300">{formatCurrencyAmount(Number(a.current_value), activeCurrency)}</div>
+                        <Button onClick={() => assets.startEditAsset(a)} variant="ghost">Edit</Button>
+                        <Button onClick={async () => { const res = await assets.deleteAssetById(a.id); if (res.success) { toast.showToast('Asset deleted.', 'success'); await assets.fetchAllocatedAmount(); } else { toast.showToast(res.error || 'Failed to delete', 'error'); } }} variant="danger">Delete</Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-zinc-400">No assets yet.</div>
+              )}
+
+              <div className="mt-4 border-t border-zinc-800 pt-4">
+                <h3 className="font-bold">Create / Edit Asset</h3>
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <Input value={assets.assetName} onChange={(e) => assets.setAssetName(e.target.value)} placeholder="Asset name" />
+                  <Input type="number" value={assets.assetValue} onChange={(e) => assets.setAssetValue(e.target.value)} placeholder="Current value" />
+                  <Select value={activeCurrency} onChange={(e) => setActiveCurrency(e.target.value as Currency)}>
+                    {CURRENCIES.map((c) => (<option key={c} value={c}>{currencyLabel(c)}</option>))}
+                  </Select>
+                </div>
+                <div className="mt-3">
+                  <Textarea value={assets.assetNote} onChange={(e) => assets.setAssetNote(e.target.value)} placeholder="Note (optional)" />
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Button onClick={async () => { const res = await assets.saveAsset(); if (res.success) { toast.showToast('Asset saved.', 'success'); await assets.fetchAllocatedAmount(); } else { toast.showToast(res.error || 'Failed to save asset', 'error'); } }} variant="primary">{assets.assetEditingId ? 'Update Asset' : 'Create Asset'}</Button>
+                  {assets.assetEditingId && <Button onClick={() => assets.resetAssetForm()} variant="outline">Cancel</Button>}
+                </div>
+              </div>
             </div>
           </div>
         </div>

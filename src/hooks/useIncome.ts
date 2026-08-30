@@ -135,6 +135,17 @@ export default function useIncome(
 
       await fetchIncome();
 
+      // notify listeners (assets page) to refresh distributions
+      try {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("transactions:changed", {
+              detail: { type: "income", month: selectedMonth },
+            })
+          );
+        }
+      } catch {}
+
       return { success: true, message: incomeEditingId ? "Income updated successfully" : "Income added successfully" };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to add income";
@@ -162,6 +173,16 @@ export default function useIncome(
       }
 
       await fetchIncome();
+
+      try {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("transactions:changed", {
+              detail: { type: "income", month: selectedMonth },
+            })
+          );
+        }
+      } catch {}
 
       return { success: true, message: "Income deleted successfully" };
     } catch (err) {
