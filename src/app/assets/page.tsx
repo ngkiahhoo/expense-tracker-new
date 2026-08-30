@@ -614,36 +614,6 @@ export default function AssetsPage() {
             </div>
 
             <div className="mt-5 space-y-4">
-              <div className="rounded-xl border border-zinc-800 p-4 bg-black/20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-zinc-400">Transactions for {formatMonthLabel(selectedMonth)}</div>
-                    <div className="text-2xl font-bold text-emerald-300 mt-1">
-                      {formatCurrencyAmount(
-                        records.filter(r => r.month === selectedMonth && (r.source === 'income' || r.source === 'expense')).reduce((s, r) => s + Number(r.amount || 0), 0),
-                        activeCurrency
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 space-y-2">
-                  {(records.filter(r => r.month === selectedMonth && (r.source === 'income' || r.source === 'expense'))).length === 0 ? (
-                    <div className="text-zinc-400">No income/expense distributions for this month.</div>
-                  ) : (
-                    (records.filter(r => r.month === selectedMonth && (r.source === 'income' || r.source === 'expense'))).map(rec => (
-                      <div key={rec.id} className="flex items-center justify-between rounded-lg border border-zinc-800 p-3 bg-black">
-                        <div>
-                          <div className="font-medium">{rec.source === 'income' ? 'Income' : 'Expense'}</div>
-                          <div className="text-sm text-zinc-400">{rec.note || ''}</div>
-                        </div>
-                        <div className={`font-bold ${rec.amount < 0 ? 'text-red-400' : 'text-emerald-300'}`}>
-                          {formatCurrencyAmount(Number(rec.amount), rec.currency)}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
 
               {assets.loading ? (
                 <div className="text-zinc-400">Loading assets...</div>
