@@ -799,6 +799,13 @@ export default function Home() {
                 amount={totalSpending}
                 currency={activeCurrency}
                 helper={`${spendingPercent}% of income`}
+                onAmountClick={() => {
+                  setDrilldownMonth(selectedMonth);
+                  setDrilldownCategoryKey(null);
+                  setDrilldownCategoryName(null);
+                  setDrilldownTypeName(null);
+                  setShowExpenseDrilldown(true);
+                }}
               />
 
               <MetricCard
@@ -1251,6 +1258,7 @@ function MetricCard({
   currency,
   helper,
   action,
+  onAmountClick,
 }: {
   variant: CardVariant;
   tone: UiTone;
@@ -1260,7 +1268,15 @@ function MetricCard({
   currency: Currency;
   helper?: string;
   action?: ReactNode;
+  onAmountClick?: () => void;
 }) {
+  const amountContent = (
+    <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+      <span className="text-base text-zinc-400">{currencyLabel(currency)}</span>
+      <span>{amount.toFixed(2)}</span>
+    </span>
+  );
+
   return (
     <Card
       variant={variant}
@@ -1277,13 +1293,21 @@ function MetricCard({
           <h2
             className={cn(
               "mt-2 text-3xl font-bold leading-tight",
-              toneStyles[tone].text
+              toneStyles[tone].text,
+              onAmountClick && "cursor-pointer"
             )}
           >
-            <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
-              <span className="text-base text-zinc-400">{currencyLabel(currency)}</span>
-              <span>{amount.toFixed(2)}</span>
-            </span>
+            {onAmountClick ? (
+              <button
+                type="button"
+                onClick={onAmountClick}
+                className="text-left transition hover:opacity-90 focus:outline-none focus-visible:underline"
+              >
+                {amountContent}
+              </button>
+            ) : (
+              amountContent
+            )}
           </h2>
         </div>
 
