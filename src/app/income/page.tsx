@@ -2,11 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  Pencil,
-  Trash2,
-  X,
   Wallet,
 } from "lucide-react";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
@@ -194,15 +192,12 @@ export default function IncomePage() {
             </Button>
 
             {editingId && (
-              <Button
+              <ActionIconButton
+                kind="close"
                 onClick={resetForm}
-                variant="subtle"
-                size="iconLg"
                 title="Cancel edit"
                 aria-label="Cancel edit"
-              >
-                <X size={18} />
-              </Button>
+              />
             )}
           </div>
         </Card>
@@ -231,25 +226,19 @@ export default function IncomePage() {
                 </p>
 
                 <div className="flex justify-end gap-2">
-                  <Button
+                  <ActionIconButton
+                    kind="edit"
                     onClick={() => startEdit(income)}
-                    variant="subtle"
-                    size="iconLg"
                     title="Edit income"
                     aria-label="Edit income"
-                  >
-                    <Pencil size={16} />
-                  </Button>
+                  />
 
-                  <Button
+                  <ActionIconButton
+                    kind="delete"
                     onClick={() => deleteIncome(income.id)}
-                    variant="danger"
-                    size="iconLg"
                     title="Delete income"
                     aria-label="Delete income"
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+                  />
                 </div>
               </div>
             </Card>

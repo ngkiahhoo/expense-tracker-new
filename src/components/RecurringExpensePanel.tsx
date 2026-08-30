@@ -2,10 +2,8 @@
 
 import {
   CalendarClock,
-  Pencil,
-  Trash2,
-  X,
 } from "lucide-react";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input, Select, Textarea } from "@/components/ui/Field";
@@ -201,14 +199,12 @@ export default function RecurringExpensePanel({
           </Button>
 
           {recurringEditingId && (
-            <Button
+            <ActionIconButton
+              kind="close"
               onClick={cancelEdit}
-              size="iconLg"
               title="Cancel edit"
               aria-label="Cancel edit"
-            >
-              <X size={18} />
-            </Button>
+            />
           )}
         </div>
       </Card>
@@ -274,16 +270,15 @@ export default function RecurringExpensePanel({
                 </p>
 
                 <div className="mt-3 flex justify-end gap-2">
-                  <Button
+                  <ActionIconButton
+                    kind="edit"
                     onClick={() => startEditRecurringExpense(expense)}
                     title="Edit recurring expense"
                     aria-label="Edit recurring expense"
-                    size="icon"
-                  >
-                    <Pencil size={16} />
-                  </Button>
+                  />
 
-                  <Button
+                  <ActionIconButton
+                    kind="delete"
                     onClick={() => {
                       if (
                         confirmDelete("Delete this recurring expense rule?")
@@ -293,11 +288,7 @@ export default function RecurringExpensePanel({
                     }}
                     title="Delete recurring expense"
                     aria-label="Delete recurring expense"
-                    variant="danger"
-                    size="icon"
-                  >
-                    <Trash2 size={16} />
-                  </Button>
+                  />
                 </div>
               </div>
             </div>

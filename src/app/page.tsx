@@ -18,17 +18,16 @@ import {
   CalendarSync,
   ChartPie,
   ClipboardList,
-  Pencil,
   FolderTree,
   Plus,
   Layers,
   type LucideIcon,
   Wallet,
-  X,
 } from "lucide-react";
 
 import Link from "next/link";
 import { useToast } from "@/contexts/ToastContext";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Card, type CardVariant } from "@/components/ui/Card";
 import { Input, Select, Textarea } from "@/components/ui/Field";
@@ -52,6 +51,7 @@ import ExpenseRecordsPanel
 from "../components/ExpenseRecordsPanel";
 import RecurringExpensePanel
 from "../components/RecurringExpensePanel";
+import AssetRecordCard from "../components/AssetRecordCard";
 import ExpenseCategoryBreakdown
 from "../components/features/analytics/ExpenseCategoryBreakdown";
 import CategoryExpenseSheet
@@ -89,6 +89,7 @@ import {
   currencyLabel,
   getStoredCurrency,
   formatCurrencyAmount,
+  normalizeCurrency,
 } from "../utils/currency";
 import { supabase } from "@/lib/supabase";
 
@@ -336,6 +337,16 @@ export default function Home() {
   );
 
   const assets = useAssets(selectedMonth);
+
+  const activeCurrencyAssets = useMemo(
+    () => (assets.assets || []).filter((asset) => normalizeCurrency(asset.currency) === activeCurrency),
+    [assets.assets, activeCurrency]
+  );
+
+  const activeCurrencyAssetTotal = useMemo(
+    () => activeCurrencyAssets.reduce((sum, asset) => sum + Number(asset.current_value || 0), 0),
+    [activeCurrencyAssets]
+  );
 
   const balance =
     totalIncome - totalSpending;
@@ -631,6 +642,14 @@ export default function Home() {
     setActiveTool("income");
   }
 
+  function openExpenseBreakdown() {
+    setDrilldownMonth(selectedMonth);
+    setDrilldownCategoryKey(null);
+    setDrilldownCategoryName(null);
+    setDrilldownTypeName(null);
+    setShowExpenseDrilldown(true);
+  }
+
   function handleStartEdit(
     expense: Expense
   ) {
@@ -792,12 +811,7 @@ export default function Home() {
                 label="Monthly Income"
                 amount={totalIncome}
                 currency={activeCurrency}
-                action={
-                  <Button onClick={openIncomeCrud} size="sm">
-                    <Pencil size={16}/>
-                    Manage Income
-                  </Button>
-                }
+                onAmountClick={openIncomeCrud}
               />
 
               <MetricCard
@@ -807,6 +821,7 @@ export default function Home() {
                 amount={totalSpending}
                 currency={activeCurrency}
                 helper={`${spendingPercent}% of income`}
+                onAmountClick={openExpenseBreakdown}
               />
 
               <MetricCard
@@ -832,13 +847,13 @@ export default function Home() {
                 <div className="block w-full rounded-xl border border-cyan-500/20 bg-black/30 px-3 py-3 text-left transition hover:border-cyan-300">
                   <div className="text-2xl font-bold text-cyan-400">
                     {formatCurrencyAmount(
-                      (assets.assets || []).reduce((s, a) => s + Number(a.current_value || 0), 0),
+                      activeCurrencyAssetTotal,
                       activeCurrency
                     )}
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-zinc-400 mt-2">{(assets.assets || []).length} record{(assets.assets || []).length === 1 ? "" : "s"}</p>
+              <p className="text-sm text-zinc-400 mt-2">{activeCurrencyAssets.length} record{activeCurrencyAssets.length === 1 ? "" : "s"}</p>
             </div>
           </Card>
             </div>
@@ -997,16 +1012,14 @@ export default function Home() {
                   </h2>
                 </div>
 
-                <Button
+                <ActionIconButton
+                  kind="close"
                   onClick={() =>
                     setActiveTool(null)
                   }
                   title="Close panel"
                   aria-label="Close panel"
-                  size="iconLg"
-                >
-                  <X size={18}/>
-                </Button>
+                />
               </div>
 
               <div className="p-4">
@@ -1136,7 +1149,7 @@ export default function Home() {
             setDrilldownTypeName(null);
           }}
           onEdit={handleStartEdit}
-          onDelete={deleteExpense}
+          onDelete={handleDeleteExpense}
         />
 
         <nav
@@ -1212,7 +1225,7 @@ export default function Home() {
 
       {showAssetModal && (
   <div className={overlayStyles.backdrop}>
-    <div className={cn(overlayStyles.modalPanel, "max-w-3xl")}>
+    <div className={cn(overlayStyles.modalPanel, "max-h-[calc(100vh-2rem)] max-w-3xl overflow-y-auto")}>
       
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -1225,14 +1238,12 @@ export default function Home() {
           </p>
         </div>
 
-        <Button
-          variant="ghost"
-          size="md"
+        <ActionIconButton
+          kind="close"
           onClick={() => setShowAssetModal(false)}
-          className="rounded-full p-2"
-        >
-          <X size={16} />
-        </Button>
+          title="Close asset details"
+          aria-label="Close asset details"
+        />
       </div>
 
       <div className="mt-5 space-y-4">
@@ -1247,63 +1258,40 @@ export default function Home() {
           </div>
         ) : assets.assets && assets.assets.length > 0 ? (
           assets.assets.map((a) => (
-            <Card
+            <AssetRecordCard
               key={a.id}
-              variant="muted"
-              padding="sm"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-lg">
-                    {a.name}
-                  </div>
+              asset={a}
+              onMainChange={async (asset, isMain) => {
+                const res = await assets.setMainAsset(asset.id, isMain);
+                if (res.success) {
+                  toast.showToast(
+                    isMain ? "Main asset selected." : "Main asset cleared.",
+                    "success"
+                  );
+                } else {
+                  toast.showToast(res.error || "Failed to update main asset.", "error");
+                }
+              }}
+              onEdit={assets.startEditAsset}
+              onDelete={async (asset) => {
+                const res =
+                  await assets.deleteAssetById(asset.id);
 
-                  <div className="text-zinc-400 text-sm">
-                    {a.note}
-                  </div>
-                </div>
+                if (res.success) {
+                  toast.showToast(
+                    "Asset deleted.",
+                    "success"
+                  );
 
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl font-bold text-emerald-300">
-                    {formatCurrencyAmount(
-                      Number(a.current_value),
-                      activeCurrency
-                    )}
-                  </div>
-
-                  <Button
-                    onClick={() => assets.startEditAsset(a)}
-                    variant="ghost"
-                  >
-                    Edit
-                  </Button>
-
-                  <Button
-                    onClick={async () => {
-                      const res =
-                        await assets.deleteAssetById(a.id);
-
-                      if (res.success) {
-                        toast.showToast(
-                          "Asset deleted.",
-                          "success"
-                        );
-
-                        await assets.fetchAllocatedAmount();
-                      } else {
-                        toast.showToast(
-                          res.error || "Failed to delete",
-                          "error"
-                        );
-                      }
-                    }}
-                    variant="danger"
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </Card>
+                  await assets.fetchAllocatedAmount();
+                } else {
+                  toast.showToast(
+                    res.error || "Failed to delete",
+                    "error"
+                  );
+                }
+              }}
+            />
           ))
         ) : (
           <div className="text-zinc-400">
@@ -1337,9 +1325,9 @@ export default function Home() {
             />
 
             <Select
-              value={activeCurrency}
+              value={assets.assetCurrency}
               onChange={(e) =>
-                handleCurrencyChange(e.target.value)
+                assets.setAssetCurrency(e.target.value as Currency)
               }
             >
               {CURRENCIES.map((c) => (
@@ -1418,15 +1406,12 @@ export default function Home() {
           >
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-xl font-bold">Export Data</h2>
-              <Button
+              <ActionIconButton
+                kind="close"
                 onClick={() => setShowExportModal(false)}
-                variant="ghost"
-                size="icon"
                 title="Close export modal"
                 aria-label="Close export modal"
-              >
-                <X size={16}/>
-              </Button>
+              />
             </div>
 
             <Textarea
@@ -1452,14 +1437,12 @@ export default function Home() {
               >
                 {exportModalCopied ? 'Copied!' : 'Copy Text'}
               </Button>
-              <Button
+              <ActionIconButton
+                kind="close"
                 onClick={() => setShowExportModal(false)}
-                variant="subtle"
-                size="lg"
-                className="flex-1"
-              >
-                Close
-              </Button>
+                title="Close export modal"
+                aria-label="Close export modal"
+              />
             </div>
           </Card>
         </div>
@@ -1478,6 +1461,7 @@ function MetricCard({
   currency,
   helper,
   action,
+  onAmountClick,
 }: {
   variant: CardVariant;
   tone: UiTone;
@@ -1487,7 +1471,15 @@ function MetricCard({
   currency: Currency;
   helper?: string;
   action?: ReactNode;
+  onAmountClick?: () => void;
 }) {
+  const amountContent = (
+    <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+      <span className="text-base text-zinc-400">{currencyLabel(currency)}</span>
+      <span>{amount.toFixed(2)}</span>
+    </span>
+  );
+
   return (
     <Card
       variant={variant}
@@ -1507,10 +1499,20 @@ function MetricCard({
               toneStyles[tone].text
             )}
           >
-            <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
-              <span className="text-base text-zinc-400">{currencyLabel(currency)}</span>
-              <span>{amount.toFixed(2)}</span>
-            </span>
+            {onAmountClick ? (
+              <button
+                type="button"
+                onClick={onAmountClick}
+                className={cn(
+                  "-mx-2 rounded-xl px-2 py-1 text-left transition hover:bg-white/5 focus-visible:bg-white/5",
+                  "outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70"
+                )}
+              >
+                {amountContent}
+              </button>
+            ) : (
+              amountContent
+            )}
           </h2>
         </div>
 

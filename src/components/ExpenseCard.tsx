@@ -1,9 +1,7 @@
 import {
   CalendarDays,
-  Pencil,
-  Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Card } from "@/components/ui/Card";
 import { confirmDelete } from "../utils/confirm";
 import { getTypeColor } from "../utils/typeColors";
@@ -44,22 +42,21 @@ export default function ExpenseCard({
           </p>
         </div>
 
-        <div className="max-w-[45%] shrink-0 text-right">
-          <p className="break-words text-xl font-bold">
+        <div className="shrink-0 text-right">
+          <p className="whitespace-nowrap text-xl font-bold">
             {formatCurrencyAmount(Number(expense.amount), expense.currency)}
           </p>
 
           <div className="mt-3 flex justify-end gap-2">
-            <Button
+            <ActionIconButton
+              kind="edit"
               onClick={() => startEdit(expense)}
               title="Edit expense"
               aria-label="Edit expense"
-              size="icon"
-            >
-              <Pencil size={16} />
-            </Button>
+            />
 
-            <Button
+            <ActionIconButton
+              kind="delete"
               onClick={() => {
                 if (confirmDelete("Delete this expense?")) {
                   deleteExpense(expense.id);
@@ -67,11 +64,7 @@ export default function ExpenseCard({
               }}
               title="Delete expense"
               aria-label="Delete expense"
-              variant="danger"
-              size="icon"
-            >
-              <Trash2 size={16} />
-            </Button>
+            />
           </div>
         </div>
       </div>

@@ -6,11 +6,14 @@ import {
   createAsset,
   updateAsset,
   removeAsset,
+  updateAssetMainStatus,
   getMonthlyAllocationTotal,
   createAssetAllocation,
   removeAssetAllocation,
 } from "@/services/assetService";
 import type { Asset, AssetPayload, AssetAllocationPayload } from "@/types/asset";
+import type { Currency } from "@/types/currency";
+import { DEFAULT_CURRENCY, normalizeCurrency } from "@/utils/currency";
 
 export default function useAssets(selectedMonth: string) {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -19,6 +22,7 @@ export default function useAssets(selectedMonth: string) {
 
   const [assetName, setAssetName] = useState("");
   const [assetValue, setAssetValue] = useState("");
+  const [assetCurrency, setAssetCurrency] = useState<Currency>(DEFAULT_CURRENCY);
   const [assetNote, setAssetNote] = useState("");
   const [assetEditingId, setAssetEditingId] = useState<number | null>(null);
 
@@ -29,6 +33,17 @@ export default function useAssets(selectedMonth: string) {
   useEffect(() => {
     fetchAll();
   }, [selectedMonth]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = () => {
+      void fetchAssets();
+    };
+
+    window.addEventListener("asset:updated", handler);
+    return () => window.removeEventListener("asset:updated", handler);
+  }, []);
 
   async function fetchAssets() {
     setLoading(true);
@@ -79,6 +94,7 @@ export default function useAssets(selectedMonth: string) {
       const payload: AssetPayload = {
         name: assetName,
         current_value: value,
+        currency: assetCurrency,
         note: assetNote,
       };
 
@@ -107,6 +123,7 @@ export default function useAssets(selectedMonth: string) {
   function resetAssetForm() {
     setAssetName("");
     setAssetValue("");
+    setAssetCurrency(DEFAULT_CURRENCY);
     setAssetNote("");
     setAssetEditingId(null);
   }
@@ -115,6 +132,7 @@ export default function useAssets(selectedMonth: string) {
     setAssetEditingId(asset.id);
     setAssetName(asset.name);
     setAssetValue(String(asset.current_value));
+    setAssetCurrency(normalizeCurrency(asset.currency));
     setAssetNote(asset.note || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -133,6 +151,29 @@ export default function useAssets(selectedMonth: string) {
       return { success: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to delete asset";
+      setError(msg);
+      return { success: false, error: msg };
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function setMainAsset(id: number, isMain: boolean) {
+    try {
+      setLoading(true);
+      setError("");
+
+      const err = await updateAssetMainStatus(id, isMain);
+      if (err) {
+        const msg = err.message || "Failed to update main asset.";
+        setError(msg);
+        return { success: false, error: msg };
+      }
+
+      await fetchAssets();
+      return { success: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to update main asset.";
       setError(msg);
       return { success: false, error: msg };
     } finally {
@@ -204,12 +245,15 @@ export default function useAssets(selectedMonth: string) {
     setAssetName,
     assetValue,
     setAssetValue,
+    assetCurrency,
+    setAssetCurrency,
     assetNote,
     setAssetNote,
     assetEditingId,
     startEditAsset,
     saveAsset,
     deleteAssetById,
+    setMainAsset,
     resetAssetForm,
     allocationAssetId,
     setAllocationAssetId,

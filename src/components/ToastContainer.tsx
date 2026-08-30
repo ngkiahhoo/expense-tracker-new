@@ -1,7 +1,7 @@
 "use client";
 
 import { useToast, type ToastType } from "@/contexts/ToastContext";
-import { X } from "lucide-react";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 
 function getToastStyles(type: ToastType) {
   switch (type) {
@@ -43,13 +43,12 @@ export function ToastContainer() {
           `}
         >
           <p className="text-sm font-medium">{toast.message}</p>
-          <button
+          <ActionIconButton
+            kind="close"
             onClick={() => removeToast(toast.id)}
-            className="flex-shrink-0 hover:opacity-80 transition-opacity"
+            title="Close notification"
             aria-label="Close notification"
-          >
-            <X size={16} />
-          </button>
+          />
         </div>
       ))}
     </div>

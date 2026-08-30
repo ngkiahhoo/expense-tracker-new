@@ -71,7 +71,7 @@ export default function IncomePanel({
       </button>
 
       {showIncomeList && (
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+        <div className="mt-5 grid gap-3">
           {incomes.length > 0 ? (
             incomes.map((income) => (
               <IncomeCard

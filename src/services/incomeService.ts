@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { normalizeCurrency } from "../utils/currency";
 
 export async function getIncomes(
   selectedMonth:string
@@ -49,7 +50,7 @@ export async function createIncome(
   // 增加到默认资产（如果存在）
   try {
     const { adjustDefaultAssetValue } = await import("./assetService");
-    await adjustDefaultAssetValue(Number(payload.amount || 0));
+    await adjustDefaultAssetValue(Number(payload.amount || 0), normalizeCurrency(payload.currency));
 
     // create an asset_distribution_records entry for this income (current month)
     const { createAssetDistribution } = await import("./assetDistributionService");
@@ -106,14 +107,21 @@ export async function updateIncome(
 
   const prevAmount = Number((existing && (existing as any).amount) || 0);
   const newAmount = Number(payload.amount || prevAmount);
+  const prevCurrency = normalizeCurrency((existing as any).currency);
+  const newCurrency = normalizeCurrency(payload.currency || prevCurrency);
   const delta = newAmount - prevAmount;
 
   const { error } = await supabase.from("incomes").update(payload).eq("id", id);
 
-  if (!error && delta !== 0) {
+  if (!error) {
     try {
       const { adjustDefaultAssetValue } = await import("./assetService");
-      await adjustDefaultAssetValue(delta);
+      if (prevCurrency === newCurrency) {
+        await adjustDefaultAssetValue(delta, newCurrency);
+      } else {
+        await adjustDefaultAssetValue(-prevAmount, prevCurrency);
+        await adjustDefaultAssetValue(newAmount, newCurrency);
+      }
       // update corresponding asset_distribution_records if exists
       try {
         const { updateAssetDistribution } = await import("./assetDistributionService");
@@ -152,13 +160,14 @@ export async function removeIncome(
   if (fetchErr) return fetchErr;
 
   const prevAmount = Number((existing && (existing as any).amount) || 0);
+  const prevCurrency = normalizeCurrency((existing as any).currency);
 
   const { error } = await supabase.from("incomes").delete().eq("id", id);
 
   if (!error && prevAmount !== 0) {
     try {
       const { adjustDefaultAssetValue } = await import("./assetService");
-      await adjustDefaultAssetValue(-prevAmount);
+      await adjustDefaultAssetValue(-prevAmount, prevCurrency);
       // add distribution record removal for this income
       try {
         const { removeAssetDistribution } = await import("./assetDistributionService");

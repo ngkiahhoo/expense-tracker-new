@@ -2,8 +2,8 @@
 
 import {
   Plus,
-  X,
 } from "lucide-react";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 
 import ExpenseForm
@@ -95,31 +95,25 @@ export default function ExpensePanel({
       {/* BUTTON */}
 
       {showToggle && (
-
-        <Button
-          onClick={() =>
-            setShowExpenseForm(
-              !showExpenseForm
-            )
-          }
-          size="lg"
-          className="mb-5 w-full"
-        >
-
-          {showExpenseForm ? (
-            <>
-              <X size={18}/>
-              Close Expense
-            </>
-          ) : (
-            <>
-              <Plus size={18}/>
-              Add Expense
-            </>
-          )}
-
-        </Button>
-
+        showExpenseForm ? (
+          <div className="mb-5 flex justify-end">
+            <ActionIconButton
+              kind="close"
+              onClick={() => setShowExpenseForm(false)}
+              title="Close expense form"
+              aria-label="Close expense form"
+            />
+          </div>
+        ) : (
+          <Button
+            onClick={() => setShowExpenseForm(true)}
+            size="lg"
+            className="mb-5 w-full"
+          >
+            <Plus size={18}/>
+            Add Expense
+          </Button>
+        )
       )}
 
       {/* FORM */}

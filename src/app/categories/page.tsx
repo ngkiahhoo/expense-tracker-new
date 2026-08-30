@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
@@ -139,23 +139,19 @@ export default function CategoriesPage() {
               </div>
 
               <div className="flex shrink-0 gap-2">
-                <Button
+                <ActionIconButton
+                  kind="edit"
                   onClick={() => startEdit(cat)}
-                  variant="subtle"
-                  size="sm"
-                >
-                  <Pencil size={14} />
-                  Edit
-                </Button>
+                  title="Edit category"
+                  aria-label="Edit category"
+                />
 
-                <Button
+                <ActionIconButton
+                  kind="delete"
                   onClick={() => deleteCategory(cat.id)}
-                  variant="danger"
-                  size="sm"
-                >
-                  <Trash2 size={14} />
-                  Delete
-                </Button>
+                  title="Delete category"
+                  aria-label="Delete category"
+                />
               </div>
             </Card>
           ))}
@@ -164,4 +160,3 @@ export default function CategoriesPage() {
     </main>
   );
 }
-

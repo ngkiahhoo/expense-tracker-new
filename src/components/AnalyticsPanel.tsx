@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/Card";
+import CollapsibleHeader from "@/components/ui/CollapsibleHeader";
 import { toneStyles } from "@/components/ui/styles";
 import type { Currency } from "@/types/currency";
 import { currencyLabel } from "@/utils/currency";
@@ -18,6 +20,7 @@ export default function AnalyticsPanel({
   totalIncome: number;
   currency: Currency;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
 
   function percent(value: number) {
 
@@ -55,84 +58,83 @@ export default function AnalyticsPanel({
 
     <Card variant="item" padding="lg">
 
-      <h2
-        className="
-          text-2xl
-          font-bold
-          mb-5
-        "
-      >
-        Spending Breakdown
-      </h2>
+      <CollapsibleHeader
+        title="Spending Breakdown"
+        isOpen={isOpen}
+        onToggle={() => setIsOpen((current) => !current)}
+      />
 
-      <div
-        className="
-          grid
-          gap-5
-          md:grid-cols-3
-        "
-      >
+      {isOpen && (
+        <div
+          className="
+            mt-5
+            grid
+            gap-5
+            md:grid-cols-3
+          "
+        >
 
-        {rows.map((row) => (
+          {rows.map((row) => (
 
-          <div key={row.key}>
-
-            <div
-              className="
-                flex
-                justify-between
-                gap-3
-                mb-2
-                text-sm
-              "
-            >
-
-              <span>
-                {row.label}
-              </span>
-
-              <span
-                className="
-                  text-right
-                  text-zinc-300
-                "
-              >
-                {percent(row.value)}% - {currencyLabel(currency)} {row.value.toFixed(2)}
-              </span>
-
-            </div>
-
-            <div
-              className="
-                h-3
-                bg-zinc-800
-                rounded-full
-                overflow-hidden
-              "
-            >
+            <div key={row.key}>
 
               <div
                 className="
-                  h-full
-                  rounded-full
-                  transition-all
-                  duration-300
+                  flex
+                  justify-between
+                  gap-3
+                  mb-2
+                  text-sm
                 "
-                style={{
-                  width: `${percent(row.value)}%`,
-                  backgroundColor: row.color,
-                  minWidth:
-                    row.value > 0 ? "2px" : undefined,
-                }}
-              />
+              >
+
+                <span>
+                  {row.label}
+                </span>
+
+                <span
+                  className="
+                    text-right
+                    text-zinc-300
+                  "
+                >
+                  {percent(row.value)}% - {currencyLabel(currency)} {row.value.toFixed(2)}
+                </span>
+
+              </div>
+
+              <div
+                className="
+                  h-3
+                  bg-zinc-800
+                  rounded-full
+                  overflow-hidden
+                "
+              >
+
+                <div
+                  className="
+                    h-full
+                    rounded-full
+                    transition-all
+                    duration-300
+                  "
+                  style={{
+                    width: `${percent(row.value)}%`,
+                    backgroundColor: row.color,
+                    minWidth:
+                      row.value > 0 ? "2px" : undefined,
+                  }}
+                />
+
+              </div>
 
             </div>
 
-          </div>
+          ))}
 
-        ))}
-
-      </div>
+        </div>
+      )}
 
     </Card>
   );

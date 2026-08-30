@@ -6,16 +6,15 @@ import {
   ArrowUpRight,
   CalendarDays,
   Layers,
-  Pencil,
   Plus,
   Sparkles,
-  Trash2,
   Wallet,
-  X,
 } from "lucide-react";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input, Select, Textarea } from "@/components/ui/Field";
+import AssetRecordCard from "@/components/AssetRecordCard";
 import {
   buttonStyles,
   cardStyles,
@@ -106,6 +105,14 @@ export default function AssetsPage() {
   const { summary: previousSummary } = useMonthlySummary(previousMonthKey, activeCurrency);
 
   const assets = useAssets(selectedMonth);
+  const activeCurrencyAssets = useMemo(
+    () => (assets.assets || []).filter((asset) => normalizeCurrency(asset.currency) === activeCurrency),
+    [assets.assets, activeCurrency]
+  );
+  const activeCurrencyAssetTotal = useMemo(
+    () => activeCurrencyAssets.reduce((sum, asset) => sum + Number(asset.current_value || 0), 0),
+    [activeCurrencyAssets]
+  );
   const [records, setRecords] = useState<AssetDistribution[]>([]);
   const [showAssetModal, setShowAssetModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -438,13 +445,13 @@ export default function AssetsPage() {
                 <div className="block w-full rounded-xl border border-cyan-500/20 bg-black/30 px-3 py-3 text-left transition hover:border-cyan-300">
                   <div className="text-2xl font-bold text-cyan-400">
                     {formatCurrencyAmount(
-                      (assets.assets || []).reduce((s, a) => s + Number(a.current_value || 0), 0),
+                      activeCurrencyAssetTotal,
                       activeCurrency
                     )}
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-zinc-400 mt-2">{(assets.assets || []).length} record{(assets.assets || []).length === 1 ? "" : "s"}</p>
+              <p className="text-sm text-zinc-400 mt-2">{activeCurrencyAssets.length} record{activeCurrencyAssets.length === 1 ? "" : "s"}</p>
             </div>
           </Card>
 
@@ -547,13 +554,19 @@ export default function AssetsPage() {
                       <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
                         <span className="rounded-full bg-zinc-800 px-2.5 py-1">{formatMonthLabel(record.month)}</span>
                         <span className="rounded-full bg-zinc-800 px-2.5 py-1 capitalize">{record.source}</span>
-                        <Button variant="ghost" size="md" onClick={() => openEditModal(record)} className="rounded-full p-2">
-                          <Pencil size={14} />
-                        </Button>
+                        <ActionIconButton
+                          kind="edit"
+                          onClick={() => openEditModal(record)}
+                          title="Edit distribution"
+                          aria-label="Edit distribution"
+                        />
                         {record.source === "manual" && (
-                          <Button variant="ghost" size="md" onClick={() => handleDelete(record)} className="rounded-full p-2">
-                            <Trash2 size={14} />
-                          </Button>
+                          <ActionIconButton
+                            kind="delete"
+                            onClick={() => handleDelete(record)}
+                            title="Delete distribution"
+                            aria-label="Delete distribution"
+                          />
                         )}
                       </div>
                     </div>
@@ -576,9 +589,12 @@ export default function AssetsPage() {
                 <h3 className="text-2xl font-bold">{detailType.type}</h3>
                 <p className="text-sm text-zinc-400 mt-1">Showing all historical records for this type.</p>
               </div>
-              <Button variant="ghost" size="md" onClick={() => setDetailType(null)} className="rounded-full p-2">
-                <X size={16} />
-              </Button>
+              <ActionIconButton
+                kind="close"
+                onClick={() => setDetailType(null)}
+                title="Close details"
+                aria-label="Close details"
+              />
             </div>
             <div className="mt-5 space-y-3">
               {detailTotals.length > 0 ? (
@@ -602,15 +618,18 @@ export default function AssetsPage() {
 
       {showAssetModal && (
         <div className={overlayStyles.backdrop}>
-          <div className={cn(overlayStyles.modalPanel, "max-w-3xl")}>
+          <div className={cn(overlayStyles.modalPanel, "max-h-[calc(100vh-2rem)] max-w-3xl overflow-y-auto")}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-2xl font-bold">Asset Details</h3>
                 <p className="text-sm text-zinc-400 mt-1">All tracked asset records. Edit values or create new assets here.</p>
               </div>
-              <Button variant="ghost" size="md" onClick={() => setShowAssetModal(false)} className="rounded-full p-2">
-                <X size={16} />
-              </Button>
+              <ActionIconButton
+                kind="close"
+                onClick={() => setShowAssetModal(false)}
+                title="Close asset details"
+                aria-label="Close asset details"
+              />
             </div>
 
             <div className="mt-5 space-y-4">
@@ -619,19 +638,31 @@ export default function AssetsPage() {
                 <div className="text-zinc-400">Loading assets...</div>
               ) : assets.assets && assets.assets.length > 0 ? (
                 assets.assets.map((a) => (
-                  <Card key={a.id} variant="muted" padding="sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-bold text-lg">{a.name}</div>
-                        <div className="text-zinc-400 text-sm">{a.note}</div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl font-bold text-emerald-300">{formatCurrencyAmount(Number(a.current_value), activeCurrency)}</div>
-                        <Button onClick={() => assets.startEditAsset(a)} variant="ghost">Edit</Button>
-                        <Button onClick={async () => { const res = await assets.deleteAssetById(a.id); if (res.success) { toast.showToast('Asset deleted.', 'success'); await assets.fetchAllocatedAmount(); } else { toast.showToast(res.error || 'Failed to delete', 'error'); } }} variant="danger">Delete</Button>
-                      </div>
-                    </div>
-                  </Card>
+                  <AssetRecordCard
+                    key={a.id}
+                    asset={a}
+                    onMainChange={async (asset, isMain) => {
+                      const res = await assets.setMainAsset(asset.id, isMain);
+                      if (res.success) {
+                        toast.showToast(
+                          isMain ? "Main asset selected." : "Main asset cleared.",
+                          "success"
+                        );
+                      } else {
+                        toast.showToast(res.error || "Failed to update main asset.", "error");
+                      }
+                    }}
+                    onEdit={assets.startEditAsset}
+                    onDelete={async (asset) => {
+                      const res = await assets.deleteAssetById(asset.id);
+                      if (res.success) {
+                        toast.showToast("Asset deleted.", "success");
+                        await assets.fetchAllocatedAmount();
+                      } else {
+                        toast.showToast(res.error || "Failed to delete", "error");
+                      }
+                    }}
+                  />
                 ))
               ) : (
                 <div className="text-zinc-400">No assets yet.</div>
@@ -642,7 +673,7 @@ export default function AssetsPage() {
                 <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   <Input value={assets.assetName} onChange={(e) => assets.setAssetName(e.target.value)} placeholder="Asset name" />
                   <Input type="number" value={assets.assetValue} onChange={(e) => assets.setAssetValue(e.target.value)} placeholder="Current value" />
-                  <Select value={activeCurrency} onChange={(e) => setActiveCurrency(e.target.value as Currency)}>
+                  <Select value={assets.assetCurrency} onChange={(e) => assets.setAssetCurrency(e.target.value as Currency)}>
                     {CURRENCIES.map((c) => (<option key={c} value={c}>{currencyLabel(c)}</option>))}
                   </Select>
                 </div>
@@ -671,9 +702,12 @@ export default function AssetsPage() {
                     : "This record is kept separate from the previous month allocation balance."}
                 </p>
               </div>
-              <Button variant="ghost" size="md" onClick={() => setEditorOpen(false)} className="rounded-full p-2">
-                <X size={16} />
-              </Button>
+              <ActionIconButton
+                kind="close"
+                onClick={() => setEditorOpen(false)}
+                title="Close editor"
+                aria-label="Close editor"
+              />
             </div>
 
             <div className="mt-5 space-y-4">
@@ -760,24 +794,23 @@ export default function AssetsPage() {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-2">
-                        <Button
+                        <ActionIconButton
+                          kind="edit"
                           type="button"
                           onClick={() => {
                             const selected = distributionCategories.find((cat) => cat.id === Number(form.category_id));
                             if (selected) startEditDistributionCategory(selected);
                           }}
-                          size="sm"
-                        >
-                          Edit
-                        </Button>
-                        <Button
+                          title="Edit distribution category"
+                          aria-label="Edit distribution category"
+                        />
+                        <ActionIconButton
+                          kind="delete"
                           type="button"
                           onClick={() => deleteDistributionCategoryInline(Number(form.category_id))}
-                          variant="danger"
-                          size="sm"
-                        >
-                          Delete
-                        </Button>
+                          title="Delete distribution category"
+                          aria-label="Delete distribution category"
+                        />
                       </div>
                     </div>
                   )}

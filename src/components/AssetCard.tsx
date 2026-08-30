@@ -1,5 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Card } from "@/components/ui/Card";
 
 import type { Asset } from "@/types/asset";
@@ -42,26 +41,20 @@ export default function AssetCard({
         </div>
 
         <div className="flex gap-2">
-          <Button
+          <ActionIconButton
+            kind="edit"
             onClick={onEdit}
-            size="iconLg"
             title="Edit asset"
             aria-label="Edit asset"
-          >
-            <Pencil size={16} />
-          </Button>
-          <Button
+          />
+          <ActionIconButton
+            kind="delete"
             onClick={onDelete}
-            variant="danger"
-            size="iconLg"
             title="Delete asset"
             aria-label="Delete asset"
-          >
-            <Trash2 size={16} />
-          </Button>
+          />
         </div>
       </div>
     </Card>
   );
 }
-

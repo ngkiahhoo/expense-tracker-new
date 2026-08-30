@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
@@ -85,25 +82,20 @@ export default function CategoryPanel({
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <Button
+            <div className="flex justify-end gap-2">
+              <ActionIconButton
+                kind="edit"
                 onClick={() => editCategory(cat)}
-                size="sm"
-                className="w-full"
-              >
-                <Pencil size={15} />
-                Edit
-              </Button>
+                title="Edit category"
+                aria-label="Edit category"
+              />
 
-              <Button
+              <ActionIconButton
+                kind="delete"
                 onClick={() => deleteCategory(cat.id)}
-                variant="danger"
-                size="sm"
-                className="w-full"
-              >
-                <Trash2 size={15} />
-                Delete
-              </Button>
+                title="Delete category"
+                aria-label="Delete category"
+              />
             </div>
           </Card>
         ))}

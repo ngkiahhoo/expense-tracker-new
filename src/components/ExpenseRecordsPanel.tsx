@@ -7,8 +7,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  Trash2,
 } from "lucide-react";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Field";
@@ -184,7 +184,8 @@ export default function ExpenseRecordsPanel({
             )}
           </Button>
 
-          <Button
+          <ActionIconButton
+            kind="delete"
             onClick={() => {
               if (confirmDelete("Delete all expenses for this month?")) {
                 deleteMonthExpenses(selectedMonth);
@@ -192,11 +193,7 @@ export default function ExpenseRecordsPanel({
             }}
             title="Delete current month expenses"
             aria-label="Delete current month expenses"
-            variant="danger"
-            size="iconLg"
-          >
-            <Trash2 size={16} />
-          </Button>
+          />
         </div>
       </Card>
 
@@ -281,4 +278,3 @@ export default function ExpenseRecordsPanel({
     </div>
   );
 }
-

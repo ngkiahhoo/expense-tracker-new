@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  Pencil,
-  Trash2,
-} from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Card } from "@/components/ui/Card";
 import { confirmDelete } from "../utils/confirm";
 import { formatCurrencyAmount } from "../utils/currency";
@@ -26,10 +22,10 @@ export default function IncomeCard({
     <Card
       variant="item"
       padding="md"
-      className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+      className="flex items-center justify-between gap-3"
     >
       <div className="min-w-0 flex-1">
-        <p className="break-words text-2xl font-semibold sm:text-3xl">
+        <p className="truncate whitespace-nowrap text-xl font-semibold sm:text-2xl">
           {formatCurrencyAmount(Number(income.amount), income.currency)}
         </p>
 
@@ -38,17 +34,16 @@ export default function IncomeCard({
         </p>
       </div>
 
-      <div className="flex shrink-0 gap-2 self-end sm:self-auto">
-        <Button
+      <div className="flex shrink-0 gap-2">
+        <ActionIconButton
+          kind="edit"
           onClick={() => startEditIncome(income)}
           title="Edit income"
           aria-label="Edit income"
-          size="iconLg"
-        >
-          <Pencil size={16} />
-        </Button>
+        />
 
-        <Button
+        <ActionIconButton
+          kind="delete"
           onClick={() => {
             if (confirmDelete("Delete this income?")) {
               deleteIncome(income.id);
@@ -56,11 +51,7 @@ export default function IncomeCard({
           }}
           title="Delete income"
           aria-label="Delete income"
-          variant="danger"
-          size="iconLg"
-        >
-          <Trash2 size={16} />
-        </Button>
+        />
       </div>
     </Card>
   );

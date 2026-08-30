@@ -3,10 +3,8 @@
 import { useState } from "react";
 import {
   BookmarkPlus,
-  Pencil,
-  Trash2,
-  X,
 } from "lucide-react";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
@@ -139,25 +137,22 @@ export default function ExpenseForm({
         </Select>
 
         {selectedSavedNote && (
-          <div className="grid grid-cols-2 gap-2">
-            <Button
+          <div className="flex justify-end gap-2">
+            <ActionIconButton
+              kind="edit"
               type="button"
               onClick={handleUpdateSavedNote}
-              size="sm"
-            >
-              <Pencil size={15} />
-              Update Note
-            </Button>
+              title="Update saved note"
+              aria-label="Update saved note"
+            />
 
-            <Button
+            <ActionIconButton
+              kind="delete"
               type="button"
               onClick={handleDeleteSavedNote}
-              variant="danger"
-              size="sm"
-            >
-              <Trash2 size={15} />
-              Delete Note
-            </Button>
+              title="Delete saved note"
+              aria-label="Delete saved note"
+            />
           </div>
         )}
       </div>
@@ -198,14 +193,12 @@ export default function ExpenseForm({
       </Button>
 
       {editingId && (
-        <Button
+        <ActionIconButton
+          kind="close"
           onClick={cancelEdit}
-          size="iconLg"
           title="Cancel edit"
           aria-label="Cancel edit"
-        >
-          <X size={18} />
-        </Button>
+        />
       )}
     </div>
     </Card>

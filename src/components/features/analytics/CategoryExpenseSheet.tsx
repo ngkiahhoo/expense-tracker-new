@@ -6,11 +6,7 @@ import {
   useState,
   type FocusEvent,
 } from "react";
-import {
-  ArrowLeft,
-  X,
-} from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Card } from "@/components/ui/Card";
 import {
   cn,
@@ -254,32 +250,26 @@ export default function CategoryExpenseSheet({
             </p>
             <h2 className="text-xl font-bold text-white">{headerTitle}</h2>
             <p className="text-sm text-zinc-400">
-              {currencyLabel(currency)} {formatCurrencyAmount(currentTotal, currency)}
+              {formatCurrencyAmount(currentTotal, currency)}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             {level !== "types" && (
-              <Button
+              <ActionIconButton
+                kind="back"
                 onClick={handleBack}
                 title="Back"
                 aria-label="Back"
-                variant="ghost"
-                size="iconLg"
-              >
-                <ArrowLeft size={18} />
-              </Button>
+              />
             )}
 
-            <Button
+            <ActionIconButton
+              kind="close"
               onClick={onClose}
               title="Close"
               aria-label="Close"
-              variant="ghost"
-              size="iconLg"
-            >
-              <X size={18} />
-            </Button>
+            />
           </div>
         </div>
 
@@ -383,24 +373,22 @@ export default function CategoryExpenseSheet({
                           </div>
 
                           <div className="flex gap-2">
-                            <Button
+                            <ActionIconButton
+                              kind="edit"
                               onClick={() => onEdit(expense)}
-                              variant="outline"
-                              size="sm"
-                            >
-                              Edit
-                            </Button>
-                            <Button
+                              title="Edit expense"
+                              aria-label="Edit expense"
+                            />
+                            <ActionIconButton
+                              kind="delete"
                               onClick={() => {
                                 if (confirmDelete("Delete this expense?")) {
                                   onDelete(expense.id);
                                 }
                               }}
-                              variant="danger"
-                              size="sm"
-                            >
-                              Delete
-                            </Button>
+                              title="Delete expense"
+                              aria-label="Delete expense"
+                            />
                           </div>
                         </div>
                       </div>
