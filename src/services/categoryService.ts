@@ -1,4 +1,7 @@
 import { supabase } from "../lib/supabase";
+import type { Category } from "../types/category";
+
+type CategoryPayload = Pick<Category, "name" | "type_id">;
 
 export async function getCategories() {
 
@@ -23,11 +26,11 @@ export async function getCategories() {
     return [];
   }
 
-  return data || [];
+  return ((data || []) as unknown) as Category[];
 }
 
 export async function createCategory(
-  payload:any
+  payload:CategoryPayload
 ) {
 
   const { error } =
@@ -40,7 +43,7 @@ export async function createCategory(
 
 export async function updateCategory(
   id:number,
-  payload:any
+  payload:CategoryPayload
 ) {
 
   const { error } =

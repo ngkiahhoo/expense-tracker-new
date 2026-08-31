@@ -3,12 +3,20 @@
 import {
   useMemo,
 } from "react";
+import type { Expense } from "../types/expense";
+import type { Income } from "../types/income";
 import type { Currency } from "../types/currency";
 import { DEFAULT_CURRENCY, normalizeCurrency } from "../utils/currency";
 
+type AnalyticsTotals = {
+  needs: number;
+  commitment: number;
+  wants: number;
+};
+
 export default function useAnalytics(
-  expenses:any[],
-  incomes:any[],
+  expenses:Expense[],
+  incomes:Income[],
   activeCurrency:Currency = DEFAULT_CURRENCY
 ) {
 
@@ -84,7 +92,7 @@ export default function useAnalytics(
   const analytics =
     useMemo(() => {
 
-      const result:any = {
+      const result:AnalyticsTotals = {
 
         needs:0,
 

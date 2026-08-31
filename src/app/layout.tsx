@@ -1,17 +1,21 @@
 import "./globals.css";
+import type { Metadata, Viewport } from "next";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { ToastContainer } from "@/components/ToastContainer";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Personal Finance Tracker",
   description: "Personal finance tracker for income, assets, and net worth.",
-  themeColor: "#000000",
   manifest: "/site.webmanifest",
   icons: {
     icon: "/icon.svg",
     shortcut: "/icon.svg",
     apple: "/icon.svg",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
 };
 
 export default function RootLayout({

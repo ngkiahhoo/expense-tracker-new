@@ -10,7 +10,7 @@ import type { Income } from "../types/income";
 interface IncomeCardProps {
   income: Income;
   startEditIncome: (income: Income) => void;
-  deleteIncome: (id: number) => void | Promise<void>;
+  deleteIncome: (id: number) => void | Promise<unknown>;
 }
 
 export default function IncomeCard({

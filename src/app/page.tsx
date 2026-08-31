@@ -20,19 +20,16 @@ import {
   ClipboardList,
   FolderTree,
   Plus,
-  Layers,
   type LucideIcon,
   Wallet,
 } from "lucide-react";
 
-import Link from "next/link";
 import { useToast } from "@/contexts/ToastContext";
 import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Card, type CardVariant } from "@/components/ui/Card";
 import { Input, Select, Textarea } from "@/components/ui/Field";
 import {
-  buttonStyles,
   cn,
   overlayStyles,
   toneStyles,
@@ -80,9 +77,6 @@ import type {
 import type {
   Income,
 } from "../types/income";
-import type {
-  CategoryBreakdownItem,
-} from "../types/analytics";
 import type { Currency } from "../types/currency";
 import {
   CURRENCIES,
@@ -726,33 +720,31 @@ export default function Home() {
           >
 
             <div className="flex flex-col gap-4">
-              {/* <Card
-                variant="panel"
-                padding="none"
-                className="flex h-full min-h-[132px] flex-col justify-center p-4 sm:p-5 md:min-h-[150px]"
+              <Card
+                className="text-left cursor-pointer"
+                variant="info"
+                onClick={() => setShowAssetModal(true)}
               >
-                <div className="flex h-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                  <div className="flex items-center gap-2 text-zinc-400">
-                    <Layers size={18}/>
-                    <span>
-                      Assets Module
-                    </span>
+                <div>
+                  <div className="flex items-center gap-2 text-zinc-400 mb-3">
+                    <Wallet size={18} />
+                    Total Assets
                   </div>
-
-                  <Link
-                    href="/assets"
-                    className={cn(
-                      buttonStyles.base,
-                      buttonStyles.variants.primary,
-                      buttonStyles.sizes.md,
-                      "w-full justify-center sm:w-auto"
-                    )}
-                  >
-                    <Layers size={16}/>
-                    Open Asset Dashboard
-                  </Link>
+                  <div className="space-y-2">
+                    <div className="block w-full rounded-xl border border-cyan-500/20 bg-black/30 px-3 py-3 text-left transition hover:border-cyan-300">
+                      <div className="text-2xl font-bold text-cyan-400">
+                        {formatCurrencyAmount(
+                          activeCurrencyAssetTotal,
+                          activeCurrency
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-zinc-400 mt-2">
+                    {activeCurrencyAssets.length} record{activeCurrencyAssets.length === 1 ? "" : "s"}
+                  </p>
                 </div>
-              </Card> */}
+              </Card>
 
               <Card
                 variant="panel"
@@ -766,27 +758,42 @@ export default function Home() {
                   </span>
                 </div>
 
-                <Select
-                  value={selectedMonth}
-                  onChange={(e) =>
-                    setSelectedMonth(
-                      e.target.value
-                    )
-                  }
-                  className="mt-4 w-full text-base sm:text-lg"
-                >
-                  {months.map((month) => (
-                    <option
-                      key={month}
-                      value={month}
-                      className="bg-black"
-                    >
-                      {month === currentMonth
-                        ? `${month} (Current)`
-                        : month}
-                    </option>
-                  ))}
-                </Select>
+                <div className="mt-4 grid grid-cols-[minmax(0,1fr)_96px] gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
+                  <Select
+                    value={selectedMonth}
+                    onChange={(e) =>
+                      setSelectedMonth(
+                        e.target.value
+                      )
+                    }
+                    className="w-full text-base sm:text-lg"
+                  >
+                    {months.map((month) => (
+                      <option
+                        key={month}
+                        value={month}
+                        className="bg-black"
+                      >
+                        {month === currentMonth
+                          ? `${month} (Current)`
+                          : month}
+                      </option>
+                    ))}
+                  </Select>
+
+                  <Select
+                    value={activeCurrency}
+                    onChange={(event) => handleCurrencyChange(event.target.value)}
+                    className="w-full text-base sm:text-lg"
+                    title="Currency for new records and current dashboard"
+                  >
+                    {CURRENCIES.map((currency) => (
+                      <option key={currency} value={currency}>
+                        {currencyLabel(currency)}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
               </Card>
             </div>
 
@@ -832,30 +839,6 @@ export default function Home() {
                 currency={activeCurrency}
                 helper={`${balancePercent}% of income`}
               />
-              {/* Total Assets card placed under Balance and above Spending Analytics */}
-              <Card
-                className="text-left cursor-pointer"
-                variant="info"
-                onClick={() => setShowAssetModal(true)}
-              >
-            <div>
-              <div className="flex items-center gap-2 text-zinc-400 mb-3">
-                <Wallet size={18} />
-                Total Assets
-              </div>
-              <div className="space-y-2">
-                <div className="block w-full rounded-xl border border-cyan-500/20 bg-black/30 px-3 py-3 text-left transition hover:border-cyan-300">
-                  <div className="text-2xl font-bold text-cyan-400">
-                    {formatCurrencyAmount(
-                      activeCurrencyAssetTotal,
-                      activeCurrency
-                    )}
-                  </div>
-                </div>
-              </div>
-              <p className="text-sm text-zinc-400 mt-2">{activeCurrencyAssets.length} record{activeCurrencyAssets.length === 1 ? "" : "s"}</p>
-            </div>
-          </Card>
             </div>
 
             <section className="w-full">
@@ -882,20 +865,6 @@ export default function Home() {
                     gap-2
                   "
                 >
-                  <Select
-                    value={activeCurrency}
-                    onChange={(event) => handleCurrencyChange(event.target.value)}
-                    fieldSize="md"
-                    className="w-24"
-                    title="Currency for new records and current dashboard"
-                  >
-                    {CURRENCIES.map((currency) => (
-                      <option key={currency} value={currency}>
-                        {currencyLabel(currency)}
-                      </option>
-                    ))}
-                  </Select>
-
                   {exportError && (
                     <span
                       className="
@@ -1132,25 +1101,27 @@ export default function Home() {
 
         )}
 
-        <CategoryExpenseSheet
-          isOpen={showExpenseDrilldown}
-          selectedMonth={drilldownMonth ?? selectedMonth}
-          currency={activeCurrency}
-          expenses={allExpenses}
-          categories={categories}
-          initialCategoryKey={drilldownCategoryKey}
-          initialCategoryName={drilldownCategoryName}
-          initialTypeName={drilldownTypeName}
-          onClose={() => {
-            setShowExpenseDrilldown(false);
-            setDrilldownMonth(null);
-            setDrilldownCategoryKey(null);
-            setDrilldownCategoryName(null);
-            setDrilldownTypeName(null);
-          }}
-          onEdit={handleStartEdit}
-          onDelete={handleDeleteExpense}
-        />
+        {showExpenseDrilldown && (
+          <CategoryExpenseSheet
+            isOpen={showExpenseDrilldown}
+            selectedMonth={drilldownMonth ?? selectedMonth}
+            currency={activeCurrency}
+            expenses={allExpenses}
+            categories={categories}
+            initialCategoryKey={drilldownCategoryKey}
+            initialCategoryName={drilldownCategoryName}
+            initialTypeName={drilldownTypeName}
+            onClose={() => {
+              setShowExpenseDrilldown(false);
+              setDrilldownMonth(null);
+              setDrilldownCategoryKey(null);
+              setDrilldownCategoryName(null);
+              setDrilldownTypeName(null);
+            }}
+            onEdit={handleStartEdit}
+            onDelete={handleDeleteExpense}
+          />
+        )}
 
         <nav
           className="
@@ -1247,11 +1218,6 @@ export default function Home() {
       </div>
 
       <div className="mt-5 space-y-4">
-
-        {/* Transactions */}
-
-        {/* Assets */}
-
         {assets.loading ? (
           <div className="text-zinc-400">
             Loading assets...
@@ -1282,8 +1248,6 @@ export default function Home() {
                     "Asset deleted.",
                     "success"
                   );
-
-                  await assets.fetchAllocatedAmount();
                 } else {
                   toast.showToast(
                     res.error || "Failed to delete",
@@ -1298,8 +1262,6 @@ export default function Home() {
             No assets yet.
           </div>
         )}
-
-        {/* Create / Edit Asset */}
 
         <div className="mt-4 border-t border-zinc-800 pt-4">
           <h3 className="font-bold">
@@ -1359,8 +1321,6 @@ export default function Home() {
                     "Asset saved.",
                     "success"
                   );
-
-                  await assets.fetchAllocatedAmount();
                 } else {
                   toast.showToast(
                     res.error || "Failed to save asset",

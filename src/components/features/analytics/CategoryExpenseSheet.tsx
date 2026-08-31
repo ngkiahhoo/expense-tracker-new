@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useMemo,
   useState,
   type FocusEvent,
@@ -9,16 +8,14 @@ import {
 import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Card } from "@/components/ui/Card";
 import {
-  cn,
   emptyStateStyles,
-  overlayStyles,
 } from "@/components/ui/styles";
 import { confirmDelete } from "../../../utils/confirm";
 
 import type { Expense } from "../../../types/expense";
 import type { Category } from "../../../types/category";
 import type { Currency } from "../../../types/currency";
-import { currencyLabel, formatCurrencyAmount, normalizeCurrency } from "../../../utils/currency";
+import { formatCurrencyAmount, normalizeCurrency } from "../../../utils/currency";
 
 type SheetLevel = "types" | "categories" | "records";
 
@@ -71,10 +68,19 @@ export default function CategoryExpenseSheet({
   onEdit,
   onDelete,
 }: CategoryExpenseSheetProps) {
-  const [level, setLevel] = useState<SheetLevel>("types");
-  const [selectedTypeName, setSelectedTypeName] = useState<string | null>(null);
-  const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
-  const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null);
+  const opensAtCategory = Boolean(initialCategoryKey && initialCategoryName);
+  const [level, setLevel] = useState<SheetLevel>(
+    opensAtCategory ? "records" : "types"
+  );
+  const [selectedTypeName, setSelectedTypeName] = useState<string | null>(
+    opensAtCategory ? initialTypeName ?? null : null
+  );
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(
+    opensAtCategory ? initialCategoryKey ?? null : null
+  );
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(
+    opensAtCategory ? initialCategoryName ?? null : null
+  );
 
   function handleDialogFocus(event: FocusEvent<HTMLDivElement>) {
     if (!(event.target instanceof HTMLElement)) {
@@ -98,29 +104,6 @@ export default function CategoryExpenseSheet({
       }, 150);
     }
   }
-
-  useEffect(() => {
-    if (!isOpen) {
-      setLevel("types");
-      setSelectedTypeName(null);
-      setSelectedCategoryKey(null);
-      setSelectedCategoryName(null);
-      return;
-    }
-
-    if (initialCategoryKey && initialCategoryName) {
-      setSelectedTypeName(initialTypeName ?? null);
-      setSelectedCategoryKey(initialCategoryKey);
-      setSelectedCategoryName(initialCategoryName);
-      setLevel("records");
-      return;
-    }
-
-    setLevel("types");
-    setSelectedTypeName(null);
-    setSelectedCategoryKey(null);
-    setSelectedCategoryName(null);
-  }, [isOpen, initialCategoryKey, initialCategoryName, initialTypeName]);
 
   const filteredExpenses = useMemo(() => {
     return (expenses || []).filter((expense) => {

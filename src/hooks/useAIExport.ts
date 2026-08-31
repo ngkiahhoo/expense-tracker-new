@@ -26,12 +26,6 @@ import type {
 import type {
   Income,
 } from "../types/income";
-import type {
-  AssetDistribution,
-} from "../types/asset";
-import type {
-  DistributionCategory,
-} from "../types/distribution";
 
 interface MonthlyAccumulator {
   currency:string;

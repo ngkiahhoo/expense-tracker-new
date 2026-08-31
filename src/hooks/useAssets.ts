@@ -7,11 +7,8 @@ import {
   updateAsset,
   removeAsset,
   updateAssetMainStatus,
-  getMonthlyAllocationTotal,
-  createAssetAllocation,
-  removeAssetAllocation,
 } from "@/services/assetService";
-import type { Asset, AssetPayload, AssetAllocationPayload } from "@/types/asset";
+import type { Asset, AssetPayload } from "@/types/asset";
 import type { Currency } from "@/types/currency";
 import { DEFAULT_CURRENCY, normalizeCurrency } from "@/utils/currency";
 
@@ -26,12 +23,8 @@ export default function useAssets(selectedMonth: string) {
   const [assetNote, setAssetNote] = useState("");
   const [assetEditingId, setAssetEditingId] = useState<number | null>(null);
 
-  const [allocationAssetId, setAllocationAssetId] = useState("");
-  const [allocationAmount, setAllocationAmount] = useState("");
-  const [allocatedAmount, setAllocatedAmount] = useState(0);
-
   useEffect(() => {
-    fetchAll();
+    void fetchAssets();
   }, [selectedMonth]);
 
   useEffect(() => {
@@ -55,22 +48,6 @@ export default function useAssets(selectedMonth: string) {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function fetchAllocatedAmount() {
-    setLoading(true);
-    try {
-      const total = await getMonthlyAllocationTotal(selectedMonth);
-      setAllocatedAmount(total);
-    } catch {
-      setError("Failed to fetch allocation total");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function fetchAll() {
-    await Promise.all([fetchAssets(), fetchAllocatedAmount()]);
   }
 
   async function saveAsset() {
@@ -147,7 +124,6 @@ export default function useAssets(selectedMonth: string) {
         return { success: false, error: msg };
       }
       await fetchAssets();
-      await fetchAllocatedAmount();
       return { success: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to delete asset";
@@ -181,62 +157,6 @@ export default function useAssets(selectedMonth: string) {
     }
   }
 
-  async function allocateAsset(assetId: number, amount: number) {
-    try {
-      setLoading(true);
-      setError("");
-
-      if (!assetId || amount <= 0) {
-        const msg = "Please select an asset and enter a valid allocation amount.";
-        setError(msg);
-        return { success: false, error: msg };
-      }
-
-      const asset = assets.find((item) => item.id === assetId);
-      if (!asset) {
-        const msg = "Selected asset not found.";
-        setError(msg);
-        return { success: false, error: msg };
-      }
-
-      const allocationData: AssetAllocationPayload = {
-        asset_id: assetId,
-        month: selectedMonth,
-        amount,
-      };
-
-      const { data, error } = await createAssetAllocation(allocationData);
-      if (error || !data) {
-        const msg = error?.message || "Failed to record allocation.";
-        setError(msg);
-        return { success: false, error: msg };
-      }
-
-      const updateError = await updateAsset(assetId, {
-        current_value: asset.current_value + amount,
-      });
-
-      if (updateError) {
-        await removeAssetAllocation(data.id);
-        const msg = updateError.message || "Failed to update asset value.";
-        setError(msg);
-        return { success: false, error: msg };
-      }
-
-      await fetchAssets();
-      await fetchAllocatedAmount();
-      setAllocationAssetId("");
-      setAllocationAmount("");
-      return { success: true };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to allocate asset.";
-      setError(msg);
-      return { success: false, error: msg };
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return {
     assets,
     loading,
@@ -255,12 +175,5 @@ export default function useAssets(selectedMonth: string) {
     deleteAssetById,
     setMainAsset,
     resetAssetForm,
-    allocationAssetId,
-    setAllocationAssetId,
-    allocationAmount,
-    setAllocationAmount,
-    allocatedAmount,
-    fetchAllocatedAmount,
-    allocateAsset,
   };
 }

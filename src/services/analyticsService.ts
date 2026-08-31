@@ -69,7 +69,7 @@ function pickColor(index: number, used: string[]) {
   // Use golden angle to spread hues, then ensure distance from reserved and already used colors
   const GOLDEN_ANGLE = 137.508; // degrees
   let hue = (index * GOLDEN_ANGLE) % 360;
-  let sat = 72;
+  const sat = 72;
   let light = 46;
   let hex = hslToHex(hue, sat, light);
 

@@ -172,7 +172,7 @@ export async function updateGeneratedExpenseForRecurring(
     new Date(year, month, 0).getDate()
   ).padStart(2, "0")}`;
 
-  let query = supabase
+  const query = supabase
     .from("expenses")
     .select("id")
     .eq("recurring_expense_id", recurringExpense.id)

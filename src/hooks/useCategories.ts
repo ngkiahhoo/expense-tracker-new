@@ -17,11 +17,12 @@ import {
   getTypeId,
 
 } from "../services/categoryService";
+import type { Category } from "../types/category";
 
 export default function useCategories() {
 
   const [categories, setCategories] =
-    useState<any[]>([]);
+    useState<Category[]>([]);
 
   const [newCategory, setNewCategory] =
     useState("");
@@ -167,7 +168,7 @@ export default function useCategories() {
   }
 
   function editCategory(
-    cat:any
+    cat:Category
   ) {
 
     setEditingCategoryId(
@@ -180,7 +181,7 @@ export default function useCategories() {
 
     setSelectedType(
       cat.types?.name
-        ?.toLowerCase()
+        ?.toLowerCase() || "needs"
     );
   }
 

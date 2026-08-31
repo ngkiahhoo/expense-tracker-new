@@ -32,12 +32,21 @@ interface ExpenseCategoryBreakdownProps {
   currency?: string;
 }
 
-function renderTooltip({ active, payload }: any) {
+function renderTooltip(props: unknown) {
+  const { active, payload } = props as {
+    active?: boolean;
+    payload?: Array<{ payload?: CategoryBreakdownItem }>;
+  };
+
   if (!active || !payload || payload.length === 0) {
     return null;
   }
 
-  const item = payload[0].payload as CategoryBreakdownItem;
+  const item = payload[0].payload;
+
+  if (!item) {
+    return null;
+  }
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-3 text-sm text-white shadow-xl">

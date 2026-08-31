@@ -1,4 +1,7 @@
-﻿export interface Asset {
+import type { Currency } from "./currency";
+import type { DistributionCategory } from "./distribution";
+
+export interface Asset {
   id: number;
   name: string;
   current_value: number;
@@ -10,21 +13,6 @@
 }
 
 export type AssetPayload = Omit<Asset, "id" | "created_at" | "updated_at">;
-
-export interface AssetAllocation {
-  id: number;
-  asset_id: number;
-  month: string;
-  amount: number;
-  created_at: string;
-  updated_at: string;
-  asset?: Asset;
-}
-
-export type AssetAllocationPayload = Omit<AssetAllocation, "id" | "created_at" | "updated_at" | "asset">;
-
-import type { DistributionCategory } from "./distribution";
-import type { Currency } from "./currency";
 
 export interface AssetDistribution {
   id: number;
@@ -39,5 +27,3 @@ export interface AssetDistribution {
   created_at: string;
   updated_at: string;
 }
-
-export type AssetDistributionPayload = Omit<AssetDistribution, "id" | "created_at" | "updated_at" | "category">;

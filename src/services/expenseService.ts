@@ -1,6 +1,16 @@
 import { supabase } from "../lib/supabase";
 import type { Currency } from "../types/currency";
+import type { Expense } from "../types/expense";
 import { normalizeCurrency } from "../utils/currency";
+
+export type ExpensePayload = {
+  amount: number;
+  note: string;
+  expense_date: string;
+  category_id: number;
+  currency?: Currency;
+  recurring_expense_id?: number;
+};
 
 export async function getExpenses(
   selectedMonth:string
@@ -42,7 +52,7 @@ export async function getExpenses(
 }
 
 export async function createExpense(
-  payload:any
+  payload:ExpensePayload
 ) {
 
   const { error } =
@@ -67,7 +77,7 @@ export async function createExpense(
 
 export async function updateExpense(
   id:number,
-  payload:any
+  payload:Partial<ExpensePayload>
 ) {
   const { data: existing, error: fetchErr } = await supabase
     .from("expenses")
@@ -77,10 +87,11 @@ export async function updateExpense(
 
   if (fetchErr) return fetchErr;
 
-  const prevAmount = Number((existing && (existing as any).amount) || 0);
-  const newAmount = Number(payload.amount || prevAmount);
-  const prevCurrency = normalizeCurrency((existing as any).currency);
-  const newCurrency = normalizeCurrency(payload.currency || prevCurrency);
+  const existingExpense = existing as Expense;
+  const prevAmount = Number(existingExpense.amount || 0);
+  const newAmount = Number(payload.amount ?? prevAmount);
+  const prevCurrency = normalizeCurrency(existingExpense.currency);
+  const newCurrency = normalizeCurrency(payload.currency ?? prevCurrency);
   const delta = prevAmount - newAmount;
 
   const { error } =
@@ -120,8 +131,9 @@ export async function removeExpense(
 
   if (fetchErr) return fetchErr;
 
-  const prevAmount = Number((existing && (existing as any).amount) || 0);
-  const prevCurrency = normalizeCurrency((existing as any).currency);
+  const existingExpense = existing as Expense;
+  const prevAmount = Number(existingExpense.amount || 0);
+  const prevCurrency = normalizeCurrency(existingExpense.currency);
 
   const { error } =
     await supabase

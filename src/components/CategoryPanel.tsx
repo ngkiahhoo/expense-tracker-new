@@ -8,6 +8,12 @@ import { getTypeColor } from "../utils/typeColors";
 
 import type { Category } from "../types/category";
 
+type ActionResult = {
+  success: boolean;
+  message?: string;
+  error?: string;
+};
+
 interface CategoryPanelProps {
   showCategories: boolean;
   newCategory: string;
@@ -15,9 +21,9 @@ interface CategoryPanelProps {
   selectedType: string;
   setSelectedType: (value: string) => void;
   editingCategoryId: number | null;
-  addCategory: () => Promise<any>;
+  addCategory: () => Promise<ActionResult | boolean>;
   editCategory: (category: Category) => void;
-  deleteCategory: (id: number) => Promise<any>;
+  deleteCategory: (id: number) => Promise<ActionResult | void>;
   categories: Category[];
 }
 

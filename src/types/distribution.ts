@@ -4,5 +4,3 @@ export interface DistributionCategory {
   created_at?: string;
   updated_at?: string;
 }
-
-export type DistributionCategoryPayload = Omit<DistributionCategory, "id" | "created_at" | "updated_at">;

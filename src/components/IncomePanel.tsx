@@ -10,6 +10,12 @@ import { currencyLabel } from "../utils/currency";
 
 import type { Income } from "../types/income";
 
+type ActionResult = {
+  success: boolean;
+  message?: string;
+  error?: string;
+};
+
 interface IncomePanelProps {
   totalIncome: number;
   incomes: Income[];
@@ -23,9 +29,9 @@ interface IncomePanelProps {
   setIncomeNote: (value: string) => void;
   incomeEditingId: number | null;
   currency: Currency;
-  addIncome: () => Promise<any>;
+  addIncome: () => Promise<ActionResult | boolean>;
   startEditIncome: (income: Income) => void;
-  deleteIncome: (id: number) => Promise<any>;
+  deleteIncome: (id: number) => Promise<ActionResult | void>;
 }
 
 export default function IncomePanel({

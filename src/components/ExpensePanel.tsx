@@ -92,8 +92,6 @@ export default function ExpensePanel({
 
     <>
 
-      {/* BUTTON */}
-
       {showToggle && (
         showExpenseForm ? (
           <div className="mb-5 flex justify-end">
@@ -115,8 +113,6 @@ export default function ExpensePanel({
           </Button>
         )
       )}
-
-      {/* FORM */}
 
       {showExpenseForm && (
 
