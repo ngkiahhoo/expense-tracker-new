@@ -18,52 +18,16 @@ import { formatRecurringExpenseNote } from "../services/recurringExpenseService"
 
 import type {
   RecurringExpense,
-  RecurringExpensePayload,
 } from "../types/recurringExpense";
 import type { Currency } from "../types/currency";
 import { DEFAULT_CURRENCY, normalizeCurrency } from "../utils/currency";
-
-function getErrorMessage(
-  error:unknown
-) {
-  if (
-    error &&
-    typeof error === "object" &&
-    "message" in error &&
-    typeof error.message === "string"
-  ) {
-    return error.message;
-  }
-
-  return "";
-}
-
-function recurringErrorMessage(
-  action:string,
-  error:unknown
-) {
-  const message =
-    getErrorMessage(
-      error
-    );
-
-  if (
-    message.includes(
-      "schema cache"
-    )
-  ) {
-    return `${action}: Supabase schema cache is stale. Run notify pgrst, 'reload schema'; in SQL Editor, then retry.`;
-  }
-
-  if (message) {
-    return `${action}: ${message}`;
-  }
-
-  return `${action}. Run supabase/recurring_expenses.sql, then retry.`;
-}
+import {
+  buildRecurringExpensePayload,
+  getRecurringErrorMessage,
+  recurringExpenseToFormValues,
+} from "../utils/recurringExpenseForm";
 
 export default function useRecurringExpenses(
-  selectedMonth:string,
   currentMonth:string,
   activeCurrency:Currency = DEFAULT_CURRENCY
 ) {
@@ -165,7 +129,7 @@ export default function useRecurringExpenses(
       if (error) {
         setRecurringExpenses([]);
         setRecurringError(
-          recurringErrorMessage(
+          getRecurringErrorMessage(
             "Could not load recurring expenses",
             error
           )
@@ -193,51 +157,24 @@ export default function useRecurringExpenses(
       setRecurringLoading(true);
       setRecurringError("");
 
-      const amount =
-        Number(
-          recurringAmount
-        );
+      const {
+        error: validationError,
+        payload,
+      } = buildRecurringExpensePayload({
+        activeCurrency,
+        amount: recurringAmount,
+        category: recurringCategory,
+        description: recurringDescription,
+        editingCurrency: recurringEditingCurrency,
+        isActive: recurringIsActive,
+        name: recurringName,
+        repeatDay: recurringRepeatDay,
+      });
 
-      const repeatDay =
-        Number(
-          recurringRepeatDay
-        );
-
-      if (
-        !recurringName.trim() ||
-        !recurringAmount ||
-        !recurringCategory ||
-        Number.isNaN(amount) ||
-        amount <= 0 ||
-        !Number.isInteger(repeatDay) ||
-        repeatDay < 1 ||
-        repeatDay > 31
-      ) {
-        const msg =
-          "Please fill name, price, category, and day.";
-        setRecurringError(msg);
-        return { success: false, error: msg };
+      if (!payload) {
+        setRecurringError(validationError);
+        return { success: false, error: validationError };
       }
-
-      const payload:RecurringExpensePayload = {
-        name:
-          recurringName.trim(),
-        amount,
-        currency:
-          recurringEditingCurrency ||
-          activeCurrency,
-        description:
-          recurringDescription.trim() ||
-          null,
-        category_id:
-          Number(
-            recurringCategory
-          ),
-        repeat_day:
-          repeatDay,
-        is_active:
-          recurringIsActive,
-      };
 
       const saveError =
         recurringEditingId
@@ -250,7 +187,7 @@ export default function useRecurringExpenses(
             );
 
       if (saveError) {
-        const msg = recurringErrorMessage(
+        const msg = getRecurringErrorMessage(
             "Could not save recurring expense",
             saveError
           );
@@ -282,7 +219,7 @@ export default function useRecurringExpenses(
           );
 
         if (syncError) {
-          const msg = recurringErrorMessage(
+          const msg = getRecurringErrorMessage(
             "Could not update generated expense",
             syncError
           );
@@ -336,29 +273,31 @@ export default function useRecurringExpenses(
   function startEditRecurringExpense(
     recurringExpense:RecurringExpense
   ) {
+    const formValues = recurringExpenseToFormValues(
+      recurringExpense
+    );
+
     setRecurringEditingId(
       recurringExpense.id
     );
     setRecurringEditingOriginal(
       recurringExpense
     );
-    setRecurringName(
-      recurringExpense.name
-    );
+    setRecurringName(formValues.name);
     setRecurringAmount(
-      recurringExpense.amount.toString()
+      formValues.amount
     );
     setRecurringDescription(
-      recurringExpense.description || ""
+      formValues.description
     );
     setRecurringCategory(
-      recurringExpense.category_id.toString()
+      formValues.category
     );
     setRecurringRepeatDay(
-      recurringExpense.repeat_day.toString()
+      formValues.repeatDay
     );
     setRecurringIsActive(
-      recurringExpense.is_active
+      formValues.isActive
     );
     setRecurringEditingCurrency(
       normalizeCurrency(recurringExpense.currency)
@@ -376,7 +315,7 @@ export default function useRecurringExpenses(
 
       if (error) {
         setRecurringError(
-          recurringErrorMessage(
+          getRecurringErrorMessage(
             "Could not generate recurring expenses",
             error
           )

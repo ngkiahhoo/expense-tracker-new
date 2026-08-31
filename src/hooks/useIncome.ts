@@ -19,6 +19,7 @@ import {
 import type { Income } from "../types/income";
 import type { Currency } from "../types/currency";
 import { DEFAULT_CURRENCY, normalizeCurrency } from "../utils/currency";
+import { notifyTransactionsChanged } from "../utils/transactionEvents";
 
 export default function useIncome(
   selectedMonth:string,
@@ -136,16 +137,11 @@ export default function useIncome(
 
       await fetchIncome();
 
-      // notify listeners (assets page) to refresh distributions
-      try {
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(
-            new CustomEvent("transactions:changed", {
-              detail: { type: "income", month: selectedMonth },
-            })
-          );
-        }
-      } catch {}
+      notifyTransactionsChanged({
+        type: "income",
+        month: selectedMonth,
+        currency: incomeEditingCurrency || activeCurrency,
+      });
 
       return { success: true, message: incomeEditingId ? "Income updated successfully" : "Income added successfully" };
     } catch (err) {
@@ -175,15 +171,11 @@ export default function useIncome(
 
       await fetchIncome();
 
-      try {
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(
-            new CustomEvent("transactions:changed", {
-              detail: { type: "income", month: selectedMonth },
-            })
-          );
-        }
-      } catch {}
+      notifyTransactionsChanged({
+        type: "income",
+        month: selectedMonth,
+        currency: activeCurrency,
+      });
 
       return { success: true, message: "Income deleted successfully" };
     } catch (err) {

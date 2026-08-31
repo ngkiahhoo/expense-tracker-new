@@ -10,6 +10,7 @@ import {
 } from "../types/expense";
 import type { Currency } from "../types/currency";
 import { DEFAULT_CURRENCY, normalizeCurrency } from "../utils/currency";
+import { notifyTransactionsChanged } from "../utils/transactionEvents";
 
 import {
 
@@ -157,16 +158,11 @@ export default function useExpenses(
 
       await fetchExpenses();
 
-      // notify listeners (assets page) to refresh distributions
-      try {
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(
-            new CustomEvent("transactions:changed", {
-              detail: { type: "expense", month: selectedMonth },
-            })
-          );
-        }
-      } catch {}
+      notifyTransactionsChanged({
+        type: "expense",
+        month: selectedMonth,
+        currency: editingCurrency || activeCurrency,
+      });
 
       return { success: true, message: editingId ? "Expense updated successfully" : "Expense added successfully" };
 
@@ -218,15 +214,11 @@ export default function useExpenses(
 
       await fetchExpenses();
 
-      try {
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(
-            new CustomEvent("transactions:changed", {
-              detail: { type: "expense", month: selectedMonth },
-            })
-          );
-        }
-      } catch {}
+      notifyTransactionsChanged({
+        type: "expense",
+        month: selectedMonth,
+        currency: activeCurrency,
+      });
 
       return { success: true, message: "Expense deleted successfully" };
 
@@ -256,15 +248,11 @@ export default function useExpenses(
       }
 
       await fetchExpenses();
-      try {
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(
-            new CustomEvent("transactions:changed", {
-              detail: { type: "expense", month: selectedMonth },
-            })
-          );
-        }
-      } catch {}
+      notifyTransactionsChanged({
+        type: "expense",
+        month: selectedMonth,
+        currency: activeCurrency,
+      });
 
       return { success: true, message: "Monthly expenses deleted successfully" };
     } catch (err) {

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useMemo,
   useState,
   type FocusEvent,
 } from "react";
@@ -11,13 +10,14 @@ import {
   emptyStateStyles,
 } from "@/components/ui/styles";
 import { confirmDelete } from "../../../utils/confirm";
+import useCategoryExpenseSheetData, {
+  type SheetLevel,
+} from "../../../hooks/useCategoryExpenseSheetData";
 
 import type { Expense } from "../../../types/expense";
 import type { Category } from "../../../types/category";
 import type { Currency } from "../../../types/currency";
-import { formatCurrencyAmount, normalizeCurrency } from "../../../utils/currency";
-
-type SheetLevel = "types" | "categories" | "records";
+import { formatCurrencyAmount } from "../../../utils/currency";
 
 interface CategoryExpenseSheetProps {
   isOpen: boolean;
@@ -35,20 +35,6 @@ interface CategoryExpenseSheetProps {
   onClose: () => void;
   onEdit: (expense: Expense) => void;
   onDelete: (id: number) => void;
-}
-
-interface TypeSummary {
-  name: string;
-  totalAmount: number;
-  expenses: Expense[];
-}
-
-interface CategorySummary {
-  key: string;
-  categoryId: number | null;
-  categoryName: string;
-  totalAmount: number;
-  expenses: Expense[];
 }
 
 function formatDate(dateString: string) {
@@ -105,95 +91,20 @@ export default function CategoryExpenseSheet({
     }
   }
 
-  const filteredExpenses = useMemo(() => {
-    return (expenses || []).filter((expense) => {
-      const date = (expense.expense_date || "").split("T")[0];
-      return (
-        date.startsWith(selectedMonth) &&
-        normalizeCurrency(expense.currency) === currency
-      );
-    });
-  }, [expenses, selectedMonth, currency]);
-
-  const typeSummaries = useMemo(() => {
-    const map = new Map<string, TypeSummary>();
-
-    filteredExpenses.forEach((expense) => {
-      const category = expense.categories || categories.find((item) => item.id === expense.category_id);
-      const typeName = category?.types?.name || "Uncategorized";
-      const existing = map.get(typeName);
-
-      if (existing) {
-        existing.totalAmount += Number(expense.amount || 0);
-        existing.expenses.push(expense);
-      } else {
-        map.set(typeName, {
-          name: typeName,
-          totalAmount: Number(expense.amount || 0),
-          expenses: [expense],
-        });
-      }
-    });
-
-    return Array.from(map.values()).sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [filteredExpenses, categories]);
-
-  const categorySummaries = useMemo(() => {
-    if (!selectedTypeName) return [] as CategorySummary[];
-
-    const map = new Map<string, CategorySummary>();
-
-    filteredExpenses.forEach((expense) => {
-      const category = expense.categories || categories.find((item) => item.id === expense.category_id);
-      const typeName = category?.types?.name || "Uncategorized";
-
-      if (typeName !== selectedTypeName) return;
-
-      const categoryName = category?.name || "Uncategorized";
-      const categoryId = category?.id ?? null;
-      const key = `${categoryId ?? "uncategorized"}:${categoryName}`;
-      const existing = map.get(key);
-
-      if (existing) {
-        existing.totalAmount += Number(expense.amount || 0);
-        existing.expenses.push(expense);
-      } else {
-        map.set(key, {
-          key,
-          categoryId,
-          categoryName,
-          totalAmount: Number(expense.amount || 0),
-          expenses: [expense],
-        });
-      }
-    });
-
-    return Array.from(map.values()).sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [filteredExpenses, categories, selectedTypeName]);
-
-  const recordItems = useMemo(() => {
-    if (!selectedCategoryKey || !selectedTypeName) return [] as Expense[];
-
-    return filteredExpenses.filter((expense) => {
-      const category = expense.categories || categories.find((item) => item.id === expense.category_id);
-      const typeName = category?.types?.name || "Uncategorized";
-      const categoryName = category?.name || "Uncategorized";
-      const key = `${category?.id ?? "uncategorized"}:${categoryName}`;
-      return typeName === selectedTypeName && key === selectedCategoryKey;
-    });
-  }, [filteredExpenses, categories, selectedTypeName, selectedCategoryKey]);
-
-  const currentTotal = useMemo(() => {
-    if (level === "categories") {
-      return categorySummaries.reduce((sum, item) => sum + item.totalAmount, 0);
-    }
-
-    if (level === "records") {
-      return recordItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    }
-
-    return filteredExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  }, [categorySummaries, filteredExpenses, level, recordItems]);
+  const {
+    categorySummaries,
+    currentTotal,
+    recordItems,
+    typeSummaries,
+  } = useCategoryExpenseSheetData({
+    categories,
+    currency,
+    expenses,
+    level,
+    selectedCategoryKey,
+    selectedMonth,
+    selectedTypeName,
+  });
 
   if (!isOpen) return null;
 

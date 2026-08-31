@@ -5,6 +5,7 @@ import type {
   RecurringExpense,
   RecurringExpensePayload,
 } from "../types/recurringExpense";
+import { getMonthDateRange } from "../utils/monthRange";
 
 function dateInputValue(
   date:Date
@@ -164,13 +165,9 @@ export async function updateGeneratedExpenseForRecurring(
       recurringExpense.repeat_day
     );
 
-  const [year, month] = selectedMonth
-    .split("-")
-    .map(Number);
-  const start = `${selectedMonth}-01`;
-  const end = `${selectedMonth}-${String(
-    new Date(year, month, 0).getDate()
-  ).padStart(2, "0")}`;
+  const { start, end } = getMonthDateRange(
+    selectedMonth
+  );
 
   const query = supabase
     .from("expenses")

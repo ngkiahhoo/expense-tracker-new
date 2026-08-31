@@ -9,29 +9,20 @@ import {
 } from "react";
 
 import PullToRefresh from "react-simple-pull-to-refresh";
-
-import {
-  CalendarDays,
-  CalendarSync,
-  ChartPie,
-  ClipboardList,
-  FolderTree,
-  Plus,
-  Wallet,
-} from "lucide-react";
+import { Wallet } from "lucide-react";
 
 import { useToast } from "@/contexts/ToastContext";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Select } from "@/components/ui/Field";
 import {
   cn,
   toneStyles,
 } from "@/components/ui/styles";
-import AnalyticsPanel from "../components/AnalyticsPanel";
 import AssetDetailsModal from "../components/AssetDetailsModal";
-import BottomBarButton from "../components/BottomBarButton";
+import BottomActionBar, {
+  type BottomTool,
+} from "../components/BottomActionBar";
 import CategoryPanel from "../components/CategoryPanel";
+import DashboardAnalyticsSection from "../components/DashboardAnalyticsSection";
+import DashboardSummarySection from "../components/DashboardSummarySection";
 import ExportModal from "../components/ExportModal";
 import ExpensePanel from "../components/ExpensePanel";
 import ExpenseRecordsPanel from "../components/ExpenseRecordsPanel";
@@ -40,7 +31,6 @@ import MetricCard from "../components/MetricCard";
 import QuickActionSheet from "../components/QuickActionSheet";
 import RecurringExpensePanel from "../components/RecurringExpensePanel";
 import CategoryExpenseSheet from "../components/features/analytics/CategoryExpenseSheet";
-import ExpenseCategoryBreakdown from "../components/features/analytics/ExpenseCategoryBreakdown";
 import useAIExport from "../hooks/useAIExport";
 import useAnalytics from "../hooks/useAnalytics";
 import useAssets from "../hooks/useAssets";
@@ -49,25 +39,17 @@ import useCategoryBreakdown from "../hooks/useCategoryBreakdown";
 import useDashboardHistory from "../hooks/useDashboardHistory";
 import useExpenses from "../hooks/useExpenses";
 import useIncome from "../hooks/useIncome";
+import useMonthOptions from "../hooks/useMonthOptions";
+import useMonthlySeries from "../hooks/useMonthlySeries";
 import useRecurringExpenses from "../hooks/useRecurringExpenses";
 import useSavedNotes from "../hooks/useSavedNotes";
 import type { Currency } from "../types/currency";
 import type { Expense } from "../types/expense";
 import type { Income } from "../types/income";
 import {
-  CURRENCIES,
-  currencyLabel,
-  formatCurrencyAmount,
   getStoredCurrency,
   normalizeCurrency,
 } from "../utils/currency";
-
-type BottomTool =
-  | "expense"
-  | "recurring"
-  | "categories"
-  | "records"
-  | "income";
 
 const fullAIExportOptions = {
   includeAssets:true,
@@ -82,36 +64,10 @@ export default function Home() {
 
   const toast = useToast();
 
-  const today =
-    new Date();
-
-  const currentMonth =
-    `${today.getFullYear()}-${String(
-      today.getMonth() + 1
-    ).padStart(2, "0")}`;
-
-  const months =
-    Array.from(
-      { length: 12 },
-      (_, i) => {
-        const d =
-          new Date(
-            today.getFullYear(),
-            today.getMonth() - i,
-            1
-          );
-
-        const year =
-          d.getFullYear();
-
-        const month =
-          String(
-            d.getMonth() + 1
-          ).padStart(2, "0");
-
-        return `${year}-${month}`;
-      }
-    );
+  const {
+    currentMonth,
+    months,
+  } = useMonthOptions();
 
   const [selectedMonth, setSelectedMonth] =
     useState(currentMonth);
@@ -154,8 +110,6 @@ export default function Home() {
       }, 150);
     }
   }
-
-  // sheet panel state for activeTool panels
 
   const [showExpenseForm, setShowExpenseForm] =
     useState(true);
@@ -280,7 +234,6 @@ export default function Home() {
     resetRecurringExpenseForm,
     generateDueRecurringExpenses,
   } = useRecurringExpenses(
-    selectedMonth,
     currentMonth,
     activeCurrency
   );
@@ -332,40 +285,10 @@ export default function Home() {
     activeCurrency
   );
 
-  const monthlySeries = useMemo(() => {
-    const monthKeys = Array.from(
-      new Set([
-        ...allExpenses.map((expense) => expense.expense_date?.split("T")[0]?.slice(0, 7) || ""),
-        ...allIncomes.map((income) => income.income_date?.split("T")[0]?.slice(0, 7) || ""),
-      ].filter(Boolean))
-    ).sort((left, right) => left.localeCompare(right));
-
-    return monthKeys.map((monthKey) => {
-      const monthExpenses = allExpenses.filter((expense) => {
-        const expenseDate = expense.expense_date?.split("T")[0] || "";
-        return expenseDate.startsWith(monthKey);
-      });
-
-      const monthIncomes = allIncomes.filter((income) => {
-        const incomeDate = income.income_date?.split("T")[0] || "";
-        return incomeDate.startsWith(monthKey);
-      });
-
-      const monthlyIncome = monthIncomes.reduce((sum, income) => sum + Number(income.amount || 0), 0);
-      const monthlyExpense = monthExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
-
-      return {
-        monthKey,
-        label: new Date(Number(monthKey.split("-")[0]), Number(monthKey.split("-")[1]) - 1, 1).toLocaleDateString("en-US", {
-          month: "short",
-          year: "numeric",
-        }),
-        income: monthlyIncome,
-        expense: monthlyExpense,
-        balance: monthlyIncome - monthlyExpense,
-      };
-    });
-  }, [allExpenses, allIncomes]);
+  const monthlySeries = useMonthlySeries(
+    allExpenses,
+    allIncomes
+  );
 
   function handleCurrencyChange(value: string) {
     const nextCurrency: Currency =
@@ -383,7 +306,6 @@ export default function Home() {
   const [drilldownCategoryName, setDrilldownCategoryName] = useState<string | null>(null);
   const [drilldownTypeName, setDrilldownTypeName] = useState<string | null>(null);
 
-  // Use the modal state from the hook
   const showExportModal = showExportModalFromHook;
   const setShowExportModal = setShowExportModalFromHook;
 
@@ -665,83 +587,17 @@ export default function Home() {
             "
           >
 
-            <div className="flex flex-col gap-4">
-              <Card
-                className="text-left cursor-pointer"
-                variant="info"
-                onClick={() => setShowAssetModal(true)}
-              >
-                <div>
-                  <div className="flex items-center gap-2 text-zinc-400 mb-3">
-                    <Wallet size={18} />
-                    Total Assets
-                  </div>
-                  <div className="space-y-2">
-                    <div className="block w-full rounded-xl border border-cyan-500/20 bg-black/30 px-3 py-3 text-left transition hover:border-cyan-300">
-                      <div className="text-2xl font-bold text-cyan-400">
-                        {formatCurrencyAmount(
-                          activeCurrencyAssetTotal,
-                          activeCurrency
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-sm text-zinc-400 mt-2">
-                    {activeCurrencyAssets.length} record{activeCurrencyAssets.length === 1 ? "" : "s"}
-                  </p>
-                </div>
-              </Card>
-
-              <Card
-                variant="panel"
-                padding="none"
-                className="flex h-full min-h-[132px] flex-col p-4 sm:p-5 md:min-h-[150px]"
-              >
-                <div className="flex items-center gap-2 text-zinc-400">
-                  <CalendarDays size={18}/>
-                  <span>
-                    View Month
-                  </span>
-                </div>
-
-                <div className="mt-4 grid grid-cols-[minmax(0,1fr)_96px] gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
-                  <Select
-                    value={selectedMonth}
-                    onChange={(e) =>
-                      setSelectedMonth(
-                        e.target.value
-                      )
-                    }
-                    className="w-full text-base sm:text-lg"
-                  >
-                    {months.map((month) => (
-                      <option
-                        key={month}
-                        value={month}
-                        className="bg-black"
-                      >
-                        {month === currentMonth
-                          ? `${month} (Current)`
-                          : month}
-                      </option>
-                    ))}
-                  </Select>
-
-                  <Select
-                    value={activeCurrency}
-                    onChange={(event) => handleCurrencyChange(event.target.value)}
-                    className="w-full text-base sm:text-lg"
-                    title="Currency for new records and current dashboard"
-                  >
-                    {CURRENCIES.map((currency) => (
-                      <option key={currency} value={currency}>
-                        {currencyLabel(currency)}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              </Card>
-            </div>
+            <DashboardSummarySection
+              activeCurrency={activeCurrency}
+              assetCount={activeCurrencyAssets.length}
+              assetTotal={activeCurrencyAssetTotal}
+              currentMonth={currentMonth}
+              months={months}
+              onAssetClick={() => setShowAssetModal(true)}
+              onCurrencyChange={handleCurrencyChange}
+              onMonthChange={setSelectedMonth}
+              selectedMonth={selectedMonth}
+            />
 
             {error && (
 
@@ -787,89 +643,32 @@ export default function Home() {
               />
             </div>
 
-            <section className="w-full">
-              <div
-                className="
-                  flex
-                  items-center
-                  gap-2
-                  text-zinc-400
-                  mb-3
-                  px-1
-                "
-              >
-                <ChartPie size={18}/>
-                <span>
-                  Spending Analytics
-                </span>
-
-                <div
-                  className="
-                    ml-auto
-                    flex
-                    items-center
-                    gap-2
-                  "
-                >
-                  {exportError && (
-                    <span
-                      className="
-                        hidden
-                        max-w-[220px]
-                        truncate
-                        text-xs
-                        text-red-400
-                        sm:inline
-                      "
-                    >
-                      {exportError}
-                    </span>
-                  )}
-
-                  <Button
-                    onClick={handleCopyAIExport}
-                    disabled={exportLoading}
-                    variant={exportCopied ? "secondary" : "primary"}
-                    size="sm"
-                  >
-                    {exportLoading
-                      ? "Copying..."
-                      : exportCopied
-                      ? "Copied!"
-                      : "Export for AI"}
-                  </Button>
-                </div>
-              </div>
-
-              <AnalyticsPanel
-                analytics={analytics}
-                totalIncome={totalIncome}
-                currency={activeCurrency}
-              />
-            </section>
-
-            <section className="w-full">
-              <ExpenseCategoryBreakdown
-                breakdown={categoryBreakdown}
-                loading={loading}
-                onSelectCategory={(item) => {
-                  setDrilldownCategoryKey(`${item.categoryId ?? "uncategorized"}:${item.categoryName}`);
-                  setDrilldownCategoryName(item.categoryName);
-                  setDrilldownTypeName(item.expenses[0]?.categories?.types?.name || null);
-                  setDrilldownMonth(selectedMonth);
-                  setShowExpenseDrilldown(true);
-                }}
-                onSelectMonthExpense={(monthKey) => {
-                  setDrilldownCategoryKey(null);
-                  setDrilldownCategoryName(null);
-                  setDrilldownTypeName(null);
-                  setDrilldownMonth(monthKey);
-                  setShowExpenseDrilldown(true);
-                }}
-                monthlySeries={monthlySeries}
-                currency={activeCurrency}
-              />
-            </section>
+            <DashboardAnalyticsSection
+              analytics={analytics}
+              breakdown={categoryBreakdown}
+              currency={activeCurrency}
+              exportCopied={exportCopied}
+              exportError={exportError}
+              exportLoading={exportLoading}
+              loading={loading}
+              monthlySeries={monthlySeries}
+              onCopyAIExport={handleCopyAIExport}
+              onSelectCategory={(item) => {
+                setDrilldownCategoryKey(`${item.categoryId ?? "uncategorized"}:${item.categoryName}`);
+                setDrilldownCategoryName(item.categoryName);
+                setDrilldownTypeName(item.expenses[0]?.categories?.types?.name || null);
+                setDrilldownMonth(selectedMonth);
+                setShowExpenseDrilldown(true);
+              }}
+              onSelectMonthExpense={(monthKey) => {
+                setDrilldownCategoryKey(null);
+                setDrilldownCategoryName(null);
+                setDrilldownTypeName(null);
+                setDrilldownMonth(monthKey);
+                setShowExpenseDrilldown(true);
+              }}
+              totalIncome={totalIncome}
+            />
 
           </div>
 
@@ -1003,73 +802,10 @@ export default function Home() {
           />
         )}
 
-        <nav
-          className="
-            fixed
-            inset-x-0
-            bottom-0
-            z-50
-            border-t
-            border-white/10
-            bottom-glow-bar
-            px-3
-            pb-[env(safe-area-inset-bottom)]
-            lg:px-6
-          "
-        >
-          <div
-            className="
-              max-w-md
-              mx-auto
-              grid
-              grid-cols-4
-              gap-2
-              py-3
-              md:max-w-2xl
-              lg:max-w-2xl
-            "
-          >
-            <BottomBarButton
-              active={activeTool === "expense"}
-              onClick={() =>
-                toggleTool("expense")
-              }
-              icon={Plus}
-              label="Add"
-              description="Expense"
-            />
-
-            <BottomBarButton
-              active={activeTool === "recurring"}
-              onClick={() =>
-                toggleTool("recurring")
-              }
-              icon={CalendarSync}
-              label="Repeat"
-              description="Monthly"
-            />
-
-            <BottomBarButton
-              active={activeTool === "categories"}
-              onClick={() =>
-                toggleTool("categories")
-              }
-              icon={FolderTree}
-              label="Cat"
-              description="CRUD"
-            />
-
-            <BottomBarButton
-              active={activeTool === "records"}
-              onClick={() =>
-                toggleTool("records")
-              }
-              icon={ClipboardList}
-              label="Records"
-              description="History"
-            />
-          </div>
-        </nav>
+        <BottomActionBar
+          activeTool={activeTool}
+          onToggle={toggleTool}
+        />
 
       </div>
 
