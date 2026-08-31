@@ -12,11 +12,8 @@ import type {
   Income,
 } from "../types/income";
 import type {
-  AssetDistribution,
+  Asset,
 } from "../types/asset";
-import type {
-  DistributionCategory,
-} from "../types/distribution";
 
 function csvEscape(
   value:string | number | null | undefined
@@ -66,15 +63,57 @@ function dayOfWeek(
 }
 
 export function formatAIExport(
+  assets:Asset[],
   expenses:Expense[],
   incomes:Income[],
   categories:Category[],
-  distributions:AssetDistribution[],
-  distributionCategories:DistributionCategory[],
   monthlySummaries:MonthlySummary[],
   options:ExportOptions
 ) {
   const parts:string[] = [];
+
+  parts.push("=== EXPORT CONTEXT ===\n");
+  parts.push("Current app data export for AI analysis. It includes the current asset snapshot plus income, expense, monthly summary, and category records for the selected range.\n\n");
+
+  if (options.includeAssets) {
+    parts.push("=== ASSETS CSV ===\n");
+    parts.push("name,current_value,currency,is_main,note,updated_at\n");
+
+    for (const asset of assets) {
+      const line = [
+        csvEscape(asset.name),
+        Number(asset.current_value || 0).toFixed(2),
+        csvEscape(asset.currency || "MYR"),
+        asset.is_main ? "true" : "false",
+        csvEscape(asset.note || ""),
+        csvEscape(asset.updated_at || ""),
+      ].join(",");
+
+      parts.push(`${line}\n`);
+    }
+
+    parts.push("\n");
+  }
+
+  if (options.includeIncomes) {
+    parts.push("=== INCOMES CSV ===\n");
+    parts.push("date,month,amount,currency,note\n");
+
+    for (const income of incomes) {
+      const date = income.income_date;
+      const line = [
+        date,
+        toMonth(date),
+        Number(income.amount || 0).toFixed(2),
+        csvEscape(income.currency || "MYR"),
+        csvEscape(income.note || ""),
+      ].join(",");
+
+      parts.push(`${line}\n`);
+    }
+
+    parts.push("\n");
+  }
 
   if (options.includeExpenses) {
     parts.push("=== EXPENSES CSV ===\n");
@@ -169,36 +208,10 @@ export function formatAIExport(
     parts.push("\n");
   }
 
-  if (distributions.length > 0) {
-    parts.push("=== ASSET DISTRIBUTIONS CSV ===\n");
-    parts.push("month,amount,currency,type,source,category,note\n");
-
-    for (const distribution of distributions) {
-      const month = distribution.month;
-      const categoryName = distribution.category?.name ||
-        distributionCategories.find((cat) => cat.id === distribution.category_id)?.name ||
-        "Uncategorized";
-
-      const line = [
-        month,
-        Number(distribution.amount).toFixed(2),
-        csvEscape(distribution.currency || "MYR"),
-        csvEscape(distribution.type),
-        csvEscape(distribution.source),
-        csvEscape(categoryName),
-        csvEscape(distribution.note || ""),
-      ].join(",");
-
-      parts.push(`${line}\n`);
-    }
-
-    parts.push("\n");
-  }
-
   if (options.includeAIPrompt) {
     parts.push("=== AI ANALYSIS PROMPT ===\n\n");
     parts.push(
-      "Analyze my spending behavior using the provided financial data, then write the analysis in Chinese.\n\nPlease provide:\n\n1. Spending trends\n2. Financial health evaluation\n3. Monthly balance analysis\n4. Where each month's money went\n5. Budgeting suggestions\n6. Unusual spending patterns\n7. Savings analysis\n8. Spending categories that increased significantly\n9. Recurring expenses detection\n10. Suggestions to improve financial habits\n\nFocus on actionable insights instead of generic advice."
+      "Analyze my personal finance data using the provided export, then write the analysis in Chinese.\n\nThe export may include:\n- ASSETS CSV: current asset balances, currencies, main asset flags, notes, and update times.\n- INCOMES CSV: income records in the selected range.\n- EXPENSES CSV: expense records with category and needs/commitment/wants type data.\n- MONTHLY SUMMARY CSV: income, expense, balance, saving rate, spending ratios, and transaction count by month/currency.\n- CATEGORIES CSV: available category/type mapping.\n\nPlease provide:\n\n1. Asset overview and liquidity/cash position\n2. Income stability and main income patterns\n3. Spending trends by month and category\n4. Needs, commitment, and wants ratio evaluation\n5. Monthly balance and saving rate analysis\n6. Relationship between income, expenses, and current asset balances\n7. Unusual or risky spending patterns\n8. Budgeting and cashflow suggestions\n9. Savings and emergency-fund observations\n10. Practical next actions for the coming month\n\nFocus on actionable insights and mention data limitations when a section has missing or insufficient records."
     );
     parts.push("\n\n");
   }

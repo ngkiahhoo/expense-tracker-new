@@ -6,11 +6,10 @@ import {
 } from "react";
 
 import {
+  fetchAssets,
   fetchCategories,
   fetchExpensesRange,
   fetchIncomesRange,
-  fetchAssetDistributionsRange,
-  fetchAssetDistributionCategories,
 } from "../services/exportService";
 import {
   formatAIExport,
@@ -76,12 +75,11 @@ export default function useAIExport() {
 
     try {
       const { start, end } = rangeToDates(range);
-      const [expenses, incomes, categories, distributions, distributionCategories] = await Promise.all([
+      const [assets, expenses, incomes, categories] = await Promise.all([
+        fetchAssets(),
         fetchExpensesRange(start, end),
         fetchIncomesRange(start, end),
         fetchCategories(),
-        fetchAssetDistributionsRange(start, end),
-        fetchAssetDistributionCategories(),
       ]);
 
       // Build monthly summaries
@@ -168,13 +166,14 @@ export default function useAIExport() {
         });
 
       const out = formatAIExport(
+        assets,
         expenses,
         incomes,
         categories,
-        distributions,
-        distributionCategories,
         monthlySummaries,
         {
+          includeAssets: options.includeAssets,
+          includeIncomes: options.includeIncomes,
           includeExpenses: options.includeExpenses,
           includeMonthlySummary: options.includeMonthlySummary,
           includeCategories: options.includeCategories,

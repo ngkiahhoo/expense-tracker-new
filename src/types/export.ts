@@ -1,4 +1,6 @@
 export interface ExportOptions {
+  includeAssets: boolean;
+  includeIncomes: boolean;
   includeExpenses: boolean;
   includeMonthlySummary: boolean;
   includeCategories: boolean;

@@ -358,7 +358,10 @@ export default function CategoryExpenseSheet({
                           <div className="flex gap-2">
                             <ActionIconButton
                               kind="edit"
-                              onClick={() => onEdit(expense)}
+                              onClick={() => {
+                                onClose();
+                                onEdit(expense);
+                              }}
                               title="Edit expense"
                               aria-label="Edit expense"
                             />

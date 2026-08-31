@@ -70,6 +70,8 @@ type BottomTool =
   | "income";
 
 const fullAIExportOptions = {
+  includeAssets:true,
+  includeIncomes:true,
   includeExpenses:true,
   includeMonthlySummary:true,
   includeCategories:true,
@@ -619,9 +621,18 @@ export default function Home() {
     setShowExpenseDrilldown(true);
   }
 
+  function closeExpenseDrilldown() {
+    setShowExpenseDrilldown(false);
+    setDrilldownMonth(null);
+    setDrilldownCategoryKey(null);
+    setDrilldownCategoryName(null);
+    setDrilldownTypeName(null);
+  }
+
   function handleStartEdit(
     expense: Expense
   ) {
+    closeExpenseDrilldown();
     startEdit(expense);
     setShowExpenseForm(true);
     setActiveTool("expense");
@@ -1086,13 +1097,7 @@ export default function Home() {
             initialCategoryKey={drilldownCategoryKey}
             initialCategoryName={drilldownCategoryName}
             initialTypeName={drilldownTypeName}
-            onClose={() => {
-              setShowExpenseDrilldown(false);
-              setDrilldownMonth(null);
-              setDrilldownCategoryKey(null);
-              setDrilldownCategoryName(null);
-              setDrilldownTypeName(null);
-            }}
+            onClose={closeExpenseDrilldown}
             onEdit={handleStartEdit}
             onDelete={handleDeleteExpense}
           />
