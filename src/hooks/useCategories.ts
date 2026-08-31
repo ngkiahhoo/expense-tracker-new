@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useState,
 } from "react";
 
@@ -41,7 +42,7 @@ export default function useCategories() {
   const [categoryError, setCategoryError] =
     useState("");
 
-  async function fetchCategories() {
+  const fetchCategories = useCallback(async () => {
 
     try {
       setCategoryLoading(true);
@@ -56,7 +57,7 @@ export default function useCategories() {
     } finally {
       setCategoryLoading(false);
     }
-  }
+  }, []);
 
   async function addCategory() {
 

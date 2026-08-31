@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useState,
 } from "react";
 
@@ -62,7 +63,7 @@ export default function useExpenses(
   const [error, setError] =
     useState("");
 
-  async function fetchExpenses() {
+  const fetchExpenses = useCallback(async () => {
 
     try {
 
@@ -85,7 +86,7 @@ export default function useExpenses(
 
       setLoading(false);
     }
-  }
+  }, [selectedMonth]);
 
   async function saveExpense() {
 

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useState,
 } from "react";
 
@@ -152,7 +153,7 @@ export default function useRecurringExpenses(
     setRecurringEditingCurrency(null);
   }
 
-  async function fetchRecurringExpenses() {
+  const fetchRecurringExpenses = useCallback(async () => {
     try {
       setRecurringLoading(true);
 
@@ -185,7 +186,7 @@ export default function useRecurringExpenses(
     } finally {
       setRecurringLoading(false);
     }
-  }
+  }, []);
 
   async function saveRecurringExpense() {
     try {
@@ -364,7 +365,7 @@ export default function useRecurringExpenses(
     );
   }
 
-  async function generateDueRecurringExpenses() {
+  const generateDueRecurringExpenses = useCallback(async () => {
     try {
       const {
         createdCount,
@@ -394,7 +395,7 @@ export default function useRecurringExpenses(
       );
       return 0;
     }
-  }
+  }, [currentMonth]);
 
   return {
     recurringExpenses,

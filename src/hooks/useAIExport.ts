@@ -14,6 +14,7 @@ import {
 import {
   formatAIExport,
 } from "../utils/formatAIExport";
+import { copyTextToClipboard } from "../utils/clipboard";
 import { logServiceError } from "../utils/logger";
 import type {
   ExportOptions,
@@ -201,99 +202,12 @@ export default function useAIExport() {
     if (!toCopy) return false;
     setError(null);
 
-    // Try modern Clipboard API first (for modern browsers including iOS 13.3+)
-    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
-      try {
-        await navigator.clipboard.writeText(toCopy);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 3000);
-        return true;
-      } catch (e) {
-        logServiceError("clipboard.writeText failed", e);
-      }
-    }
+    const copiedToClipboard = await copyTextToClipboard(toCopy);
 
-    // Fallback 1: Using contenteditable div (better for iOS)
-    try {
-      const div = document.createElement("div");
-      div.contentEditable = "true";
-      div.textContent = toCopy;
-      div.style.position = "fixed";
-      div.style.left = "0";
-      div.style.top = "0";
-      div.style.zIndex = "-9999";
-      div.style.opacity = "0";
-      document.body.appendChild(div);
-      
-      const range = document.createRange();
-      range.selectNodeContents(div);
-      const sel = window.getSelection();
-      if (sel) {
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-      div.focus();
-      
-      const ok = document.execCommand("copy");
-      document.body.removeChild(div);
-      
-      if (ok) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 3000);
-        return true;
-      }
-    } catch (err) {
-      logServiceError("contenteditable copy failed", err);
-    }
-
-    // Fallback 2: Using textarea + execCommand with setSelectionRange
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = toCopy;
-      ta.style.position = "fixed";
-      ta.style.left = "0";
-      ta.style.top = "0";
-      ta.style.zIndex = "-9999";
-      ta.style.opacity = "0";
-      ta.style.fontSize = "16px";
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.setSelectionRange(0, ta.value.length);
-      
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      
-      if (ok) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 3000);
-        return true;
-      }
-    } catch (err) {
-      logServiceError("textarea copy failed", err);
-    }
-
-    // Fallback 3: Using textarea + select() for older browsers
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = toCopy;
-      ta.style.position = "fixed";
-      ta.style.left = "0";
-      ta.style.top = "0";
-      ta.style.zIndex = "-9999";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      
-      if (ok) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 3000);
-        return true;
-      }
-    } catch (err) {
-      logServiceError("select copy failed", err);
+    if (copiedToClipboard) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+      return true;
     }
 
     logServiceError("All copy methods failed, showing modal", null);

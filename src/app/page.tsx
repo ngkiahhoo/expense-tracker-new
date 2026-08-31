@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -20,23 +21,23 @@ import {
 } from "lucide-react";
 
 import { useToast } from "@/contexts/ToastContext";
-import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input, Select, Textarea } from "@/components/ui/Field";
+import { Select } from "@/components/ui/Field";
 import {
   cn,
-  overlayStyles,
   toneStyles,
 } from "@/components/ui/styles";
 import AnalyticsPanel from "../components/AnalyticsPanel";
-import AssetRecordCard from "../components/AssetRecordCard";
+import AssetDetailsModal from "../components/AssetDetailsModal";
 import BottomBarButton from "../components/BottomBarButton";
 import CategoryPanel from "../components/CategoryPanel";
+import ExportModal from "../components/ExportModal";
 import ExpensePanel from "../components/ExpensePanel";
 import ExpenseRecordsPanel from "../components/ExpenseRecordsPanel";
 import IncomePanel from "../components/IncomePanel";
 import MetricCard from "../components/MetricCard";
+import QuickActionSheet from "../components/QuickActionSheet";
 import RecurringExpensePanel from "../components/RecurringExpensePanel";
 import CategoryExpenseSheet from "../components/features/analytics/CategoryExpenseSheet";
 import ExpenseCategoryBreakdown from "../components/features/analytics/ExpenseCategoryBreakdown";
@@ -45,6 +46,7 @@ import useAnalytics from "../hooks/useAnalytics";
 import useAssets from "../hooks/useAssets";
 import useCategories from "../hooks/useCategories";
 import useCategoryBreakdown from "../hooks/useCategoryBreakdown";
+import useDashboardHistory from "../hooks/useDashboardHistory";
 import useExpenses from "../hooks/useExpenses";
 import useIncome from "../hooks/useIncome";
 import useRecurringExpenses from "../hooks/useRecurringExpenses";
@@ -59,8 +61,6 @@ import {
   getStoredCurrency,
   normalizeCurrency,
 } from "../utils/currency";
-import { logServiceError } from "../utils/logger";
-import { supabase } from "@/lib/supabase";
 
 type BottomTool =
   | "expense"
@@ -116,14 +116,14 @@ export default function Home() {
   const [selectedMonth, setSelectedMonth] =
     useState(currentMonth);
 
-  const [allExpenses, setAllExpenses] =
-    useState<Expense[]>([]);
-
-  const [allIncomes, setAllIncomes] =
-    useState<Income[]>([]);
-
   const [activeCurrency, setActiveCurrency] =
     useState<Currency>(() => getStoredCurrency());
+
+  const {
+    allExpenses,
+    allIncomes,
+    fetchDashboardHistory,
+  } = useDashboardHistory(activeCurrency);
 
   const [activeTool, setActiveTool] =
     useState<BottomTool | null>(null);
@@ -382,78 +382,12 @@ export default function Home() {
   const [drilldownCategoryKey, setDrilldownCategoryKey] = useState<string | null>(null);
   const [drilldownCategoryName, setDrilldownCategoryName] = useState<string | null>(null);
   const [drilldownTypeName, setDrilldownTypeName] = useState<string | null>(null);
-  const [exportModalCopied, setExportModalCopied] = useState(false);
 
   // Use the modal state from the hook
   const showExportModal = showExportModalFromHook;
   const setShowExportModal = setShowExportModalFromHook;
 
-  async function loadAllHistoryData() {
-    try {
-      const [expensesResponse, incomesResponse] = await Promise.all([
-        supabase
-          .from("expenses")
-          .select("*")
-          .eq("currency", activeCurrency)
-          .order("expense_date", { ascending: true }),
-        supabase
-          .from("incomes")
-          .select("*")
-          .eq("currency", activeCurrency)
-          .order("income_date", { ascending: true }),
-      ]);
-
-      if (expensesResponse.error) {
-        throw expensesResponse.error;
-      }
-
-      if (incomesResponse.error) {
-        throw incomesResponse.error;
-      }
-
-      setAllExpenses((expensesResponse.data as Expense[]) || []);
-      setAllIncomes((incomesResponse.data as Income[]) || []);
-    } catch (error) {
-      logServiceError("Failed to load full monthly history", error);
-    }
-  }
-
-  useEffect(() => {
-    async function loadMonthData() {
-      await generateDueRecurringExpenses();
-
-      await Promise.all([
-        fetchExpenses(),
-        fetchIncome(),
-        fetchCategories(),
-        fetchRecurringExpenses(),
-      ]);
-
-      await loadAllHistoryData();
-    }
-
-    void loadMonthData();
-    // Fetch callbacks come from local hooks and intentionally refresh when the month changes or the currency changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMonth, activeCurrency]);
-
-  // Auto-generate recurring expenses every hour
-  useEffect(() => {
-    const interval = setInterval(
-      async () => {
-        const createdCount = await generateDueRecurringExpenses();
-        if (createdCount > 0) {
-          await fetchExpenses();
-        }
-      },
-      60 * 60 * 1000 // 1 hour in milliseconds
-    );
-
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function refreshAll() {
+  const refreshAll = useCallback(async () => {
     await generateDueRecurringExpenses();
 
     await Promise.all([
@@ -463,8 +397,33 @@ export default function Home() {
       fetchRecurringExpenses(),
     ]);
 
-    await loadAllHistoryData();
-  }
+    await fetchDashboardHistory();
+  }, [
+    fetchCategories,
+    fetchDashboardHistory,
+    fetchExpenses,
+    fetchIncome,
+    fetchRecurringExpenses,
+    generateDueRecurringExpenses,
+  ]);
+
+  useEffect(() => {
+    void refreshAll();
+  }, [refreshAll]);
+
+  useEffect(() => {
+    const interval = setInterval(
+      async () => {
+        const createdCount = await generateDueRecurringExpenses();
+        if (createdCount > 0) {
+          await fetchExpenses();
+        }
+      },
+      60 * 60 * 1000
+    );
+
+    return () => clearInterval(interval);
+  }, [fetchExpenses, generateDueRecurringExpenses]);
 
   async function handleSaveExpense() {
     const noteToSave = note;
@@ -476,7 +435,7 @@ export default function Home() {
       addSavedNote(
         noteToSave
       );
-      await loadAllHistoryData();
+      await fetchDashboardHistory();
       toast.showToast(result.message || "Expense saved successfully", "success");
     } else {
       toast.showToast(result.error || "Failed to save expense", "error");
@@ -513,7 +472,7 @@ export default function Home() {
   async function handleDeleteExpense(id: number) {
     const result = await deleteExpense(id);
     if (result.success) {
-      await loadAllHistoryData();
+      await fetchDashboardHistory();
       toast.showToast(result.message || "Expense deleted successfully", "success");
     } else {
       toast.showToast(result.error || "Failed to delete expense", "error");
@@ -524,7 +483,7 @@ export default function Home() {
   async function handleDeleteIncome(id: number) {
     const result = await deleteIncome(id);
     if (result.success) {
-      await loadAllHistoryData();
+      await fetchDashboardHistory();
       toast.showToast(result.message || "Income deleted successfully", "success");
     } else {
       toast.showToast(result.error || "Failed to delete income", "error");
@@ -534,7 +493,7 @@ export default function Home() {
   async function handleAddIncome() {
     const result = await addIncome();
     if (result.success) {
-      await loadAllHistoryData();
+      await fetchDashboardHistory();
       toast.showToast(result.message || "Income added successfully", "success");
     } else {
       toast.showToast(result.error || "Failed to add income", "error");
@@ -669,6 +628,7 @@ export default function Home() {
 
   return (
 
+    <>
     <PullToRefresh
       onRefresh={refreshAll}
     >
@@ -916,69 +876,13 @@ export default function Home() {
         </main>
 
         {activeTool && (
-
-          <div
-            className={`
-              fixed
-              inset-x-0
-              bottom-24
-              z-40
-              px-4
-              md:bottom-28
-              md:px-6
-              lg:inset-x-auto
-              lg:top-8
-              lg:right-8
-              lg:bottom-28
-              lg:px-0
-              lg:max-w-[calc(100vw-2rem)]
-              ${sheetWidthClass}
-            `}
+          <QuickActionSheet
+            title={sheetTitle}
+            widthClass={sheetWidthClass}
+            onClose={() => setActiveTool(null)}
             onFocusCapture={handlePopupFocus}
           >
-            <div
-              className={cn(
-                "mx-auto max-h-[68vh] w-full max-w-md overflow-y-auto md:max-w-2xl md:max-h-[72vh] lg:max-w-none lg:max-h-full",
-                overlayStyles.sheetPanel,
-                "rounded-3xl"
-              )}
-            >
-
-              <div className={overlayStyles.stickyHeader}>
-                <div>
-                  <p
-                    className="
-                      text-xs
-                      uppercase
-                      tracking-wide
-                      text-zinc-500
-                    "
-                  >
-                    Quick Action
-                  </p>
-
-                  <h2
-                    className="
-                      text-xl
-                      font-bold
-                    "
-                  >
-                    {sheetTitle}
-                  </h2>
-                </div>
-
-                <ActionIconButton
-                  kind="close"
-                  onClick={() =>
-                    setActiveTool(null)
-                  }
-                  title="Close panel"
-                  aria-label="Close panel"
-                />
-              </div>
-
-              <div className="p-4">
-                {activeTool === "expense" && (
+            {activeTool === "expense" && (
                   <ExpensePanel
                     showExpenseForm={showExpenseForm}
                     setShowExpenseForm={setShowExpenseForm}
@@ -1003,9 +907,9 @@ export default function Home() {
                     updateSavedNote={updateSavedNote}
                     deleteSavedNote={deleteSavedNote}
                   />
-                )}
+            )}
 
-                {activeTool === "recurring" && (
+            {activeTool === "recurring" && (
                   <RecurringExpensePanel
                     recurringExpenses={recurringExpenses}
                     recurringName={recurringName}
@@ -1033,9 +937,9 @@ export default function Home() {
                     startEditRecurringExpense={startEditRecurringExpense}
                     resetRecurringExpenseForm={resetRecurringExpenseForm}
                   />
-                )}
+            )}
 
-                {activeTool === "income" && (
+            {activeTool === "income" && (
                   <IncomePanel
                     totalIncome={totalIncome}
                     incomes={incomes}
@@ -1053,9 +957,9 @@ export default function Home() {
                     startEditIncome={handleStartEditIncome}
                     deleteIncome={handleDeleteIncome}
                   />
-                )}
+            )}
 
-                {activeTool === "categories" && (
+            {activeTool === "categories" && (
                   <CategoryPanel
                     showCategories={showCategories}
                     newCategory={newCategory}
@@ -1068,9 +972,9 @@ export default function Home() {
                     deleteCategory={handleDeleteCategory}
                     categories={categories}
                   />
-                )}
+            )}
 
-                {activeTool === "records" && (
+            {activeTool === "records" && (
                   <ExpenseRecordsPanel
                     expenses={expenses}
                     loading={loading}
@@ -1079,12 +983,8 @@ export default function Home() {
                     deleteMonthExpenses={deleteMonthExpenses}
                     selectedMonth={selectedMonth}
                   />
-                )}
-              </div>
-
-            </div>
-          </div>
-
+            )}
+          </QuickActionSheet>
         )}
 
         {showExpenseDrilldown && (
@@ -1173,220 +1073,23 @@ export default function Home() {
 
       </div>
 
-      {showAssetModal && (
-  <div className={overlayStyles.backdrop}>
-    <div className={cn(overlayStyles.modalPanel, "max-h-[calc(100vh-2rem)] max-w-3xl overflow-y-auto")}>
-      
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-2xl font-bold">
-            Asset Details
-          </h3>
-
-          <p className="text-sm text-zinc-400 mt-1">
-            All tracked asset records. Edit values or create new assets here.
-          </p>
-        </div>
-
-        <ActionIconButton
-          kind="close"
-          onClick={() => setShowAssetModal(false)}
-          title="Close asset details"
-          aria-label="Close asset details"
-        />
-      </div>
-
-      <div className="mt-5 space-y-4">
-        {assets.loading ? (
-          <div className="text-zinc-400">
-            Loading assets...
-          </div>
-        ) : assets.assets && assets.assets.length > 0 ? (
-          assets.assets.map((a) => (
-            <AssetRecordCard
-              key={a.id}
-              asset={a}
-              onMainChange={async (asset, isMain) => {
-                const res = await assets.setMainAsset(asset.id, isMain);
-                if (res.success) {
-                  toast.showToast(
-                    isMain ? "Main asset selected." : "Main asset cleared.",
-                    "success"
-                  );
-                } else {
-                  toast.showToast(res.error || "Failed to update main asset.", "error");
-                }
-              }}
-              onEdit={assets.startEditAsset}
-              onDelete={async (asset) => {
-                const res =
-                  await assets.deleteAssetById(asset.id);
-
-                if (res.success) {
-                  toast.showToast(
-                    "Asset deleted.",
-                    "success"
-                  );
-                } else {
-                  toast.showToast(
-                    res.error || "Failed to delete",
-                    "error"
-                  );
-                }
-              }}
-            />
-          ))
-        ) : (
-          <div className="text-zinc-400">
-            No assets yet.
-          </div>
-        )}
-
-        <div className="mt-4 border-t border-zinc-800 pt-4">
-          <h3 className="font-bold">
-            Create / Edit Asset
-          </h3>
-
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <Input
-              value={assets.assetName}
-              onChange={(e) =>
-                assets.setAssetName(e.target.value)
-              }
-              placeholder="Asset name"
-            />
-
-            <Input
-              type="number"
-              value={assets.assetValue}
-              onChange={(e) =>
-                assets.setAssetValue(e.target.value)
-              }
-              placeholder="Current value"
-            />
-
-            <Select
-              value={assets.assetCurrency}
-              onChange={(e) =>
-                assets.setAssetCurrency(e.target.value as Currency)
-              }
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c} value={c}>
-                  {currencyLabel(c)}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          <div className="mt-3">
-            <Textarea
-              value={assets.assetNote}
-              onChange={(e) =>
-                assets.setAssetNote(e.target.value)
-              }
-              placeholder="Note (optional)"
-            />
-          </div>
-
-          <div className="mt-3 flex gap-2">
-            <Button
-              onClick={async () => {
-                const res =
-                  await assets.saveAsset();
-
-                if (res.success) {
-                  toast.showToast(
-                    "Asset saved.",
-                    "success"
-                  );
-                } else {
-                  toast.showToast(
-                    res.error || "Failed to save asset",
-                    "error"
-                  );
-                }
-              }}
-              variant="primary"
-            >
-              {assets.assetEditingId
-                ? "Update Asset"
-                : "Create Asset"}
-            </Button>
-
-            {assets.assetEditingId && (
-              <Button
-                onClick={() =>
-                  assets.resetAssetForm()
-                }
-                variant="outline"
-              >
-                Cancel
-              </Button>
-            )}
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-)}
-
-      {showExportModal && exportPayload && (
-        <div
-          className={overlayStyles.backdrop}
-          onClick={() => setShowExportModal(false)}
-        >
-          <Card
-            variant="default"
-            padding="lg"
-            className="flex max-h-[80vh] w-full max-w-2xl flex-col gap-4 overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-xl font-bold">Export Data</h2>
-              <ActionIconButton
-                kind="close"
-                onClick={() => setShowExportModal(false)}
-                title="Close export modal"
-                aria-label="Close export modal"
-              />
-            </div>
-
-            <Textarea
-              value={exportPayload}
-              readOnly
-              fieldSize="md"
-              className="min-h-[320px] flex-1 bg-zinc-800 font-mono text-zinc-300"
-            />
-
-            <div className="flex gap-3">
-              <Button
-                onClick={() => {
-                  navigator.clipboard.writeText(exportPayload).then(() => {
-                    setExportModalCopied(true);
-                    setTimeout(() => setExportModalCopied(false), 2000);
-                  }).catch(() => {
-                    alert('Failed to copy. Please select text and copy manually.');
-                  });
-                }}
-                variant={exportModalCopied ? "secondary" : "primary"}
-                size="lg"
-                className="flex-1"
-              >
-                {exportModalCopied ? 'Copied!' : 'Copy Text'}
-              </Button>
-              <ActionIconButton
-                kind="close"
-                onClick={() => setShowExportModal(false)}
-                title="Close export modal"
-                aria-label="Close export modal"
-              />
-            </div>
-          </Card>
-        </div>
-      )}
-
     </PullToRefresh>
+
+    {showAssetModal && (
+      <AssetDetailsModal
+        assets={assets}
+        onClose={() => setShowAssetModal(false)}
+        onToast={toast.showToast}
+      />
+    )}
+
+    {showExportModal && exportPayload && (
+      <ExportModal
+        payload={exportPayload}
+        onClose={() => setShowExportModal(false)}
+        onCopyError={(message) => toast.showToast(message, "error")}
+      />
+    )}
+    </>
   );
 }

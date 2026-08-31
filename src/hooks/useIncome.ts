@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useState,
 } from "react";
 
@@ -45,7 +46,7 @@ export default function useIncome(
   const [incomeError, setIncomeError] =
     useState("");
 
-  async function fetchIncome() {
+  const fetchIncome = useCallback(async () => {
 
     try {
       const data =
@@ -59,7 +60,7 @@ export default function useIncome(
       const msg = err instanceof Error ? err.message : "Failed to fetch income";
       setIncomeError(msg);
     }
-  }
+  }, [selectedMonth]);
 
   async function addIncome() {
 
