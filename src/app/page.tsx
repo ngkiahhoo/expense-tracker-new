@@ -1105,9 +1105,8 @@ export default function Home() {
             bottom-0
             z-50
             border-t
-            border-zinc-800
-            bg-black/95
-            backdrop-blur
+            border-white/10
+            bottom-glow-bar
             px-3
             pb-[env(safe-area-inset-bottom)]
             lg:px-6

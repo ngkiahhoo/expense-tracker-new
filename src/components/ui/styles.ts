@@ -223,16 +223,16 @@ export const fieldStyles = {
 
 export const overlayStyles = {
   backdrop:
-    "fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4",
+    "fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 backdrop-blur-md",
   bottomSheet:
-    "fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 pb-4 sm:px-6",
+    "fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 pb-4 backdrop-blur-md sm:px-6",
   modalPanel:
-    "w-full rounded-3xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl",
+    "glass-surface w-full rounded-3xl border border-white/15 p-5 shadow-2xl",
   sheetPanel:
-    "w-full overflow-hidden rounded-t-3xl border border-zinc-800 bg-zinc-950 shadow-2xl",
+    "glass-surface w-full overflow-hidden rounded-t-3xl border border-white/15 shadow-2xl",
   stickyHeader:
-    "sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950 p-4",
+    "sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-white/10 bg-black/35 p-4 backdrop-blur-xl",
 };
 
 export const emptyStateStyles =
-  "rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center";
+  "glass-surface-soft rounded-2xl border border-white/10 p-8 text-center";

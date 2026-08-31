@@ -220,13 +220,13 @@ export default function CategoryExpenseSheet({
       : selectedCategoryName || "Expense records";
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 px-3 py-3 sm:px-6" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-3 py-3 backdrop-blur-md sm:px-6" onClick={onClose}>
       <div
-        className="w-full max-w-3xl overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-950 shadow-2xl"
+        className="glass-surface w-full max-w-3xl overflow-hidden rounded-[24px] border border-white/15 shadow-2xl"
         onClick={(event) => event.stopPropagation()}
         onFocusCapture={handleDialogFocus}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/95 p-4 backdrop-blur">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-white/10 bg-black/35 p-4 backdrop-blur-xl">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
               {level === "types" ? "Expense analysis" : level === "categories" ? "Type details" : "Category details"}
@@ -276,7 +276,7 @@ export default function CategoryExpenseSheet({
                         setSelectedTypeName(typeItem.name);
                         setLevel("categories");
                       }}
-                      className="w-full rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 text-left transition hover:border-white"
+                      className="glass-surface-soft w-full rounded-2xl border border-white/10 p-4 text-left transition hover:border-white/40"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-sm font-semibold text-white">{typeItem.name}</span>
@@ -309,7 +309,7 @@ export default function CategoryExpenseSheet({
                         setSelectedCategoryName(categoryItem.categoryName);
                         setLevel("records");
                       }}
-                      className="w-full rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 text-left transition hover:border-white"
+                      className="glass-surface-soft w-full rounded-2xl border border-white/10 p-4 text-left transition hover:border-white/40"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-sm font-semibold text-white">{categoryItem.categoryName}</span>
