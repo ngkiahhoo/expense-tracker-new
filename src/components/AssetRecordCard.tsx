@@ -19,43 +19,61 @@ export default function AssetRecordCard({
   onEdit,
   onDelete,
 }: AssetRecordCardProps) {
+  const formattedValue = formatCurrencyAmount(
+    Number(asset.current_value),
+    normalizeCurrency(asset.currency)
+  );
+
   return (
-    <Card variant="muted" padding="sm" className="overflow-hidden">
+    <Card
+      variant="muted"
+      padding="sm"
+      className="relative overflow-hidden max-lg:pb-20"
+    >
       <div className="grid gap-4 lg:grid-cols-[minmax(120px,1fr)_140px_minmax(140px,auto)_104px] lg:items-center">
-        <div className="min-w-0 self-center">
-          <div className="truncate text-lg font-bold">
-            {asset.name}
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 lg:block">
+          <div className="min-w-0 self-start">
+            <div className="truncate text-lg font-bold">
+              {asset.name}
+            </div>
+
+            {asset.note && (
+              <div className="mt-1 break-words text-sm text-zinc-400">
+                {asset.note}
+              </div>
+            )}
           </div>
 
-          {asset.note && (
-            <div className="mt-1 break-words text-sm text-zinc-400">
-              {asset.note}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between gap-3 lg:contents">
-          <Select
-            value={asset.is_main ? "main" : ""}
-            onChange={(event) => onMainChange(asset, event.target.value === "main")}
-            fieldSize="md"
-            className="h-12 w-32 shrink-0 rounded-xl lg:w-full"
+          <div
+            className="min-w-0 self-start text-right text-lg font-bold text-emerald-300 sm:text-2xl lg:hidden"
+            title={formattedValue}
           >
-            <option value="">Blank</option>
-            <option value="main">Main</option>
-          </Select>
-
-          <div className="min-w-0 text-right text-xl font-bold text-emerald-300 sm:text-2xl">
             <span className="whitespace-nowrap">
-              {formatCurrencyAmount(
-                Number(asset.current_value),
-                normalizeCurrency(asset.currency)
-              )}
+              {formattedValue}
             </span>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <Select
+          value={asset.is_main ? "main" : ""}
+          onChange={(event) => onMainChange(asset, event.target.value === "main")}
+          fieldSize="md"
+          className="h-12 w-32 shrink-0 rounded-xl lg:w-full"
+        >
+          <option value="">Blank</option>
+          <option value="main">Main</option>
+        </Select>
+
+        <div
+          className="hidden min-w-0 text-right text-xl font-bold text-emerald-300 sm:text-2xl lg:block"
+          title={formattedValue}
+        >
+          <span className="whitespace-nowrap">
+            {formattedValue}
+          </span>
+        </div>
+
+        <div className="flex justify-end gap-2 max-lg:absolute max-lg:bottom-4 max-lg:right-4">
           <ActionIconButton
             kind="edit"
             onClick={() => onEdit(asset)}
