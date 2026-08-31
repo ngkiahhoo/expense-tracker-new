@@ -4,6 +4,7 @@ import type { Income } from "../types/income";
 import type { Category } from "../types/category";
 import type { AssetDistribution } from "../types/asset";
 import type { DistributionCategory } from "../types/distribution";
+import { logServiceError } from "../utils/logger";
 
 export async function fetchExpensesRange(start: string, end: string) {
   const { data, error } = await supabase
@@ -14,7 +15,7 @@ export async function fetchExpensesRange(start: string, end: string) {
     .order("expense_date", { ascending: false });
 
   if (error) {
-    console.log(error);
+    logServiceError("Failed to fetch expenses for export", error);
     return [] as Expense[];
   }
 
@@ -30,7 +31,7 @@ export async function fetchIncomesRange(start: string, end: string) {
     .order("income_date", { ascending: false });
 
   if (error) {
-    console.log(error);
+    logServiceError("Failed to fetch incomes for export", error);
     return [] as Income[];
   }
 
@@ -44,7 +45,7 @@ export async function fetchCategories() {
     .order("name");
 
   if (error) {
-    console.log(error);
+    logServiceError("Failed to fetch categories for export", error);
     return [] as Category[];
   }
 
@@ -63,7 +64,7 @@ export async function fetchAssetDistributionsRange(start: string, end: string) {
     .order("month", { ascending: false });
 
   if (error) {
-    console.log(error);
+    logServiceError("Failed to fetch asset distributions for export", error);
     return [] as AssetDistribution[];
   }
 
@@ -77,7 +78,7 @@ export async function fetchAssetDistributionCategories() {
     .order("name");
 
   if (error) {
-    console.log(error);
+    logServiceError("Failed to fetch asset distribution categories", error);
     return [] as DistributionCategory[];
   }
 

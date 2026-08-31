@@ -21,7 +21,7 @@ export type UiTone =
   | "wants";
 
 export const ui = {
-  page: "min-h-screen bg-black text-white",
+  page: "app-background min-h-screen text-white",
   pagePadding: "px-4 pt-4 pb-28 sm:px-6 sm:pt-6 md:px-8",
   pageInner: "mx-auto w-full",
   text: {
@@ -39,13 +39,13 @@ export const ui = {
     wants: "text-blue-500",
   },
   surface: {
-    app: "bg-black",
-    panel: "bg-zinc-900",
-    panelSoft: "bg-zinc-900/90",
-    raised: "bg-zinc-950",
-    inset: "bg-black/70",
-    input: "bg-black",
-    hover: "hover:bg-zinc-800",
+    app: "app-background",
+    panel: "glass-surface",
+    panelSoft: "glass-surface",
+    raised: "glass-surface",
+    inset: "glass-surface-soft",
+    input: "bg-black/50 backdrop-blur-xl",
+    hover: "hover:bg-white/10",
   },
   border: {
     default: "border-zinc-800",
@@ -210,7 +210,7 @@ export const cardStyles = {
 
 export const fieldStyles = {
   base: cn(
-    "w-full min-w-0 rounded-2xl border border-zinc-800 bg-black text-white",
+    "w-full min-w-0 rounded-2xl border border-white/10 bg-black/50 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl",
     "placeholder:text-zinc-500 disabled:cursor-not-allowed disabled:opacity-50",
     ui.focus
   ),

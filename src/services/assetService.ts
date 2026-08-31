@@ -5,6 +5,7 @@ import type {
 } from "@/types/asset";
 import type { Currency } from "@/types/currency";
 import { DEFAULT_CURRENCY, normalizeCurrency } from "@/utils/currency";
+import { logServiceError } from "@/utils/logger";
 
 export async function getAssets() {
   const { data, error } = await supabase
@@ -13,7 +14,7 @@ export async function getAssets() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.log(error);
+    logServiceError("Failed to fetch assets", error);
     return [] as Asset[];
   }
 

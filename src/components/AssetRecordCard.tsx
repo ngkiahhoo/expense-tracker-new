@@ -25,14 +25,10 @@ export default function AssetRecordCard({
   );
 
   return (
-    <Card
-      variant="muted"
-      padding="sm"
-      className="relative overflow-hidden max-lg:pb-20"
-    >
-      <div className="grid gap-4 lg:grid-cols-[minmax(120px,1fr)_140px_minmax(140px,auto)_104px] lg:items-center">
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 lg:block">
-          <div className="min-w-0 self-start">
+    <Card variant="muted" padding="sm" className="overflow-hidden">
+      <div className="grid gap-4">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+          <div className="min-w-0">
             <div className="truncate text-lg font-bold">
               {asset.name}
             </div>
@@ -45,7 +41,7 @@ export default function AssetRecordCard({
           </div>
 
           <div
-            className="min-w-0 self-start text-right text-lg font-bold text-emerald-300 sm:text-2xl lg:hidden"
+            className="min-w-0 text-right text-lg font-bold text-emerald-300 sm:text-2xl"
             title={formattedValue}
           >
             <span className="whitespace-nowrap">
@@ -54,31 +50,23 @@ export default function AssetRecordCard({
           </div>
         </div>
 
-        <Select
-          value={asset.is_main ? "main" : ""}
-          onChange={(event) => onMainChange(asset, event.target.value === "main")}
-          fieldSize="md"
-          className="h-12 w-32 shrink-0 rounded-xl lg:w-full"
-        >
-          <option value="">Blank</option>
-          <option value="main">Main</option>
-        </Select>
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+          <Select
+            value={asset.is_main ? "main" : ""}
+            onChange={(event) => onMainChange(asset, event.target.value === "main")}
+            fieldSize="md"
+            className="h-12 rounded-xl"
+          >
+            <option value="">Blank</option>
+            <option value="main">Main</option>
+          </Select>
 
-        <div
-          className="hidden min-w-0 text-right text-xl font-bold text-emerald-300 sm:text-2xl lg:block"
-          title={formattedValue}
-        >
-          <span className="whitespace-nowrap">
-            {formattedValue}
-          </span>
-        </div>
-
-        <div className="flex justify-end gap-2 max-lg:absolute max-lg:bottom-4 max-lg:right-4">
           <ActionIconButton
             kind="edit"
             onClick={() => onEdit(asset)}
             title="Edit asset"
             aria-label="Edit asset"
+            className="rounded-xl"
           />
 
           <ActionIconButton
@@ -86,6 +74,7 @@ export default function AssetRecordCard({
             onClick={() => onDelete(asset)}
             title="Delete asset"
             aria-label="Delete asset"
+            className="rounded-xl"
           />
         </div>
       </div>

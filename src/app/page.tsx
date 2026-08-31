@@ -5,13 +5,9 @@ import {
   useMemo,
   useState,
   type FocusEvent,
-  type ReactNode,
 } from "react";
 
-
-
-import PullToRefresh
-from "react-simple-pull-to-refresh";
+import PullToRefresh from "react-simple-pull-to-refresh";
 
 import {
   CalendarDays,
@@ -20,71 +16,50 @@ import {
   ClipboardList,
   FolderTree,
   Plus,
-  type LucideIcon,
   Wallet,
 } from "lucide-react";
 
 import { useToast } from "@/contexts/ToastContext";
 import ActionIconButton from "@/components/ui/ActionIconButton";
 import { Button } from "@/components/ui/Button";
-import { Card, type CardVariant } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Input, Select, Textarea } from "@/components/ui/Field";
 import {
   cn,
   overlayStyles,
   toneStyles,
-  type UiTone,
 } from "@/components/ui/styles";
-
-import ExpensePanel
-from "../components/ExpensePanel";
-import IncomePanel
-from "../components/IncomePanel";
-import CategoryPanel
-from "../components/CategoryPanel";
-import AnalyticsPanel
-from "../components/AnalyticsPanel";
-import ExpenseRecordsPanel
-from "../components/ExpenseRecordsPanel";
-import RecurringExpensePanel
-from "../components/RecurringExpensePanel";
+import AnalyticsPanel from "../components/AnalyticsPanel";
 import AssetRecordCard from "../components/AssetRecordCard";
-import ExpenseCategoryBreakdown
-from "../components/features/analytics/ExpenseCategoryBreakdown";
-import CategoryExpenseSheet
-from "../components/features/analytics/CategoryExpenseSheet";
-
-import useExpenses
-from "../hooks/useExpenses";
-import useIncome
-from "../hooks/useIncome";
-import useCategories
-from "../hooks/useCategories";
-import useCategoryBreakdown
-from "../hooks/useCategoryBreakdown";
-import useAnalytics
-from "../hooks/useAnalytics";
+import BottomBarButton from "../components/BottomBarButton";
+import CategoryPanel from "../components/CategoryPanel";
+import ExpensePanel from "../components/ExpensePanel";
+import ExpenseRecordsPanel from "../components/ExpenseRecordsPanel";
+import IncomePanel from "../components/IncomePanel";
+import MetricCard from "../components/MetricCard";
+import RecurringExpensePanel from "../components/RecurringExpensePanel";
+import CategoryExpenseSheet from "../components/features/analytics/CategoryExpenseSheet";
+import ExpenseCategoryBreakdown from "../components/features/analytics/ExpenseCategoryBreakdown";
+import useAIExport from "../hooks/useAIExport";
+import useAnalytics from "../hooks/useAnalytics";
 import useAssets from "../hooks/useAssets";
-import useSavedNotes
-from "../hooks/useSavedNotes";
-import useRecurringExpenses
-from "../hooks/useRecurringExpenses";
-import useAIExport
-from "../hooks/useAIExport";
-import type {
-  Expense,
-} from "../types/expense";
-import type {
-  Income,
-} from "../types/income";
+import useCategories from "../hooks/useCategories";
+import useCategoryBreakdown from "../hooks/useCategoryBreakdown";
+import useExpenses from "../hooks/useExpenses";
+import useIncome from "../hooks/useIncome";
+import useRecurringExpenses from "../hooks/useRecurringExpenses";
+import useSavedNotes from "../hooks/useSavedNotes";
 import type { Currency } from "../types/currency";
+import type { Expense } from "../types/expense";
+import type { Income } from "../types/income";
 import {
   CURRENCIES,
   currencyLabel,
-  getStoredCurrency,
   formatCurrencyAmount,
+  getStoredCurrency,
   normalizeCurrency,
 } from "../utils/currency";
+import { logServiceError } from "../utils/logger";
 import { supabase } from "@/lib/supabase";
 
 type BottomTool =
@@ -437,7 +412,7 @@ export default function Home() {
       setAllExpenses((expensesResponse.data as Expense[]) || []);
       setAllIncomes((incomesResponse.data as Income[]) || []);
     } catch (error) {
-      console.error("Failed to load full monthly history", error);
+      logServiceError("Failed to load full monthly history", error);
     }
   }
 
@@ -690,7 +665,7 @@ export default function Home() {
       <div
         className="
           min-h-screen
-          bg-black
+          app-background
           text-white
         "
       >
@@ -1409,161 +1384,5 @@ export default function Home() {
       )}
 
     </PullToRefresh>
-  );
-}
-
-function MetricCard({
-  variant,
-  tone,
-  icon: Icon,
-  label,
-  amount,
-  currency,
-  helper,
-  action,
-  onAmountClick,
-}: {
-  variant: CardVariant;
-  tone: UiTone;
-  icon?: LucideIcon;
-  label: string;
-  amount: number;
-  currency: Currency;
-  helper?: string;
-  action?: ReactNode;
-  onAmountClick?: () => void;
-}) {
-  const amountContent = (
-    <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
-      <span className="text-base text-zinc-400">{currencyLabel(currency)}</span>
-      <span>{amount.toFixed(2)}</span>
-    </span>
-  );
-
-  return (
-    <Card
-      variant={variant}
-      padding="sm"
-      className="flex h-full min-h-[124px] w-full flex-col justify-between md:min-h-[140px]"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-zinc-400">
-            {Icon && <Icon size={18}/>}
-            <span>{label}</span>
-          </div>
-
-          <h2
-            className={cn(
-              "mt-2 text-3xl font-bold leading-tight",
-              toneStyles[tone].text
-            )}
-          >
-            {onAmountClick ? (
-              <button
-                type="button"
-                onClick={onAmountClick}
-                className={cn(
-                  "-mx-2 rounded-xl px-2 py-1 text-left transition hover:bg-white/5 focus-visible:bg-white/5",
-                  "outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70"
-                )}
-              >
-                {amountContent}
-              </button>
-            ) : (
-              amountContent
-            )}
-          </h2>
-        </div>
-
-        {action && <div className="shrink-0">{action}</div>}
-      </div>
-
-      {helper && (
-        <p className="mt-1 text-sm text-zinc-400">
-          {helper}
-        </p>
-      )}
-    </Card>
-  );
-}
-
-function BottomBarButton({
-  active,
-  onClick,
-  icon: Icon,
-  label,
-  description,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: LucideIcon;
-  label: string;
-  description: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        min-h-16
-        min-w-0
-        rounded-2xl
-        border
-        p-2
-        text-left
-        transition
-        sm:p-3
-        md:p-4
-        md:text-center
-        ${
-          active
-            ? "border-white bg-white text-black"
-            : "border-zinc-800 bg-zinc-900 text-white"
-        }
-      `}
-    >
-      <div
-        className="
-          flex
-          items-center
-          gap-2
-          min-w-0
-          md:justify-center
-        "
-      >
-        <Icon
-          size={18}
-          className="shrink-0"
-        />
-        <span
-          className="
-            min-w-0
-            truncate
-            text-xs
-            font-bold
-            leading-none
-            sm:text-sm
-          "
-        >
-          {label}
-        </span>
-      </div>
-
-      <p
-        className={`
-          mt-2
-          text-[11px]
-          leading-none
-          truncate
-          ${
-            active
-              ? "text-zinc-700"
-              : "text-zinc-500"
-          }
-        `}
-      >
-        {description}
-      </p>
-    </button>
   );
 }

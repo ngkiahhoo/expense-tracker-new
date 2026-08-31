@@ -37,8 +37,8 @@ const labels = {
 const tones = {
   edit: "border-white bg-white text-black hover:bg-zinc-100",
   delete: "border-red-600 bg-red-600 text-white hover:bg-red-500",
-  back: "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800 hover:text-white",
-  close: "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800 hover:text-white",
+  back: "glass-surface border-white/10 text-zinc-300 hover:border-white/25 hover:bg-white/10 hover:text-white",
+  close: "glass-surface border-white/10 text-zinc-300 hover:border-white/25 hover:bg-white/10 hover:text-white",
 };
 
 export default function ActionIconButton({

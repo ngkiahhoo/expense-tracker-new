@@ -10,7 +10,7 @@ body {
   margin: 0;
   padding: 0;
 
-  background: black;
+  background: #070606;
 
   color: white;
 
@@ -26,6 +26,221 @@ body {
   box-sizing: border-box;
 }
 
+input,
+select,
+textarea {
+  color-scheme: dark;
+}
+
+@layer components {
+  .app-background {
+    position: relative;
+    isolation: isolate;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background:
+      radial-gradient(circle at 12% -8%, rgba(255, 224, 158, 0.34), transparent 20rem),
+      radial-gradient(circle at 20% 4%, rgba(255, 174, 83, 0.18), transparent 32rem),
+      radial-gradient(circle at 88% 92%, rgba(93, 61, 35, 0.16), transparent 32rem),
+      linear-gradient(180deg, #15100a 0%, #090807 48%, #040404 100%);
+  }
+
+  .app-background::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(112deg, rgba(255, 232, 178, 0.13) 0%, rgba(255, 203, 120, 0.085) 22%, rgba(255, 208, 128, 0.045) 46%, transparent 76%),
+      linear-gradient(128deg, transparent 10%, rgba(255, 246, 220, 0.055) 26%, rgba(255, 226, 170, 0.03) 52%, transparent 78%),
+      radial-gradient(ellipse at 30% 52%, rgba(255, 213, 137, 0.08), transparent 34rem),
+      radial-gradient(circle at 12% -8%, rgba(255, 250, 230, 0.16), transparent 22rem);
+    opacity: 0.72;
+    animation: ambient-light-shift 12s ease-in-out infinite;
+  }
+
+  .app-background::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: linear-gradient(to bottom, transparent, black 12%, black 76%, transparent);
+    opacity: 0.26;
+    animation: texture-drift 28s linear infinite;
+  }
+
+  .app-background > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .glass-surface {
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.032) 34%, rgba(255, 255, 255, 0.055) 100%),
+      rgba(12, 12, 14, 0.5);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.3),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.045),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.025),
+      0 22px 70px rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(28px) saturate(155%);
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      background-color 180ms ease;
+    animation: glass-sunlight-pulse 10s ease-in-out infinite;
+  }
+
+  .glass-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 12% -8%, rgba(255, 244, 220, 0.13), transparent 14rem),
+      radial-gradient(circle at 96% 105%, rgba(255, 210, 140, 0.045), transparent 18rem);
+    opacity: 0.42;
+  }
+
+  .glass-surface:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.34),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.055),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.03),
+      0 24px 74px rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-surface > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .glass-surface-soft {
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02) 42%),
+      rgba(5, 5, 7, 0.52);
+    border-color: rgba(255, 255, 255, 0.11);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.025),
+      0 14px 44px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(22px) saturate(138%);
+    animation: glass-soft-sunlight-pulse 10s ease-in-out infinite;
+  }
+
+  .glass-surface-soft::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at 12% -8%, rgba(255, 239, 198, 0.075), transparent 12rem);
+    opacity: 0.3;
+  }
+
+  .glass-surface-soft > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-background::before,
+    .app-background::after,
+    .glass-surface::before,
+    .glass-surface-soft::before,
+    .glass-surface,
+    .glass-surface-soft {
+      animation: none;
+    }
+  }
+}
+
+@keyframes ambient-light-shift {
+  0% {
+    transform: translate3d(-1%, -0.7%, 0) scale(1);
+    opacity: 0.46;
+  }
+
+  28% {
+    transform: translate3d(0.6%, 0.4%, 0) scale(1.02);
+    opacity: 0.7;
+  }
+
+  68% {
+    transform: translate3d(1%, 0.8%, 0) scale(1.04);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate3d(-0.4%, -0.4%, 0) scale(1.01);
+    opacity: 0.52;
+  }
+}
+
+@keyframes texture-drift {
+  from {
+    background-position: 0 0, 0 0;
+  }
+
+  to {
+    background-position: 44px 44px, 44px 44px;
+  }
+}
+
+@keyframes glass-sunlight-pulse {
+  0%,
+  100% {
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.24),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.035),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+      0 20px 62px rgba(0, 0, 0, 0.38);
+  }
+
+  64% {
+    border-color: rgba(255, 237, 196, 0.3);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 247, 225, 0.5),
+      inset 0 -1px 0 rgba(255, 214, 150, 0.12),
+      inset 0 0 26px rgba(255, 205, 122, 0.07),
+      0 22px 72px rgba(0, 0, 0, 0.4),
+      0 0 52px rgba(255, 190, 105, 0.1);
+  }
+}
+
+@keyframes glass-soft-sunlight-pulse {
+  0%,
+  100% {
+    border-color: rgba(255, 255, 255, 0.095);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.02),
+      0 12px 38px rgba(0, 0, 0, 0.32);
+  }
+
+  64% {
+    border-color: rgba(255, 232, 184, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 244, 220, 0.34),
+      inset 0 -1px 0 rgba(255, 214, 150, 0.07),
+      inset 0 0 18px rgba(255, 205, 122, 0.045),
+      0 14px 42px rgba(0, 0, 0, 0.34),
+      0 0 38px rgba(255, 190, 105, 0.065);
+  }
+}
+
 /* SCROLLBAR */
 
 ::-webkit-scrollbar {
@@ -35,7 +250,7 @@ body {
 ::-webkit-scrollbar-thumb {
 
   background:
-    #3f3f46;
+    rgba(255, 255, 255, 0.24);
 
   border-radius:
     9999px;

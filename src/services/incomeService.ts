@@ -1,6 +1,8 @@
 import { supabase } from "../lib/supabase";
 import type { Income } from "../types/income";
 import { normalizeCurrency } from "../utils/currency";
+import { logServiceError } from "../utils/logger";
+import { getMonthDateRange } from "../utils/monthRange";
 
 export type IncomePayload = Omit<Income, "id">;
 
@@ -11,11 +13,7 @@ function dispatchAssetUpdated() {
 }
 
 export async function getIncomes(selectedMonth: string) {
-  const [year, month] = selectedMonth.split("-").map(Number);
-  const start = `${selectedMonth}-01`;
-  const end = `${selectedMonth}-${String(
-    new Date(year, month, 0).getDate()
-  ).padStart(2, "0")}`;
+  const { start, end } = getMonthDateRange(selectedMonth);
 
   const { data, error } = await supabase
     .from("incomes")
@@ -24,7 +22,7 @@ export async function getIncomes(selectedMonth: string) {
     .lte("income_date", end);
 
   if (error) {
-    console.log(error);
+    logServiceError("Failed to fetch incomes", error);
     return [];
   }
 
@@ -43,7 +41,7 @@ export async function createIncome(payload: IncomePayload) {
       );
       dispatchAssetUpdated();
     } catch (err) {
-      console.log("Failed to adjust asset after income create:", err);
+      logServiceError("Failed to adjust asset after income create", err);
     }
   }
 
@@ -82,7 +80,7 @@ export async function updateIncome(
       }
       dispatchAssetUpdated();
     } catch (err) {
-      console.log("Failed to adjust asset after income update:", err);
+      logServiceError("Failed to adjust asset after income update", err);
     }
   }
 
@@ -110,7 +108,7 @@ export async function removeIncome(id: number) {
       await adjustDefaultAssetValue(-prevAmount, prevCurrency);
       dispatchAssetUpdated();
     } catch (err) {
-      console.log("Failed to adjust asset after income delete:", err);
+      logServiceError("Failed to adjust asset after income delete", err);
     }
   }
 

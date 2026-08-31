@@ -15,6 +15,7 @@ import {
 import {
   formatAIExport,
 } from "../utils/formatAIExport";
+import { logServiceError } from "../utils/logger";
 import type {
   ExportOptions,
   ExportRange,
@@ -185,7 +186,7 @@ export default function useAIExport() {
       setLoading(false);
       return out;
     } catch (err: unknown) {
-      console.log(err);
+      logServiceError("Failed to generate AI export", err);
       setError(
         err instanceof Error
           ? err.message
@@ -209,21 +210,20 @@ export default function useAIExport() {
         setTimeout(() => setCopied(false), 3000);
         return true;
       } catch (e) {
-        console.warn('clipboard.writeText failed', e);
-        // fallthrough to fallback
+        logServiceError("clipboard.writeText failed", e);
       }
     }
 
     // Fallback 1: Using contenteditable div (better for iOS)
     try {
-      const div = document.createElement('div');
-      div.contentEditable = 'true';
+      const div = document.createElement("div");
+      div.contentEditable = "true";
       div.textContent = toCopy;
-      div.style.position = 'fixed';
-      div.style.left = '0';
-      div.style.top = '0';
-      div.style.zIndex = '-9999';
-      div.style.opacity = '0';
+      div.style.position = "fixed";
+      div.style.left = "0";
+      div.style.top = "0";
+      div.style.zIndex = "-9999";
+      div.style.opacity = "0";
       document.body.appendChild(div);
       
       const range = document.createRange();
@@ -235,7 +235,7 @@ export default function useAIExport() {
       }
       div.focus();
       
-      const ok = document.execCommand('copy');
+      const ok = document.execCommand("copy");
       document.body.removeChild(div);
       
       if (ok) {
@@ -244,24 +244,24 @@ export default function useAIExport() {
         return true;
       }
     } catch (err) {
-      console.warn('contenteditable copy failed', err);
+      logServiceError("contenteditable copy failed", err);
     }
 
     // Fallback 2: Using textarea + execCommand with setSelectionRange
     try {
-      const ta = document.createElement('textarea');
+      const ta = document.createElement("textarea");
       ta.value = toCopy;
-      ta.style.position = 'fixed';
-      ta.style.left = '0';
-      ta.style.top = '0';
-      ta.style.zIndex = '-9999';
-      ta.style.opacity = '0';
-      ta.style.fontSize = '16px'; // Prevent zoom on iOS
+      ta.style.position = "fixed";
+      ta.style.left = "0";
+      ta.style.top = "0";
+      ta.style.zIndex = "-9999";
+      ta.style.opacity = "0";
+      ta.style.fontSize = "16px";
       document.body.appendChild(ta);
       ta.focus();
       ta.setSelectionRange(0, ta.value.length);
       
-      const ok = document.execCommand('copy');
+      const ok = document.execCommand("copy");
       document.body.removeChild(ta);
       
       if (ok) {
@@ -270,22 +270,22 @@ export default function useAIExport() {
         return true;
       }
     } catch (err) {
-      console.warn('textarea copy failed', err);
+      logServiceError("textarea copy failed", err);
     }
 
     // Fallback 3: Using textarea + select() for older browsers
     try {
-      const ta = document.createElement('textarea');
+      const ta = document.createElement("textarea");
       ta.value = toCopy;
-      ta.style.position = 'fixed';
-      ta.style.left = '0';
-      ta.style.top = '0';
-      ta.style.zIndex = '-9999';
-      ta.style.opacity = '0';
+      ta.style.position = "fixed";
+      ta.style.left = "0";
+      ta.style.top = "0";
+      ta.style.zIndex = "-9999";
+      ta.style.opacity = "0";
       document.body.appendChild(ta);
       ta.select();
       
-      const ok = document.execCommand('copy');
+      const ok = document.execCommand("copy");
       document.body.removeChild(ta);
       
       if (ok) {
@@ -294,13 +294,12 @@ export default function useAIExport() {
         return true;
       }
     } catch (err) {
-      console.warn('select copy failed', err);
+      logServiceError("select copy failed", err);
     }
 
-    // All methods failed - show modal for manual copy
-    console.error('All copy methods failed, showing modal');
+    logServiceError("All copy methods failed, showing modal", null);
     setShowModal(true);
-    setError('Copy failed. Use the modal below to copy manually.');
+    setError("Copy failed. Use the modal below to copy manually.");
     return false;
   }, [payload]);
 

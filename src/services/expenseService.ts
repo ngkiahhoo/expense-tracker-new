@@ -2,6 +2,8 @@ import { supabase } from "../lib/supabase";
 import type { Currency } from "../types/currency";
 import type { Expense } from "../types/expense";
 import { normalizeCurrency } from "../utils/currency";
+import { logServiceError } from "../utils/logger";
+import { getMonthDateRange } from "../utils/monthRange";
 
 export type ExpensePayload = {
   amount: number;
@@ -12,63 +14,54 @@ export type ExpensePayload = {
   recurring_expense_id?: number;
 };
 
-export async function getExpenses(
-  selectedMonth:string
-) {
+export async function getExpenses(selectedMonth: string) {
+  const { start, end } = getMonthDateRange(selectedMonth);
 
-  const [year, month] = selectedMonth.split("-").map(Number);
-  const start = `${selectedMonth}-01`;
-  const end = `${selectedMonth}-${String(
-    new Date(year, month, 0).getDate()
-  ).padStart(2, "0")}`;
-
-  const { data, error } =
-    await supabase
-      .from("expenses")
-      .select(`
-        *,
-        categories (
+  const { data, error } = await supabase
+    .from("expenses")
+    .select(`
+      *,
+      categories (
+        id,
+        name,
+        type_id,
+        types (
           id,
-          name,
-          type_id,
-          types (
-            id,
-            name
-          )
+          name
         )
-      `)
-      .gte("expense_date", start)
-      .lte("expense_date", end)
-      .order("expense_date", {
-        ascending:false,
-      });
+      )
+    `)
+    .gte("expense_date", start)
+    .lte("expense_date", end)
+    .order("expense_date", {
+      ascending: false,
+    });
 
   if (error) {
-    console.log(error);
+    logServiceError("Failed to fetch expenses", error);
     return [];
   }
 
   return data || [];
 }
 
-export async function createExpense(
-  payload:ExpensePayload
-) {
-
-  const { error } =
-    await supabase
-      .from("expenses")
-      .insert([payload]);
+export async function createExpense(payload: ExpensePayload) {
+  const { error } = await supabase
+    .from("expenses")
+    .insert([payload]);
 
   if (!error) {
     try {
       const { adjustMainAssetValue } = await import("./assetService");
-      await adjustMainAssetValue(-Number(payload.amount || 0), normalizeCurrency(payload.currency));
+      await adjustMainAssetValue(
+        -Number(payload.amount || 0),
+        normalizeCurrency(payload.currency)
+      );
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("asset:updated"));
       }
     } catch (e) {
-      console.log("Failed to adjust asset after expense create:", e);
+      logServiceError("Failed to adjust asset after expense create", e);
     }
   }
 
@@ -76,8 +69,8 @@ export async function createExpense(
 }
 
 export async function updateExpense(
-  id:number,
-  payload:Partial<ExpensePayload>
+  id: number,
+  payload: Partial<ExpensePayload>
 ) {
   const { data: existing, error: fetchErr } = await supabase
     .from("expenses")
@@ -94,11 +87,10 @@ export async function updateExpense(
   const newCurrency = normalizeCurrency(payload.currency ?? prevCurrency);
   const delta = prevAmount - newAmount;
 
-  const { error } =
-    await supabase
-      .from("expenses")
-      .update(payload)
-      .eq("id", id);
+  const { error } = await supabase
+    .from("expenses")
+    .update(payload)
+    .eq("id", id);
 
   if (!error) {
     try {
@@ -113,16 +105,14 @@ export async function updateExpense(
         window.dispatchEvent(new Event("asset:updated"));
       }
     } catch (e) {
-      console.log("Failed to adjust asset after expense update:", e);
+      logServiceError("Failed to adjust asset after expense update", e);
     }
   }
 
   return error;
 }
 
-export async function removeExpense(
-  id:number
-) {
+export async function removeExpense(id: number) {
   const { data: existing, error: fetchErr } = await supabase
     .from("expenses")
     .select("*")
@@ -135,11 +125,10 @@ export async function removeExpense(
   const prevAmount = Number(existingExpense.amount || 0);
   const prevCurrency = normalizeCurrency(existingExpense.currency);
 
-  const { error } =
-    await supabase
-      .from("expenses")
-      .delete()
-      .eq("id", id);
+  const { error } = await supabase
+    .from("expenses")
+    .delete()
+    .eq("id", id);
 
   if (!error && prevAmount !== 0) {
     try {
@@ -149,21 +138,15 @@ export async function removeExpense(
         window.dispatchEvent(new Event("asset:updated"));
       }
     } catch (e) {
-      console.log("Failed to adjust asset after expense delete:", e);
+      logServiceError("Failed to adjust asset after expense delete", e);
     }
   }
 
   return error;
 }
 
-export async function removeExpensesByMonth(
-  selectedMonth:string
-) {
-  const [year, month] = selectedMonth.split("-").map(Number);
-  const start = `${selectedMonth}-01`;
-  const end = `${selectedMonth}-${String(
-    new Date(year, month, 0).getDate()
-  ).padStart(2, "0")}`;
+export async function removeExpensesByMonth(selectedMonth: string) {
+  const { start, end } = getMonthDateRange(selectedMonth);
 
   const { data: existing, error: fetchErr } = await supabase
     .from("expenses")
@@ -179,12 +162,11 @@ export async function removeExpensesByMonth(
     return totals;
   }, { MYR: 0, SGD: 0 } as Record<Currency, number>);
 
-  const { error } =
-    await supabase
-      .from("expenses")
-      .delete()
-      .gte("expense_date", start)
-      .lte("expense_date", end);
+  const { error } = await supabase
+    .from("expenses")
+    .delete()
+    .gte("expense_date", start)
+    .lte("expense_date", end);
 
   if (!error) {
     try {
@@ -198,7 +180,7 @@ export async function removeExpensesByMonth(
         window.dispatchEvent(new Event("asset:updated"));
       }
     } catch (e) {
-      console.log("Failed to adjust asset after monthly expense delete:", e);
+      logServiceError("Failed to adjust asset after monthly expense delete", e);
     }
   }
 
@@ -211,44 +193,39 @@ export async function getExpensesByCategory(
   search: string | null = null,
   limit = 10,
   offset = 0,
-  sortField = 'expense_date',
-  sortDirection: 'asc' | 'desc' = 'desc',
+  sortField = "expense_date",
+  sortDirection: "asc" | "desc" = "desc",
   currency?: Currency
 ) {
-  const [year, month] = selectedMonth.split("-").map(Number);
-  const start = `${selectedMonth}-01`;
-  const end = `${selectedMonth}-${String(
-    new Date(year, month, 0).getDate()
-  ).padStart(2, "0")}`;
+  const { start, end } = getMonthDateRange(selectedMonth);
 
   let query = supabase
-    .from('expenses')
+    .from("expenses")
     .select(
       `*, categories ( id, name, type_id, types ( id, name ) )`,
-      { count: 'exact' }
+      { count: "exact" }
     )
-    .gte('expense_date', start)
-    .lte('expense_date', end)
+    .gte("expense_date", start)
+    .lte("expense_date", end)
     .range(offset, offset + limit - 1)
-    .order(sortField, { ascending: sortDirection === 'asc' });
+    .order(sortField, { ascending: sortDirection === "asc" });
 
   if (categoryId !== null) {
-    query = query.eq('category_id', categoryId);
+    query = query.eq("category_id", categoryId);
   }
 
   if (search) {
-    // simple server-side search on note field
-    query = query.ilike('note', `%${search}%`);
+    query = query.ilike("note", `%${search}%`);
   }
 
   if (currency) {
-    query = query.eq('currency', currency);
+    query = query.eq("currency", currency);
   }
 
   const { data, count, error } = await query;
 
   if (error) {
-    console.log(error);
+    logServiceError("Failed to fetch expenses by category", error);
     return { data: [], count: 0 };
   }
 
