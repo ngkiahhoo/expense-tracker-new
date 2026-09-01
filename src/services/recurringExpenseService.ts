@@ -5,7 +5,10 @@ import type {
   RecurringExpense,
   RecurringExpensePayload,
 } from "../types/recurringExpense";
-import { getMonthDateRange } from "../utils/monthRange";
+import {
+  createExpense,
+} from "./expenseService";
+import { normalizeCurrency } from "../utils/currency";
 
 function dateInputValue(
   date:Date
@@ -148,71 +151,6 @@ export async function getRecurringExpenses() {
   };
 }
 
-export async function updateGeneratedExpenseForRecurring(
-  selectedMonth:string,
-  recurringExpense:RecurringExpense,
-  payload:{
-    amount:number;
-    currency:string;
-    note:string;
-    expense_date:string;
-    category_id:number;
-  }
-) {
-  const expenseDate =
-    getRecurringExpenseDate(
-      selectedMonth,
-      recurringExpense.repeat_day
-    );
-
-  const { start, end } = getMonthDateRange(
-    selectedMonth
-  );
-
-  const query = supabase
-    .from("expenses")
-    .select("id")
-    .eq("recurring_expense_id", recurringExpense.id)
-    .gte("expense_date", start)
-    .lte("expense_date", end)
-    .limit(1);
-
-  let result = await query;
-
-  if (result.error) {
-    const originalNote =
-      formatRecurringExpenseNote(
-        recurringExpense.name,
-        recurringExpense.description || ""
-      );
-
-    result = await supabase
-      .from("expenses")
-      .select("id")
-      .eq("expense_date", expenseDate)
-      .eq("category_id", recurringExpense.category_id)
-      .eq("amount", Number(recurringExpense.amount))
-      .eq("note", originalNote)
-      .limit(1);
-  }
-
-  if (result.error) {
-    return result.error;
-  }
-
-  if (!result.data || result.data.length === 0) {
-    return null;
-  }
-
-  const { error:updateError } =
-    await supabase
-      .from("expenses")
-      .update(payload)
-      .eq("id", result.data[0].id);
-
-  return updateError;
-}
-
 export async function createRecurringExpense(
   payload:RecurringExpensePayload
 ) {
@@ -350,7 +288,9 @@ export async function generateRecurringExpensesForMonth(
           recurringExpense.amount
         ),
       currency:
-        recurringExpense.currency || "MYR",
+        normalizeCurrency(
+          recurringExpense.currency
+        ),
       note:
         formatRecurringExpenseNote(
           recurringExpense.name,
@@ -383,34 +323,13 @@ export async function generateRecurringExpensesForMonth(
     }
 
     if (existing.exists) {
-      if (existing.id !== null) {
-        const { error:updateError } =
-          await supabase
-            .from("expenses")
-            .update({
-              amount: payload.amount,
-              currency: payload.currency,
-              note: payload.note,
-              expense_date: payload.expense_date,
-              category_id: payload.category_id,
-            })
-            .eq("id", existing.id);
-
-        if (updateError) {
-          return {
-            createdCount,
-            error: updateError,
-          };
-        }
-      }
-
       continue;
     }
 
-    const { error:insertError } =
-      await supabase
-        .from("expenses")
-        .insert([payload]);
+    const insertError =
+      await createExpense(
+        payload
+      );
 
     if (insertError) {
       return {

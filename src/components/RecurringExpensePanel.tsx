@@ -35,12 +35,13 @@ interface RecurringExpensePanelProps {
   setRecurringRepeatDay: (value: string) => void;
   recurringIsActive: boolean;
   setRecurringIsActive: (value: boolean) => void;
+  recurringCurrency: Currency;
+  setRecurringCurrency: (value: Currency) => void;
   recurringEditingId: number | null;
   setRecurringEditingId: (id: number | null) => void;
   recurringLoading: boolean;
   recurringError: string;
   generatedRecurringCount: number;
-  currency: Currency;
   categories: Category[];
   refreshRecurringExpenses: () => Promise<boolean>;
   saveRecurringExpense: () => Promise<boolean>;
@@ -65,12 +66,13 @@ export default function RecurringExpensePanel({
   setRecurringRepeatDay,
   recurringIsActive,
   setRecurringIsActive,
+  recurringCurrency,
+  setRecurringCurrency,
   recurringEditingId,
   setRecurringEditingId,
   recurringLoading,
   recurringError,
   generatedRecurringCount,
-  currency,
   categories,
   refreshRecurringExpenses,
   saveRecurringExpense,
@@ -117,7 +119,7 @@ export default function RecurringExpensePanel({
           </div>
         )}
 
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_140px_minmax(0,1fr)]">
           <Input
             type="text"
             placeholder="Expense Name"
@@ -125,9 +127,24 @@ export default function RecurringExpensePanel({
             onChange={(event) => setRecurringName(event.target.value)}
           />
 
+          <Select
+            value={recurringCurrency}
+            onChange={(event) =>
+              setRecurringCurrency(
+                event.target.value === "SGD"
+                  ? "SGD"
+                  : "MYR"
+              )
+            }
+            aria-label="Recurring expense currency"
+          >
+            <option value="MYR">RM</option>
+            <option value="SGD">SGD</option>
+          </Select>
+
           <Input
             type="number"
-            placeholder={`${currency === "SGD" ? "SGD" : "RM"} Price`}
+            placeholder={`${recurringCurrency === "SGD" ? "SGD" : "RM"} Price`}
             value={recurringAmount}
             onChange={(event) => setRecurringAmount(event.target.value)}
           />

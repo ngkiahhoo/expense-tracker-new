@@ -5,11 +5,10 @@ import type {
 } from "@/types/recurringExpense";
 
 interface RecurringFormValues {
-  activeCurrency:Currency;
   amount:string;
   category:string;
+  currency:Currency;
   description:string;
-  editingCurrency:Currency | null;
   isActive:boolean;
   name:string;
   repeatDay:string;
@@ -39,11 +38,10 @@ export function getRecurringErrorMessage(
 }
 
 export function buildRecurringExpensePayload({
-  activeCurrency,
   amount,
   category,
+  currency,
   description,
-  editingCurrency,
   isActive,
   name,
   repeatDay,
@@ -70,7 +68,7 @@ export function buildRecurringExpensePayload({
   const payload:RecurringExpensePayload = {
     name: name.trim(),
     amount: numericAmount,
-    currency: editingCurrency || activeCurrency,
+    currency,
     description: description.trim() || null,
     category_id: Number(category),
     repeat_day: numericRepeatDay,
@@ -93,5 +91,6 @@ export function recurringExpenseToFormValues(
     isActive: recurringExpense.is_active,
     name: recurringExpense.name,
     repeatDay: recurringExpense.repeat_day.toString(),
+    currency: recurringExpense.currency,
   };
 }

@@ -220,6 +220,9 @@ export default function Home() {
     recurringIsActive,
     setRecurringIsActive,
 
+    recurringCurrency,
+    setRecurringCurrency,
+
     recurringEditingId,
     setRecurringEditingId,
 
@@ -723,12 +726,13 @@ export default function Home() {
                     setRecurringRepeatDay={setRecurringRepeatDay}
                     recurringIsActive={recurringIsActive}
                     setRecurringIsActive={setRecurringIsActive}
+                    recurringCurrency={recurringCurrency}
+                    setRecurringCurrency={setRecurringCurrency}
                     recurringEditingId={recurringEditingId}
                     setRecurringEditingId={setRecurringEditingId}
                     recurringLoading={recurringLoading}
                     recurringError={recurringError}
                     generatedRecurringCount={generatedRecurringCount}
-                    currency={activeCurrency}
                     categories={categories}
                     refreshRecurringExpenses={fetchRecurringExpenses}
                     saveRecurringExpense={handleSaveRecurringExpense}

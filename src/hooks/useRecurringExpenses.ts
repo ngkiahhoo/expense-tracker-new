@@ -10,11 +10,8 @@ import {
   generateRecurringExpensesForMonth,
   getRecurringExpenses,
   removeRecurringExpense,
-  updateGeneratedExpenseForRecurring,
   updateRecurringExpense,
-  getRecurringExpenseDate,
 } from "../services/recurringExpenseService";
-import { formatRecurringExpenseNote } from "../services/recurringExpenseService";
 
 import type {
   RecurringExpense,
@@ -77,14 +74,9 @@ export default function useRecurringExpenses(
   ] = useState<number | null>(null);
 
   const [
-    recurringEditingOriginal,
-    setRecurringEditingOriginal,
-  ] = useState<RecurringExpense | null>(null);
-
-  const [
-    recurringEditingCurrency,
-    setRecurringEditingCurrency,
-  ] = useState<Currency | null>(null);
+    recurringCurrency,
+    setRecurringCurrency,
+  ] = useState<Currency>(activeCurrency);
 
   const [
     recurringLoading,
@@ -113,8 +105,7 @@ export default function useRecurringExpenses(
       )
     );
     setRecurringIsActive(true);
-    setRecurringEditingOriginal(null);
-    setRecurringEditingCurrency(null);
+    setRecurringCurrency(activeCurrency);
   }
 
   const fetchRecurringExpenses = useCallback(async () => {
@@ -161,11 +152,10 @@ export default function useRecurringExpenses(
         error: validationError,
         payload,
       } = buildRecurringExpensePayload({
-        activeCurrency,
         amount: recurringAmount,
         category: recurringCategory,
+        currency: recurringCurrency,
         description: recurringDescription,
-        editingCurrency: recurringEditingCurrency,
         isActive: recurringIsActive,
         name: recurringName,
         repeatDay: recurringRepeatDay,
@@ -193,39 +183,6 @@ export default function useRecurringExpenses(
           );
         setRecurringError(msg);
         return { success: false, error: msg };
-      }
-
-      if (
-        recurringEditingId &&
-        recurringEditingOriginal
-      ) {
-        const syncError =
-          await updateGeneratedExpenseForRecurring(
-            currentMonth,
-            recurringEditingOriginal,
-            {
-              amount: payload.amount,
-              note: formatRecurringExpenseNote(payload.name, payload.description || null),
-              expense_date:
-                getRecurringExpenseDate(
-                  currentMonth,
-                  payload.repeat_day
-                ),
-              category_id:
-                payload.category_id,
-              currency:
-                payload.currency,
-            }
-          );
-
-        if (syncError) {
-          const msg = getRecurringErrorMessage(
-            "Could not update generated expense",
-            syncError
-          );
-          setRecurringError(msg);
-          return { success: false, error: msg };
-        }
       }
 
       setRecurringEditingId(null);
@@ -280,9 +237,6 @@ export default function useRecurringExpenses(
     setRecurringEditingId(
       recurringExpense.id
     );
-    setRecurringEditingOriginal(
-      recurringExpense
-    );
     setRecurringName(formValues.name);
     setRecurringAmount(
       formValues.amount
@@ -299,7 +253,7 @@ export default function useRecurringExpenses(
     setRecurringIsActive(
       formValues.isActive
     );
-    setRecurringEditingCurrency(
+    setRecurringCurrency(
       normalizeCurrency(recurringExpense.currency)
     );
   }
@@ -356,6 +310,9 @@ export default function useRecurringExpenses(
 
     recurringIsActive,
     setRecurringIsActive,
+
+    recurringCurrency,
+    setRecurringCurrency,
 
     recurringEditingId,
     setRecurringEditingId,
