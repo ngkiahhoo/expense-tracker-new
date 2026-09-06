@@ -25,11 +25,20 @@ export type SavingsPacePeriod =
   | "custom";
 
 export interface GoalSnapshot {
+  id?:string;
+  goalId?:string;
+  snapshotMonth?:string;
   month:string;
   currentAmount:number;
   monthlySaving:number;
   projectedCompletionDate:string;
   progressPercentage:number;
+  savingPace?:number;
+  requiredPace?:number | null;
+  savingsRate?:number | null;
+  targetAmount?:number;
+  targetDate?:string;
+  createdAt?:string;
 }
 
 export interface SavingsGoal {
@@ -137,6 +146,8 @@ function normalizeSnapshot(value:unknown): GoalSnapshot | null {
   const month =
     typeof value.month === "string"
       ? value.month
+      : typeof value.snapshotMonth === "string"
+      ? value.snapshotMonth
       : "";
 
   if (!/^\d{4}-\d{2}$/.test(month)) {
@@ -144,6 +155,18 @@ function normalizeSnapshot(value:unknown): GoalSnapshot | null {
   }
 
   return {
+    id:
+      typeof value.id === "string" && value.id
+        ? value.id
+        : undefined,
+    goalId:
+      typeof value.goalId === "string" && value.goalId
+        ? value.goalId
+        : undefined,
+    snapshotMonth:
+      typeof value.snapshotMonth === "string" && value.snapshotMonth
+        ? value.snapshotMonth
+        : month,
     month,
     currentAmount:Number(value.currentAmount || 0),
     monthlySaving:Number(value.monthlySaving || 0),
@@ -152,6 +175,30 @@ function normalizeSnapshot(value:unknown): GoalSnapshot | null {
         ? value.projectedCompletionDate
         : "",
     progressPercentage:Number(value.progressPercentage || 0),
+    savingPace:
+      typeof value.savingPace === "number"
+        ? value.savingPace
+        : undefined,
+    requiredPace:
+      typeof value.requiredPace === "number" || value.requiredPace === null
+        ? value.requiredPace
+        : undefined,
+    savingsRate:
+      typeof value.savingsRate === "number" || value.savingsRate === null
+        ? value.savingsRate
+        : undefined,
+    targetAmount:
+      typeof value.targetAmount === "number"
+        ? value.targetAmount
+        : undefined,
+    targetDate:
+      typeof value.targetDate === "string"
+        ? value.targetDate
+        : undefined,
+    createdAt:
+      typeof value.createdAt === "string"
+        ? value.createdAt
+        : undefined,
   };
 }
 

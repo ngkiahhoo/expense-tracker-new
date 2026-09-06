@@ -121,9 +121,56 @@ interface PaceStats {
   percentile75:number;
 }
 
+interface SavingsRateRow {
+  monthKey:string;
+  label:string;
+  value:number;
+  income:number;
+  saving:number;
+}
+
+interface SavingsRateStats {
+  average:number;
+  median:number;
+  highest:SavingsRateRow | null;
+  lowest:SavingsRateRow | null;
+  rows:SavingsRateRow[];
+}
+
 interface ProjectionResult {
   months:number;
   monthKey:string;
+}
+
+interface GoalPerformance {
+  requiredPace:number | null;
+  actualPace:number;
+  difference:number | null;
+  percentageDifference:number | null;
+  remainingMonths:number | null;
+  statusLabel:string;
+  statusTone:"success" | "info" | "warning" | "danger" | "neutral";
+  monthlyBuffer:number | null;
+  projectedExtra:number | null;
+  bufferText:string;
+}
+
+interface GoalVelocity {
+  label:string;
+  movedMonths:number | null;
+  helper:string;
+  tone:"success" | "info" | "warning" | "neutral";
+}
+
+interface Milestone {
+  amount:number;
+  label:string;
+  eta:string;
+  status:string;
+  progress:number;
+  isCompleted:boolean;
+  isNext:boolean;
+  isFinal:boolean;
 }
 
 const statusMeta:Record<
@@ -290,6 +337,50 @@ function formatMonthDelta(deltaMonths:number) {
       : "later";
 
   return `${Math.abs(deltaMonths).toFixed(1)} months ${direction}`;
+}
+
+function formatPercent(value:number) {
+  if (!Number.isFinite(value)) {
+    return "Not enough data";
+  }
+
+  return `${value.toFixed(1)}%`;
+}
+
+function formatSignedCurrencyAmount(
+  amount:number,
+  currency:Currency
+) {
+  const sign =
+    amount >= 0
+      ? "+"
+      : "-";
+
+  return `${sign}${formatCurrencyAmount(Math.abs(amount), currency)}`;
+}
+
+function getSnapshotId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return String(Date.now());
+}
+
+function isTargetDatePassed(
+  targetDate:string,
+  currentDate:Date
+) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+    return false;
+  }
+
+  const [year, month, day] =
+    targetDate.split("-").map(Number);
+  const targetEndOfDay =
+    new Date(year, month - 1, day, 23, 59, 59, 999);
+
+  return targetEndOfDay.getTime() < currentDate.getTime();
 }
 
 function createDefaultForm(
@@ -627,6 +718,200 @@ function getPaceStats(
   );
 }
 
+function getSavingsRateStats(
+  goal:SavingsGoal,
+  monthlySeries:MonthlySeriesItem[],
+  latestCompletedMonth:string,
+  currentDate:Date
+): SavingsRateStats {
+  const rows =
+    getSeriesInPeriod(
+      monthlySeries,
+      goal,
+      latestCompletedMonth,
+      currentDate
+    )
+      .filter((item) =>
+        Number.isFinite(item.income) &&
+        item.income > 0
+      )
+      .map((item) => ({
+        monthKey:item.monthKey,
+        label:item.label,
+        income:item.income,
+        saving:item.balance,
+        value:item.balance / item.income * 100,
+      }));
+  const values =
+    rows.map((row) => row.value);
+  const highest =
+    rows.reduce<SavingsRateRow | null>(
+      (result, row) => !result || row.value > result.value ? row : result,
+      null
+    );
+  const lowest =
+    rows.reduce<SavingsRateRow | null>(
+      (result, row) => !result || row.value < result.value ? row : result,
+      null
+    );
+
+  return {
+    average:average(values),
+    median:median(values),
+    highest,
+    lowest,
+    rows,
+  };
+}
+
+function getGoalPerformance(
+  goal:SavingsGoal,
+  currentAmount:number,
+  actualPace:number,
+  currentMonth:string,
+  currentDate:Date
+): GoalPerformance {
+  const remainingAmount =
+    Math.max(0, goal.targetAmount - currentAmount);
+
+  if (remainingAmount <= 0) {
+    return {
+      requiredPace:0,
+      actualPace,
+      difference:actualPace,
+      percentageDifference:null,
+      remainingMonths:0,
+      statusLabel:"Completed",
+      statusTone:"success",
+      monthlyBuffer:actualPace,
+      projectedExtra:Math.max(0, currentAmount - goal.targetAmount),
+      bufferText:"Goal target is already reached.",
+    };
+  }
+
+  if (!goal.targetDate) {
+    return {
+      requiredPace:null,
+      actualPace,
+      difference:null,
+      percentageDifference:null,
+      remainingMonths:null,
+      statusLabel:"No target date",
+      statusTone:"neutral",
+      monthlyBuffer:null,
+      projectedExtra:null,
+      bufferText:"Set a target date to calculate required pace.",
+    };
+  }
+
+  if (isTargetDatePassed(goal.targetDate, currentDate)) {
+    return {
+      requiredPace:null,
+      actualPace,
+      difference:null,
+      percentageDifference:null,
+      remainingMonths:null,
+      statusLabel:"Target date passed",
+      statusTone:"warning",
+      monthlyBuffer:null,
+      projectedExtra:null,
+      bufferText:"Target date passed. Update the date to recalculate pace.",
+    };
+  }
+
+  const targetMonth =
+    goal.targetDate.slice(0, 7);
+  const remainingMonths =
+    Math.max(1, getMonthIndex(targetMonth) - getMonthIndex(currentMonth));
+  const requiredPace =
+    remainingAmount / remainingMonths;
+  const difference =
+    actualPace - requiredPace;
+  const percentageDifference =
+    requiredPace > 0
+      ? difference / requiredPace * 100
+      : null;
+  const statusLabel =
+    percentageDifference !== null && percentageDifference > 5
+      ? "Ahead"
+      : percentageDifference !== null && percentageDifference < -5
+      ? "Behind"
+      : "On Track";
+  const projectedExtra =
+    currentAmount + actualPace * remainingMonths - goal.targetAmount;
+
+  return {
+    requiredPace,
+    actualPace,
+    difference,
+    percentageDifference,
+    remainingMonths,
+    statusLabel,
+    statusTone:
+      statusLabel === "Ahead"
+        ? "success"
+        : statusLabel === "Behind"
+        ? "danger"
+        : "info",
+    monthlyBuffer:difference,
+    projectedExtra,
+    bufferText:
+      difference >= 0
+        ? `You can save about ${formatCurrencyAmount(Math.abs(difference), goal.currency)} less per month and stay on pace.`
+        : `You need to save about ${formatCurrencyAmount(Math.abs(difference), goal.currency)} more per month to get back on pace.`,
+  };
+}
+
+function getGoalVelocity(
+  goal:SavingsGoal,
+  currentDate:Date,
+  comparisonMonths = 3
+): GoalVelocity {
+  const snapshots =
+    [...goal.snapshots]
+      .filter((snapshot) =>
+        isCompletedMonth(snapshot.month, currentDate) &&
+        /^\d{4}-\d{2}$/.test(snapshot.projectedCompletionDate)
+      )
+      .sort((left, right) => left.month.localeCompare(right.month))
+      .slice(-comparisonMonths);
+
+  if (snapshots.length < 2) {
+    return {
+      label:"Not enough history",
+      movedMonths:null,
+      helper:"Requires at least two completed snapshots",
+      tone:"neutral",
+    };
+  }
+
+  const oldest =
+    snapshots[0];
+  const latest =
+    snapshots[snapshots.length - 1];
+  const movedMonths =
+    getMonthIndex(latest.projectedCompletionDate) -
+    getMonthIndex(oldest.projectedCompletionDate);
+
+  if (Math.abs(movedMonths) < 0.25) {
+    return {
+      label:"Stable",
+      movedMonths:0,
+      helper:"No meaningful change",
+      tone:"info",
+    };
+  }
+
+  return {
+    label:movedMonths < 0 ? "Improving" : "Slowing",
+    movedMonths,
+    helper:`${Math.abs(movedMonths).toFixed(1)} months ${
+      movedMonths < 0 ? "earlier" : "later"
+    } over the last ${snapshots.length - 1} completed month${snapshots.length === 2 ? "" : "s"}`,
+    tone:movedMonths < 0 ? "success" : "warning",
+  };
+}
+
 function getPlanStatus(
   averageSaving:number,
   requiredSaving:number | null
@@ -665,25 +950,6 @@ function getPlanStatus(
     tone:"info" as const,
     difference,
   };
-}
-
-function getRequiredMonthlySaving(
-  goal:SavingsGoal,
-  currentAmount:number,
-  currentMonth:string
-) {
-  if (!goal.targetDate) {
-    return null;
-  }
-
-  const targetMonth =
-    goal.targetDate.slice(0, 7);
-  const remainingMonths =
-    Math.max(1, getMonthIndex(targetMonth) - getMonthIndex(currentMonth));
-  const remainingAmount =
-    Math.max(0, goal.targetAmount - currentAmount);
-
-  return remainingAmount / remainingMonths;
 }
 
 function getPredictionRange(
@@ -816,6 +1082,99 @@ function getProjectionData(
       conservative:Math.max(0, currentAmount + conservativePace * index),
       normal:Math.max(0, currentAmount + normalPace * index),
       aggressive:Math.max(0, currentAmount + aggressivePace * index),
+    };
+  });
+}
+
+function getMilestoneStep(targetAmount:number) {
+  if (targetAmount <= 10000) {
+    return 1000;
+  }
+
+  if (targetAmount <= 25000) {
+    return 5000;
+  }
+
+  if (targetAmount <= 50000) {
+    return 10000;
+  }
+
+  if (targetAmount <= 100000) {
+    return 25000;
+  }
+
+  if (targetAmount <= 500000) {
+    return 50000;
+  }
+
+  return 100000;
+}
+
+function getMilestones(
+  goal:SavingsGoal,
+  currentAmount:number,
+  actualPace:number,
+  currentMonth:string
+): Milestone[] {
+  const targetAmount =
+    Math.max(0, goal.targetAmount);
+
+  if (targetAmount <= 0) {
+    return [];
+  }
+
+  const step =
+    getMilestoneStep(targetAmount);
+  const milestoneAmounts =
+    new Set<number>();
+
+  for (let amount = step; amount < targetAmount; amount += step) {
+    milestoneAmounts.add(amount);
+  }
+
+  milestoneAmounts.add(targetAmount);
+
+  const sortedAmounts =
+    [...milestoneAmounts].sort((left, right) => left - right);
+  const nextAmount =
+    sortedAmounts.find((amount) => amount > currentAmount) || null;
+
+  return sortedAmounts.map((amount) => {
+    const isCompleted =
+      currentAmount >= amount;
+    const isFinal =
+      amount === targetAmount;
+    const isNext =
+      !isCompleted && amount === nextAmount;
+    const projection =
+      isCompleted
+        ? null
+        : getProjectedCompletion(
+          currentAmount,
+          amount,
+          actualPace,
+          currentMonth
+        );
+
+    return {
+      amount,
+      label:formatCurrencyAmount(amount, goal.currency).replace(".00", ""),
+      eta:isCompleted
+        ? "Completed"
+        : projection
+        ? formatMonthKey(projection.monthKey)
+        : "No projected ETA",
+      status:isCompleted
+        ? "Completed"
+        : isNext
+        ? "Next"
+        : isFinal
+        ? "Final Goal"
+        : "Upcoming",
+      progress:clamp(currentAmount / Math.max(1, amount) * 100, 0, 100),
+      isCompleted,
+      isNext,
+      isFinal,
     };
   });
 }
@@ -1084,6 +1443,20 @@ export default function SavingsGoalsPage() {
       [currentMonth, monthlySeries]
     );
 
+  const savingsRateStats =
+    useMemo(
+      () =>
+        selectedGoal
+          ? getSavingsRateStats(
+            selectedGoal,
+            monthlySeries,
+            latestCompletedMonth,
+            currentDate
+          )
+          : null,
+      [currentDate, latestCompletedMonth, monthlySeries, selectedGoal]
+    );
+
   const progressPercent =
     selectedGoal && selectedGoalAmount
       ? clamp(
@@ -1108,14 +1481,19 @@ export default function SavingsGoalsPage() {
       )
       : null;
 
-  const requiredMonthlySaving =
-    selectedGoal && selectedGoalAmount
-      ? getRequiredMonthlySaving(
+  const goalPerformance =
+    selectedGoal && selectedGoalAmount && paceStats
+      ? getGoalPerformance(
         selectedGoal,
         selectedGoalAmount.amount,
-        currentMonth
+        paceStats.average,
+        currentMonth,
+        currentDate
       )
       : null;
+
+  const requiredMonthlySaving =
+    goalPerformance?.requiredPace ?? null;
 
   const planStatus =
     paceStats
@@ -1155,6 +1533,21 @@ export default function SavingsGoalsPage() {
     paceStats
       ? getConfidence(paceStats)
       : null;
+
+  const goalVelocity =
+    selectedGoal
+      ? getGoalVelocity(selectedGoal, currentDate)
+      : null;
+
+  const milestones =
+    selectedGoal && selectedGoalAmount && paceStats
+      ? getMilestones(
+        selectedGoal,
+        selectedGoalAmount.amount,
+        paceStats.average,
+        currentMonth
+      )
+      : [];
 
   const projectionData =
     selectedGoal && selectedGoalAmount && scenarioPaces
@@ -1248,6 +1641,14 @@ export default function SavingsGoalsPage() {
       ...current,
       [key]:value,
     }));
+  }
+
+  function updateWhatIfSaving(value:number) {
+    setWhatIfSaving(
+      Number.isFinite(value)
+        ? clamp(value, 0, 100000000)
+        : 0
+    );
   }
 
   function resetForm() {
@@ -1414,6 +1815,21 @@ export default function SavingsGoalsPage() {
         latestCompletedMonth,
         currentDate
       );
+    const savingsRate =
+      getSavingsRateStats(
+        goal,
+        monthlySeries,
+        latestCompletedMonth,
+        currentDate
+      );
+    const performance =
+      getGoalPerformance(
+        goal,
+        amount.amount,
+        stats.average,
+        currentMonth,
+        currentDate
+      );
     const projection =
       getProjectedCompletion(
         amount.amount,
@@ -1421,8 +1837,13 @@ export default function SavingsGoalsPage() {
         stats.average,
         currentMonth
       );
+    const existingSnapshot =
+      goal.snapshots.find((entry) => entry.month === latestCompletedMonth);
     const snapshot = {
-      month:currentMonth,
+      id:existingSnapshot?.id || getSnapshotId(),
+      goalId:goal.id,
+      snapshotMonth:latestCompletedMonth,
+      month:latestCompletedMonth,
       currentAmount:amount.amount,
       monthlySaving:stats.rows[stats.rows.length - 1]?.value || 0,
       projectedCompletionDate:projection?.monthKey || "",
@@ -1431,6 +1852,14 @@ export default function SavingsGoalsPage() {
         0,
         100
       ),
+      savingPace:stats.average,
+      requiredPace:performance.requiredPace,
+      savingsRate:savingsRate.rows.length > 0
+        ? savingsRate.average
+        : null,
+      targetAmount:goal.targetAmount,
+      targetDate:goal.targetDate,
+      createdAt:existingSnapshot?.createdAt || new Date().toISOString(),
     };
 
     saveGoals(
@@ -1439,7 +1868,7 @@ export default function SavingsGoalsPage() {
           ? touchSavingsGoal({
             ...item,
             snapshots:[
-              ...item.snapshots.filter((entry) => entry.month !== currentMonth),
+              ...item.snapshots.filter((entry) => entry.month !== latestCompletedMonth),
               snapshot,
             ].sort((left, right) => left.month.localeCompare(right.month)),
           })
@@ -1667,7 +2096,7 @@ export default function SavingsGoalsPage() {
                       </p>
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                       <StatTile
                         label="Remaining"
                         value={formatCurrencyAmount(remainingAmount, selectedGoal.currency)}
@@ -1691,6 +2120,24 @@ export default function SavingsGoalsPage() {
                             : "Current pace is <= 0"
                         }
                         tone={currentProjection ? "info" : "danger"}
+                      />
+                      <StatTile
+                        label="Savings Rate"
+                        value={
+                          savingsRateStats && savingsRateStats.rows.length > 0
+                            ? formatPercent(savingsRateStats.average)
+                            : "Not enough data"
+                        }
+                        helper={
+                          savingsRateStats && savingsRateStats.rows.length > 0
+                            ? `Average across ${savingsRateStats.rows.length} completed month${savingsRateStats.rows.length === 1 ? "" : "s"}`
+                            : "Completed months need income above 0"
+                        }
+                        tone={
+                          savingsRateStats && savingsRateStats.average > 0
+                            ? "success"
+                            : "warning"
+                        }
                       />
                       <StatTile
                         label="Historical Data"
@@ -1730,6 +2177,172 @@ export default function SavingsGoalsPage() {
                   </div>
                 </Card>
 
+                <Card
+                  variant="default"
+                  padding="lg"
+                >
+                  <div className="mb-5 flex items-center gap-2">
+                    <Target className="text-cyan-400" size={20} />
+                    <h2 className="text-2xl font-bold">
+                      Goal Performance
+                    </h2>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    <StatTile
+                      label="Required Pace"
+                      value={
+                        goalPerformance?.statusLabel === "Target date passed"
+                          ? "Target date passed"
+                          : goalPerformance?.requiredPace === null
+                          ? "No target date"
+                          : `${currencyLabel(selectedGoal.currency)} ${goalPerformance?.requiredPace.toFixed(0)} / mo`
+                      }
+                      helper={
+                        goalPerformance?.remainingMonths
+                          ? `${goalPerformance.remainingMonths} month${goalPerformance.remainingMonths === 1 ? "" : "s"} remaining`
+                          : selectedGoal.targetDate
+                          ? formatMonthKey(selectedGoal.targetDate.slice(0, 7))
+                          : "Set a target date"
+                      }
+                      tone={goalPerformance?.requiredPace === null ? "neutral" : "info"}
+                    />
+                    <StatTile
+                      label="Actual Pace"
+                      value={`${currencyLabel(selectedGoal.currency)} ${paceStats.average.toFixed(0)} / mo`}
+                      helper={paceStats.sourceLabel}
+                      tone={paceStats.average > 0 ? "success" : "danger"}
+                    />
+                    <StatTile
+                      label="Pace Difference"
+                      value={
+                        goalPerformance?.difference === null
+                          ? "No target date"
+                          : formatSignedCurrencyAmount(goalPerformance?.difference || 0, selectedGoal.currency)
+                      }
+                      helper={
+                        goalPerformance?.percentageDifference === null
+                          ? goalPerformance?.statusLabel
+                          : `${goalPerformance?.statusLabel} by ${Math.abs(goalPerformance?.percentageDifference || 0).toFixed(1)}%`
+                      }
+                      tone={goalPerformance?.statusTone || "neutral"}
+                    />
+                    <StatTile
+                      label="Savings Rate"
+                      value={
+                        savingsRateStats && savingsRateStats.rows.length > 0
+                          ? formatPercent(savingsRateStats.average)
+                          : "Not enough data"
+                      }
+                      helper="Income - Expenses / Income"
+                      tone={
+                        savingsRateStats && savingsRateStats.average > 0
+                          ? "success"
+                          : "warning"
+                      }
+                    />
+                    <StatTile
+                      label="Goal Velocity"
+                      value={goalVelocity?.label || "Not enough history"}
+                      helper={goalVelocity?.helper}
+                      tone={goalVelocity?.tone || "neutral"}
+                    />
+                    <StatTile
+                      label="Goal Buffer"
+                      value={
+                        goalPerformance?.monthlyBuffer === null
+                          ? goalPerformance?.statusLabel || "No target date"
+                          : `${formatSignedCurrencyAmount(goalPerformance?.monthlyBuffer || 0, selectedGoal.currency)} / mo`
+                      }
+                      helper={
+                        goalPerformance?.projectedExtra === null
+                          ? "Requires target date"
+                          : `Projected extra ${formatSignedCurrencyAmount(goalPerformance?.projectedExtra || 0, selectedGoal.currency)}`
+                      }
+                      tone={goalPerformance?.statusTone || "neutral"}
+                    />
+                  </div>
+
+                  {goalPerformance?.bufferText && (
+                    <p className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3 text-sm text-zinc-400">
+                      {goalPerformance.bufferText}
+                    </p>
+                  )}
+                </Card>
+
+                <Card
+                  variant="default"
+                  padding="lg"
+                >
+                  <div className="mb-5 flex items-center gap-2">
+                    <CalendarDays className="text-cyan-400" size={20} />
+                    <h2 className="text-2xl font-bold">
+                      Milestone Timeline
+                    </h2>
+                  </div>
+
+                  {milestones.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-zinc-800 p-4 text-sm text-zinc-400">
+                      Add a target amount to generate milestones.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3 md:flex-row md:overflow-x-auto">
+                      {milestones.map((milestone) => (
+                        <div
+                          key={milestone.amount}
+                          className={cn(
+                            "savings-frame min-w-0 rounded-2xl border bg-zinc-950/70 p-4 md:min-w-[180px] md:flex-1",
+                            milestone.isNext
+                              ? "border-cyan-400 shadow-lg shadow-cyan-500/10"
+                              : milestone.isCompleted
+                              ? "border-emerald-500/30"
+                              : "border-zinc-800"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-lg font-bold text-white">
+                                {milestone.label}
+                              </p>
+                              <p className="mt-1 text-sm text-zinc-400">
+                                {milestone.eta}
+                              </p>
+                            </div>
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-full border px-2 py-1 text-[11px] font-bold",
+                                milestone.isCompleted
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                  : milestone.isNext
+                                  ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-400"
+                                  : "border-zinc-700 bg-zinc-900/60 text-zinc-400"
+                              )}
+                            >
+                              {milestone.status}
+                            </span>
+                          </div>
+                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-800">
+                            <div
+                              className={cn(
+                                "h-full rounded-full",
+                                milestone.isCompleted
+                                  ? "bg-emerald-400"
+                                  : "bg-cyan-400"
+                              )}
+                              style={{ width:`${milestone.progress}%` }}
+                            />
+                          </div>
+                          {milestone.isFinal && (
+                            <p className="mt-3 text-xs font-semibold text-zinc-500">
+                              Final goal
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+
                 <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
                   <Card
                     variant="default"
@@ -1750,15 +2363,36 @@ export default function SavingsGoalsPage() {
                             {formatCurrencyAmount(whatIfSaving, selectedGoal.currency)}
                           </span>
                         </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={whatIfMax}
-                          step={100}
-                          value={whatIfSaving}
-                          onChange={(event) => setWhatIfSaving(Number(event.target.value))}
-                          className="mt-3 w-full accent-cyan-400"
-                        />
+                        <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px] sm:items-center">
+                          <input
+                            type="range"
+                            min={0}
+                            max={whatIfMax}
+                            step={100}
+                            value={Math.min(whatIfSaving, whatIfMax)}
+                            onChange={(event) => updateWhatIfSaving(Number(event.target.value))}
+                            className="w-full accent-cyan-400"
+                          />
+                          <label className="block">
+                            <span className="sr-only">
+                              Monthly saving amount
+                            </span>
+                            <div className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/70 px-3 py-2">
+                              <span className="shrink-0 text-sm font-bold text-cyan-400">
+                                {currencyLabel(selectedGoal.currency)}
+                              </span>
+                              <Input
+                                type="number"
+                                min={0}
+                                step={100}
+                                value={whatIfSaving}
+                                onChange={(event) => updateWhatIfSaving(Number(event.target.value))}
+                                fieldSize="md"
+                                className="border-0 bg-transparent p-0 text-right text-sm font-bold text-white shadow-none focus-visible:outline-none"
+                              />
+                            </div>
+                          </label>
+                        </div>
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2">
@@ -1820,16 +2454,26 @@ export default function SavingsGoalsPage() {
                       <StatTile
                         label="Required Monthly"
                         value={
-                          requiredMonthlySaving === null
+                          goalPerformance?.statusLabel === "Target date passed"
+                            ? "Target date passed"
+                            : requiredMonthlySaving === null
                             ? "No date"
                             : `${currencyLabel(selectedGoal.currency)} ${requiredMonthlySaving.toFixed(0)} / mo`
                         }
                         helper={
-                          selectedGoal.targetDate
+                          goalPerformance?.statusLabel === "Target date passed"
+                            ? "Update target date"
+                            : selectedGoal.targetDate
                             ? formatMonthKey(selectedGoal.targetDate.slice(0, 7))
                             : "Target date not set"
                         }
-                        tone={requiredMonthlySaving === null ? "neutral" : "info"}
+                        tone={
+                          goalPerformance?.statusLabel === "Target date passed"
+                            ? "warning"
+                            : requiredMonthlySaving === null
+                            ? "neutral"
+                            : "info"
+                        }
                       />
                       <StatTile
                         label="Current Average"
@@ -1999,6 +2643,51 @@ export default function SavingsGoalsPage() {
                             : "No data"
                         }
                         helper={paceStats.lowest?.label}
+                        tone="danger"
+                      />
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <StatTile
+                        label="Average Rate"
+                        value={
+                          savingsRateStats && savingsRateStats.rows.length > 0
+                            ? formatPercent(savingsRateStats.average)
+                            : "Not enough data"
+                        }
+                        helper="Completed months with income above 0"
+                        tone={
+                          savingsRateStats && savingsRateStats.average > 0
+                            ? "success"
+                            : "warning"
+                        }
+                      />
+                      <StatTile
+                        label="Median Rate"
+                        value={
+                          savingsRateStats && savingsRateStats.rows.length > 0
+                            ? formatPercent(savingsRateStats.median)
+                            : "Not enough data"
+                        }
+                      />
+                      <StatTile
+                        label="Highest Rate"
+                        value={
+                          savingsRateStats?.highest
+                            ? formatPercent(savingsRateStats.highest.value)
+                            : "Not enough data"
+                        }
+                        helper={savingsRateStats?.highest?.label}
+                        tone="success"
+                      />
+                      <StatTile
+                        label="Lowest Rate"
+                        value={
+                          savingsRateStats?.lowest
+                            ? formatPercent(savingsRateStats.lowest.value)
+                            : "Not enough data"
+                        }
+                        helper={savingsRateStats?.lowest?.label}
                         tone="danger"
                       />
                     </div>
