@@ -3,8 +3,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const root = process.cwd();
-const reportDir = path.join(root, ".ai");
-const reportPath = path.join(reportDir, "ai-check-report.md");
+const reportPath = path.join(root, "AI_TEST_REPORT.md");
 
 const checks = [
   {
@@ -207,8 +206,6 @@ function buildReport(results) {
 
   return lines.join("\n");
 }
-
-mkdirSync(reportDir, { recursive: true });
 
 const results = checks.map((check) => {
   console.log(`\nRunning ${check.name}...`);

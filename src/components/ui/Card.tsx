@@ -20,6 +20,7 @@ export function Card({
   return (
     <div
       {...props}
+      data-card-variant={variant}
       className={cn(
         cardStyles.base,
         cardStyles.variants[variant],

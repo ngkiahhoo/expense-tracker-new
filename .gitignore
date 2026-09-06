@@ -12,7 +12,7 @@
 
 # testing
 /coverage
-/.ai
+/AI_TEST_REPORT.md
 
 # next.js
 /.next/

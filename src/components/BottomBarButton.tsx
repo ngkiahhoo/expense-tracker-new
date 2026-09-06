@@ -20,7 +20,10 @@ export default function BottomBarButton({
   return (
     <button
       onClick={onClick}
+      aria-pressed={active}
       className={`
+        bottom-bar-button
+        ${active ? "bottom-bar-button-active" : "bottom-bar-button-idle"}
         min-h-16
         min-w-0
         rounded-2xl
@@ -54,6 +57,7 @@ export default function BottomBarButton({
 
         <span
           className="
+            bottom-bar-button-label
             min-w-0
             truncate
             text-xs
@@ -68,6 +72,7 @@ export default function BottomBarButton({
 
       <p
         className={`
+          bottom-bar-button-description
           mt-1
           truncate
           text-[11px]

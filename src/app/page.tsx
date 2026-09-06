@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type FocusEvent,
 } from "react";
 
@@ -60,6 +61,49 @@ const fullAIExportOptions = {
   includeAIPrompt:true,
 };
 
+type AppTheme =
+  | "dark"
+  | "light";
+
+const themeStorageKey =
+  "expense-tracker-theme";
+
+const themeChangeEvent =
+  "expense-tracker-theme-change";
+
+function getStoredTheme(): AppTheme {
+  if (typeof window === "undefined") {
+    return "dark";
+  }
+
+  return window.localStorage.getItem(themeStorageKey) === "light"
+    ? "light"
+    : "dark";
+}
+
+function getServerTheme(): AppTheme {
+  return "dark";
+}
+
+function subscribeTheme(
+  callback: () => void
+) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const handleChange =
+    () => callback();
+
+  window.addEventListener("storage", handleChange);
+  window.addEventListener(themeChangeEvent, handleChange);
+
+  return () => {
+    window.removeEventListener("storage", handleChange);
+    window.removeEventListener(themeChangeEvent, handleChange);
+  };
+}
+
 export default function Home() {
 
   const toast = useToast();
@@ -83,6 +127,13 @@ export default function Home() {
 
   const [activeTool, setActiveTool] =
     useState<BottomTool | null>(null);
+
+  const theme =
+    useSyncExternalStore(
+      subscribeTheme,
+      getStoredTheme,
+      getServerTheme
+    );
 
   const [showAssetModal, setShowAssetModal] = useState(false);
 
@@ -337,6 +388,14 @@ export default function Home() {
   }, [refreshAll]);
 
   useEffect(() => {
+    document.documentElement.classList.toggle("light-theme", theme === "light");
+
+    return () => {
+      document.documentElement.classList.remove("light-theme");
+    };
+  }, [theme]);
+
+  useEffect(() => {
     const interval = setInterval(
       async () => {
         const createdCount = await generateDueRecurringExpenses();
@@ -497,6 +556,20 @@ export default function Home() {
     setActiveTool("income");
   }
 
+  function toggleTheme() {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const nextTheme =
+      theme === "dark"
+        ? "light"
+        : "dark";
+
+    window.localStorage.setItem(themeStorageKey, nextTheme);
+    window.dispatchEvent(new Event(themeChangeEvent));
+  }
+
   function openExpenseBreakdown() {
     setDrilldownMonth(selectedMonth);
     setDrilldownCategoryKey(null);
@@ -559,11 +632,10 @@ export default function Home() {
     >
 
       <div
-        className="
-          min-h-screen
-          app-background
-          text-white
-        "
+        className={cn(
+          "min-h-screen app-background text-white",
+          theme === "light" && "light-theme"
+        )}
       >
 
         <main
@@ -809,6 +881,8 @@ export default function Home() {
         <BottomActionBar
           activeTool={activeTool}
           onToggle={toggleTool}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
 
       </div>
