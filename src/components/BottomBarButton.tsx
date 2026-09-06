@@ -1,10 +1,12 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 
 interface BottomBarButtonProps {
   active: boolean;
-  onClick: () => void;
+  onClick?: () => void;
+  href?: string;
   icon: LucideIcon;
   label: string;
   description: string;
@@ -13,15 +15,12 @@ interface BottomBarButtonProps {
 export default function BottomBarButton({
   active,
   onClick,
+  href,
   icon: Icon,
   label,
   description,
 }: BottomBarButtonProps) {
-  return (
-    <button
-      onClick={onClick}
-      aria-pressed={active}
-      className={`
+  const className = `
         bottom-bar-button
         ${active ? "bottom-bar-button-active" : "bottom-bar-button-idle"}
         min-h-16
@@ -39,8 +38,10 @@ export default function BottomBarButton({
             ? "border-white/90 bg-white text-black shadow-[0_0_28px_rgba(255,255,255,0.2)]"
             : "glass-surface border-white/10 text-white"
         }
-      `}
-    >
+      `;
+
+  const content = (
+    <>
       <div
         className="
           flex
@@ -86,6 +87,29 @@ export default function BottomBarButton({
       >
         {description}
       </p>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        aria-current={active ? "page" : undefined}
+        className={className}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={className}
+    >
+      {content}
     </button>
   );
 }

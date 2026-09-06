@@ -11,6 +11,7 @@ import {
   Settings,
   Sparkles,
   Sun,
+  Target,
 } from "lucide-react";
 
 import BottomBarButton from "@/components/BottomBarButton";
@@ -98,13 +99,21 @@ export default function BottomActionBar({
             )}
 
             {isSettingsOpen && (
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <BottomBarButton
                   active={theme === "light"}
                   onClick={onToggleTheme}
                   icon={theme === "dark" ? Moon : Sun}
                   label="Theme"
                   description={theme === "dark" ? "Dark" : "Light"}
+                />
+
+                <BottomBarButton
+                  active={false}
+                  href="/savings-goals"
+                  icon={Target}
+                  label="Goals"
+                  description="Predict"
                 />
               </div>
             )}

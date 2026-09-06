@@ -5,7 +5,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  useSyncExternalStore,
   type FocusEvent,
 } from "react";
 
@@ -44,6 +43,7 @@ import useMonthOptions from "../hooks/useMonthOptions";
 import useMonthlySeries from "../hooks/useMonthlySeries";
 import useRecurringExpenses from "../hooks/useRecurringExpenses";
 import useSavedNotes from "../hooks/useSavedNotes";
+import useThemePreference from "../hooks/useThemePreference";
 import type { Currency } from "../types/currency";
 import type { Expense } from "../types/expense";
 import type { Income } from "../types/income";
@@ -60,49 +60,6 @@ const fullAIExportOptions = {
   includeCategories:true,
   includeAIPrompt:true,
 };
-
-type AppTheme =
-  | "dark"
-  | "light";
-
-const themeStorageKey =
-  "expense-tracker-theme";
-
-const themeChangeEvent =
-  "expense-tracker-theme-change";
-
-function getStoredTheme(): AppTheme {
-  if (typeof window === "undefined") {
-    return "dark";
-  }
-
-  return window.localStorage.getItem(themeStorageKey) === "light"
-    ? "light"
-    : "dark";
-}
-
-function getServerTheme(): AppTheme {
-  return "dark";
-}
-
-function subscribeTheme(
-  callback: () => void
-) {
-  if (typeof window === "undefined") {
-    return () => {};
-  }
-
-  const handleChange =
-    () => callback();
-
-  window.addEventListener("storage", handleChange);
-  window.addEventListener(themeChangeEvent, handleChange);
-
-  return () => {
-    window.removeEventListener("storage", handleChange);
-    window.removeEventListener(themeChangeEvent, handleChange);
-  };
-}
 
 export default function Home() {
 
@@ -128,12 +85,10 @@ export default function Home() {
   const [activeTool, setActiveTool] =
     useState<BottomTool | null>(null);
 
-  const theme =
-    useSyncExternalStore(
-      subscribeTheme,
-      getStoredTheme,
-      getServerTheme
-    );
+  const {
+    theme,
+    toggleTheme,
+  } = useThemePreference();
 
   const [showAssetModal, setShowAssetModal] = useState(false);
 
@@ -554,20 +509,6 @@ export default function Home() {
     setShowIncomeList(true);
     setShowIncomeForm(true);
     setActiveTool("income");
-  }
-
-  function toggleTheme() {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const nextTheme =
-      theme === "dark"
-        ? "light"
-        : "dark";
-
-    window.localStorage.setItem(themeStorageKey, nextTheme);
-    window.dispatchEvent(new Event(themeChangeEvent));
   }
 
   function openExpenseBreakdown() {
