@@ -6,7 +6,8 @@ Personal finance dashboard for monthly income, spending, balance, assets, analyt
 
 - UI rules live in [UI_README.md](./UI_README.md).
 - Main user flow lives on `/`.
-- Bottom tools are required: Add Expense, Repeat Monthly, Category CRUD, and Records History.
+- Bottom tools are required: Add Expense, Repeat Monthly, Category CRUD, Records History, and Pay Later / Installments.
+- Expanded Action tools allow at most four buttons per row on every screen size. The first four stay in the bottom tool row; additional buttons fill new rows above, while Action and Settings remain anchored at the bottom.
 - Monthly Income opens income management by clicking the amount.
 - Total Spending opens spending drilldown by clicking the amount.
 - Total Assets opens asset details by clicking the card.

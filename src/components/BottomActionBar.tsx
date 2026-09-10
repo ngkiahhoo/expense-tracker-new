@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import {
   CalendarSync,
+  CalendarClock,
   ClipboardList,
   FolderTree,
   Moon,
@@ -19,9 +20,26 @@ import BottomBarButton from "@/components/BottomBarButton";
 export type BottomTool =
   | "expense"
   | "recurring"
+  | "payments"
   | "categories"
   | "records"
   | "income";
+
+const ACTION_BUTTONS_PER_ROW = 4;
+
+const actionTools = [
+  { tool: "expense", icon: Plus, label: "Add", description: "Expense" },
+  { tool: "recurring", icon: CalendarSync, label: "Repeat", description: "Monthly" },
+  { tool: "categories", icon: FolderTree, label: "Cat", description: "CRUD" },
+  { tool: "records", icon: ClipboardList, label: "Records", description: "History" },
+  { tool: "payments", icon: CalendarClock, label: "Pay Later", description: "Installments" },
+] as const;
+
+// Append new tools; each group of four adds a row above the existing tool rows.
+const actionRows = Array.from(
+  { length: Math.ceil(actionTools.length / ACTION_BUTTONS_PER_ROW) },
+  (_, row) => actionTools.slice(row * ACTION_BUTTONS_PER_ROW, (row + 1) * ACTION_BUTTONS_PER_ROW)
+).reverse();
 
 interface BottomActionBarProps {
   activeTool:BottomTool | null;
@@ -63,38 +81,24 @@ export default function BottomActionBar({
         >
           <div className="min-h-0 overflow-hidden">
             {isActionsOpen && (
-              <div className="grid grid-cols-4 gap-2">
-                <BottomBarButton
-                  active={activeTool === "expense"}
-                  onClick={() => onToggle("expense")}
-                  icon={Plus}
-                  label="Add"
-                  description="Expense"
-                />
-
-                <BottomBarButton
-                  active={activeTool === "recurring"}
-                  onClick={() => onToggle("recurring")}
-                  icon={CalendarSync}
-                  label="Repeat"
-                  description="Monthly"
-                />
-
-                <BottomBarButton
-                  active={activeTool === "categories"}
-                  onClick={() => onToggle("categories")}
-                  icon={FolderTree}
-                  label="Cat"
-                  description="CRUD"
-                />
-
-                <BottomBarButton
-                  active={activeTool === "records"}
-                  onClick={() => onToggle("records")}
-                  icon={ClipboardList}
-                  label="Records"
-                  description="History"
-                />
+              <div className="flex flex-col gap-2">
+                {actionRows.map(row => (
+                  <div key={row[0].tool} className="grid grid-cols-4 gap-2">
+                    {row.map(({ tool, icon, label, description }) => (
+                      <BottomBarButton
+                        key={tool}
+                        active={activeTool === tool}
+                        onClick={() => {
+                          onToggle(tool);
+                          if (tool === "payments") setActiveMenu(null);
+                        }}
+                        icon={icon}
+                        label={label}
+                        description={description}
+                      />
+                    ))}
+                  </div>
+                ))}
               </div>
             )}
 

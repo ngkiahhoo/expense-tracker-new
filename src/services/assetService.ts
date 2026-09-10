@@ -73,6 +73,15 @@ export async function adjustMainAssetValue(delta: number, currency: Currency = D
 
   const targetCurrency = normalizeCurrency(currency);
 
+  // Increment in the database so a simultaneous scheduled payment cannot be overwritten.
+  const { error: atomicError } = await supabase.rpc("adjust_main_asset_balance", {
+    p_currency: targetCurrency,
+    p_delta: delta,
+  });
+  if (!atomicError) return null;
+  // Preserve compatibility until the payment-plan migration is installed.
+  if (atomicError.code !== "PGRST202") return atomicError;
+
   const { data, error } = await supabase
     .from("assets")
     .select("*")

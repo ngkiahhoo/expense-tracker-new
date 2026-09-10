@@ -93,3 +93,10 @@ Dashboard 上的信息区块如果内容较长，例如 `Spending Breakdown`、`
 - 展开内容和 header 之间使用稳定间距，例如 `mt-5`。
 - 如果原本一个卡片里包含两个不同 section，要拆成两张独立卡片，不要用一条 border 分隔在同一张卡片里。
 - 每张卡片只负责一个主题：一个标题、一个折叠状态、一组细节内容。
+
+## 6. Action 展开按钮排列
+
+- `BottomActionBar` 展开的工具按钮在手机和桌面上，每行最多四个。
+- 前四个按钮固定在最下面的工具行，位于 Action / Settings 上方；新增按钮按每四个一组，继续向上增加新行。
+- Action / Settings 保持固定在底部，不随新增工具按钮移动。
+- 必须保留 Add Expense、Repeat Monthly、Category CRUD、Records History 和 Pay Later / Installments 工具。

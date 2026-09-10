@@ -95,7 +95,9 @@ export async function updateExpense(
   if (!error) {
     try {
       const { adjustMainAssetValue } = await import("./assetService");
-      if (prevCurrency === newCurrency) {
+      if (existingExpense.payment_installment_id) {
+        // The database trigger adjusts the original asset in the same transaction.
+      } else if (prevCurrency === newCurrency) {
         await adjustMainAssetValue(delta, newCurrency);
       } else {
         await adjustMainAssetValue(prevAmount, prevCurrency);
@@ -133,7 +135,9 @@ export async function removeExpense(id: number) {
   if (!error && prevAmount !== 0) {
     try {
       const { adjustMainAssetValue } = await import("./assetService");
-      await adjustMainAssetValue(prevAmount, prevCurrency);
+      if (!existingExpense.payment_installment_id) {
+        await adjustMainAssetValue(prevAmount, prevCurrency);
+      }
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("asset:updated"));
       }
@@ -150,13 +154,14 @@ export async function removeExpensesByMonth(selectedMonth: string) {
 
   const { data: existing, error: fetchErr } = await supabase
     .from("expenses")
-    .select("amount,currency")
+    .select("*")
     .gte("expense_date", start)
     .lte("expense_date", end);
 
   if (fetchErr) return fetchErr;
 
-  const removedTotals = (existing || []).reduce((totals, expense) => {
+  const removedTotals = ((existing || []) as Expense[]).reduce((totals, expense) => {
+    if (expense.payment_installment_id) return totals;
     const currency = normalizeCurrency(expense.currency);
     totals[currency] += Number(expense.amount || 0);
     return totals;

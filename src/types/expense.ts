@@ -17,6 +17,7 @@ export interface Expense {
   category_id:number;
 
   recurring_expense_id?: number;
+  payment_installment_id?: number | null;
 
   categories?:Category;
 }

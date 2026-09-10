@@ -30,6 +30,8 @@ import IncomePanel from "../components/IncomePanel";
 import MetricCard from "../components/MetricCard";
 import QuickActionSheet from "../components/QuickActionSheet";
 import RecurringExpensePanel from "../components/RecurringExpensePanel";
+import PaymentPlanPanel from "../components/PaymentPlanPanel";
+import usePaymentPlans from "../hooks/usePaymentPlans";
 import CategoryExpenseSheet from "../components/features/analytics/CategoryExpenseSheet";
 import useAIExport from "../hooks/useAIExport";
 import useAnalytics from "../hooks/useAnalytics";
@@ -270,6 +272,11 @@ export default function Home() {
   );
 
   const assets = useAssets(selectedMonth);
+
+  const refreshPaymentTransactions = useCallback(async () => {
+    await Promise.all([fetchExpenses(), fetchDashboardHistory()]);
+  }, [fetchExpenses, fetchDashboardHistory]);
+  const payments = usePaymentPlans(refreshPaymentTransactions);
 
   const activeCurrencyAssets = useMemo(
     () => (assets.assets || []).filter((asset) => normalizeCurrency(asset.currency) === activeCurrency),
@@ -556,6 +563,8 @@ export default function Home() {
       ? incomeEditingId
         ? "Edit Income"
         : "Income CRUD"
+      : activeTool === "payments"
+      ? "Pay Later & Installments"
       : activeTool === "categories"
       ? "Category CRUD"
       : "Expense Records";
@@ -722,6 +731,20 @@ export default function Home() {
                     updateSavedNote={updateSavedNote}
                     deleteSavedNote={deleteSavedNote}
                   />
+            )}
+
+            {activeTool === "payments" && (
+              <PaymentPlanPanel
+                key={activeCurrency}
+                plans={payments.plans}
+                names={payments.names}
+                categories={categories}
+                currency={activeCurrency}
+                mainBalance={activeCurrencyAssets.find(asset => asset.is_main)?.current_value == null ? null : Number(activeCurrencyAssets.find(asset => asset.is_main)?.current_value)}
+                error={payments.error}
+                loading={payments.loading}
+                refresh={payments.refresh}
+              />
             )}
 
             {activeTool === "recurring" && (
