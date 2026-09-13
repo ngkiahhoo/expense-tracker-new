@@ -6,6 +6,7 @@ import {
   CalendarSync,
   CalendarClock,
   ClipboardList,
+  Compass,
   FolderTree,
   Moon,
   Plus,
@@ -103,7 +104,7 @@ export default function BottomActionBar({
             )}
 
             {isSettingsOpen && (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <BottomBarButton
                   active={theme === "light"}
                   onClick={onToggleTheme}
@@ -118,6 +119,13 @@ export default function BottomActionBar({
                   icon={Target}
                   label="Goals"
                   description="Predict"
+                />
+                <BottomBarButton
+                  active={false}
+                  href="/life-scenarios"
+                  icon={Compass}
+                  label="Life Plans"
+                  description="Scenarios"
                 />
               </div>
             )}

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit --pretty false",
-    "test": "node scripts/ai-check.mjs"
+    "test": "node scripts/ai-check.mjs",
+    "test:scenarios": "node scripts/life-scenario-check.mjs && node scripts/future-expense-check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",
