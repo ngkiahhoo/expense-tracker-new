@@ -4,11 +4,13 @@ import { supabase } from "../lib/supabase";
 import type { Asset } from "../types/asset";
 import type { Expense } from "../types/expense";
 import type { Income } from "../types/income";
+import type { PaymentPlan } from "../types/paymentPlan";
 import { addMonths } from "../utils/expenseMath";
 
 export default function useGoalProjectionData(today: string) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [history, setHistory] = useState<{ expenses: Expense[]; incomes: Income[] } | null>(null);
+  const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [historyError, setHistoryError] = useState("");
@@ -27,6 +29,10 @@ export default function useGoalProjectionData(today: string) {
     }
     async function refresh() {
       const id = ++request;
+      try {
+        const payments = await supabase.from("payment_plans").select("*, payment_installments(*)");
+        if (!payments.error && alive && id === request) setPaymentPlans((payments.data || []) as PaymentPlan[]);
+      } catch { /* Payment plans are optional until their migration is installed. */ }
       try {
         const rows: Asset[] = [];
         for (let offset = 0; ; offset += 500) {
@@ -56,5 +62,5 @@ export default function useGoalProjectionData(today: string) {
     const timer = window.setInterval(refresh, 30000);
     return () => { alive = false; clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("asset:updated", refresh); window.removeEventListener("transactions:changed", refresh); };
   }, [today, retryCount]);
-  return { assets, history, loading, error, historyError, retry: () => setRetryCount(count => count + 1) };
+  return { assets, history, paymentPlans, loading, error, historyError, retry: () => setRetryCount(count => count + 1) };
 }

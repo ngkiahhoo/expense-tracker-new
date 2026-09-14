@@ -138,8 +138,11 @@ export default function PaymentPlanPanel({ plans, names, categories, currency, m
       {group.plans.map(plan => {
       const items = [...plan.payment_installments].sort((a, b) => a.sequence - b.sequence);
       const scheduled = items.filter(i => i.status === 'scheduled');
+      const installmentAmount = Number(items[0]?.amount || 0);
       return <details key={plan.id} className="border-t border-white/10 py-3">
         <summary className="cursor-pointer"><span className="font-medium">{items.length === 1 ? 'Pay Later' : `${items.length}-month installment`} · {items[0]?.due_date} · {money(items.reduce((sum, item) => sum + Number(item.amount), 0))}</span><span className="block text-xs text-zinc-400">{items.filter(i => i.status === 'posted').length}/{items.length} posted · {scheduled.length ? `${money(scheduled.reduce((sum, i) => sum + Number(i.amount), 0))} remaining` : items.every(i => i.status === 'posted') ? 'Completed' : 'Closed'}</span></summary>
+        <p className="mt-2 text-sm font-medium">{plan.name} — {money(installmentAmount)} × {items.length} months — {scheduled.length} payment{scheduled.length === 1 ? '' : 's'} remaining</p>
+        <p className="text-xs text-zinc-400">Remaining balance: {money(scheduled.reduce((sum, item) => sum + Number(item.amount), 0))}{scheduled.length ? ` · Due ${scheduled[0].due_date} to ${scheduled.at(-1)?.due_date}` : ''}</p>
         {items.map(item => <div key={item.id} className="space-y-2 border-t border-white/10 py-3 text-sm">
           <div className="flex justify-between gap-2"><span>#{item.sequence} · {item.due_date}<br /><span className="text-xs text-zinc-400">{item.status === 'scheduled' ? 'Scheduled' : item.status === 'posted' ? 'Posted' : item.status === 'reversed' ? 'Reversed' : 'Cancelled'}</span></span><span>{money(Number(item.amount))}</span></div>
           {item.status === 'posted' && <p className="text-xs text-zinc-400">Edit or delete in Expense Records. Deleting restores the original asset balance and reverses this payment.</p>}

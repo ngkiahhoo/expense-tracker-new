@@ -68,12 +68,13 @@ export function formatAIExport(
   incomes:Income[],
   categories:Category[],
   monthlySummaries:MonthlySummary[],
+  planningAndEvents:Record<string, unknown>,
   options:ExportOptions
 ) {
   const parts:string[] = [];
 
   parts.push("=== EXPORT CONTEXT ===\n");
-  parts.push("Current app data export for AI analysis. It includes the current asset snapshot plus income, expense, monthly summary, and category records for the selected range.\n\n");
+  parts.push("Current app data export for AI analysis. It includes assets, transactions, categories, monthly summaries, living-cost plans, savings goals, financial events, saved notes, recurring expenses, and payment plans.\n\n");
 
   if (options.includeAssets) {
     parts.push("=== ASSETS CSV ===\n");
@@ -208,10 +209,15 @@ export function formatAIExport(
     parts.push("\n");
   }
 
+  parts.push("=== PLANS, GOALS, EVENTS, NOTES AND SCHEDULES JSON ===\n");
+  parts.push("Payment installments include amount, sequence, due_date and status. Treat scheduled installments as dated temporary commitments, not permanent living costs.\n");
+  parts.push(JSON.stringify(planningAndEvents, null, 2));
+  parts.push("\n\n");
+
   if (options.includeAIPrompt) {
     parts.push("=== AI ANALYSIS PROMPT ===\n\n");
     parts.push(
-      "Analyze my personal finance data using the provided export, then write the analysis in Chinese.\n\nThe export may include:\n- ASSETS CSV: current asset balances, currencies, main asset flags, notes, and update times.\n- INCOMES CSV: income records in the selected range.\n- EXPENSES CSV: expense records with category and needs/commitment/wants type data.\n- MONTHLY SUMMARY CSV: income, expense, balance, saving rate, spending ratios, and transaction count by month/currency.\n- CATEGORIES CSV: available category/type mapping.\n\nPlease provide:\n\n1. Asset overview and liquidity/cash position\n2. Income stability and main income patterns\n3. Spending trends by month and category\n4. Needs, commitment, and wants ratio evaluation\n5. Monthly balance and saving rate analysis\n6. Relationship between income, expenses, and current asset balances\n7. Unusual or risky spending patterns\n8. Budgeting and cashflow suggestions\n9. Savings and emergency-fund observations\n10. Practical next actions for the coming month\n\nFocus on actionable insights and mention data limitations when a section has missing or insufficient records."
+      "Analyze my personal finance data using the provided export, then write the analysis in Chinese. Use the plans, goals, events, notes, recurring expenses and payment plans alongside the historical transactions. Treat scheduled payment installments as dated, temporary future commitments; report each plan's installment amount, total count, remaining count, remaining balance and due-date range. Explain how planned cash flow and future events affect each goal, call out currency and data limitations, then provide practical next actions."
     );
     parts.push("\n\n");
   }

@@ -8,6 +8,7 @@ import {
   CalendarClock,
   CalendarRange,
   ClipboardList,
+  Download,
   FolderTree,
   Moon,
   Plus,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 
 import BottomBarButton from "@/components/BottomBarButton";
+import { createSupabaseBackup, downloadSupabaseBackup } from "@/utils/supabaseBackup";
 
 export type BottomTool =
   "expense" | "recurring" | "payments" | "categories" | "records" | "income";
@@ -64,6 +66,17 @@ export default function BottomActionBar({
   const isActionsOpen = activeMenu === "actions";
 
   const isSettingsOpen = activeMenu === "settings";
+  const [backupStatus, setBackupStatus] = useState("");
+
+  async function exportAllData() {
+    setBackupStatus("Exporting…");
+    try {
+      downloadSupabaseBackup(await createSupabaseBackup());
+      setBackupStatus("Backup downloaded");
+    } catch (cause) {
+      setBackupStatus(cause instanceof Error ? cause.message : "Backup failed.");
+    }
+  }
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bottom-glow-bar px-3 pb-[env(safe-area-inset-bottom)] lg:px-6">
@@ -155,6 +168,13 @@ export default function BottomActionBar({
                   icon={CalendarRange}
                   label="Events"
                 />
+                <BottomBarButton
+                  active={false}
+                  onClick={() => void exportAllData()}
+                  icon={Download}
+                  label={backupStatus === "Exporting…" ? "Exporting…" : "Export all data"}
+                />
+                {backupStatus && backupStatus !== "Exporting…" && <p role="status" className="col-span-2 rounded-xl bg-black/40 px-3 py-2 text-xs text-zinc-300">{backupStatus}</p>}
               </div>
             )}
           </div>

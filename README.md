@@ -18,6 +18,8 @@ All user-created product data is persisted in Supabase. This includes bookkeepin
 
 Before deploying, run the SQL files in [`supabase/`](./supabase/), including [`cloud_feature_workspaces.sql`](./supabase/cloud_feature_workspaces.sql). The application is account-free today, so these workspaces are shared by the configured Supabase project.
 
+Settings → **Export all data** downloads a `.sql` file. It creates every current `public` table, restores all rows, recreates constraints, and resets serial sequences. Paste the file into the Supabase SQL Editor of an empty project and run it.
+
 ## Commands
 
 ```bash

@@ -10,6 +10,7 @@ import {
   fetchCategories,
   fetchExpensesRange,
   fetchIncomesRange,
+  fetchPlanningAndEventData,
 } from "../services/exportService";
 import {
   formatAIExport,
@@ -76,11 +77,12 @@ export default function useAIExport() {
 
     try {
       const { start, end } = rangeToDates(range);
-      const [assets, expenses, incomes, categories] = await Promise.all([
+      const [assets, expenses, incomes, categories, planningAndEvents] = await Promise.all([
         fetchAssets(),
         fetchExpensesRange(start, end),
         fetchIncomesRange(start, end),
         fetchCategories(),
+        fetchPlanningAndEventData(),
       ]);
 
       // Build monthly summaries
@@ -172,6 +174,7 @@ export default function useAIExport() {
         incomes,
         categories,
         monthlySummaries,
+        planningAndEvents,
         {
           includeAssets: options.includeAssets,
           includeIncomes: options.includeIncomes,

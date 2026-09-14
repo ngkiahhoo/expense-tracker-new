@@ -48,7 +48,7 @@ export default function SavingsGoalsPage() {
   const [error, setError] = useState("");
   const goal = goals.find(g => g.id === selected) ?? goals[0];
   const blocked = data.loading || !!data.error || plans.loading || !!plans.storageError || !hierarchy.data || !!hierarchy.error;
-  const result = goal && !blocked ? projectGoal(goal, data.assets, library, today) : null;
+  const result = goal && !blocked ? projectGoal(goal, data.assets, library, today, data.paymentPlans) : null;
   const money = (amount: number) => formatCurrencyAmount(amount, goal?.currency ?? "MYR");
   const milestones = goal && result?.current !== null && result?.current !== undefined && !result.errors.length ? goalMilestones(result.current, goal.targetAmount, result.saving, result.projectionStart ?? today) : [];
   const actual = goal && data.history ? actualSavingCheck(data.history.expenses, data.history.incomes, goal.currency, today) : null;
@@ -124,6 +124,7 @@ export default function SavingsGoalsPage() {
           {result?.errors.map(message => <p role="alert" key={message}>{message}</p>)}
           {!result?.errors.length && result?.timeline && <>
             {result.projectionStart && <p className="text-sm text-slate-400">First projected income and saving: {displayDate(result.projectionStart)}</p>}
+            {!!result.scheduledCommitments.length && <p className="text-sm text-amber-300">Scheduled payment commitments: {result.scheduledCommitments.map(item => `${item.month} ${money(item.amount)}`).join(" · ")}</p>}
             <dl className="grid gap-4 sm:grid-cols-3"><Stat label="Remaining">{money(result.timeline.remaining)}</Stat>{result.timeline.state === "growing" && <><Stat label="Estimated Goal Date">{displayDate(result.timeline.date)}</Stat><Stat label="Estimated Time">{result.timeline.months!.toFixed(1)} months</Stat></>}</dl>
             {result.timeline.state === "reached" ? <p className="text-xl font-semibold text-teal-500">Goal reached</p> : !result.plan ? <p>Select a Living Cost Plan to calculate your projection.</p> : result.timeline.state === "stalled" ? <p>No progress under this plan. Income equals expenses.</p> : result.timeline.state === "deficit" ? <div><p>Goal cannot be reached under this plan.</p><p>Monthly deficit: {money(-result.saving!)}. Assets are decreasing by {money(-result.saving!)} / month.</p></div> : !result.timeline.date ? <p>The estimated date is beyond the supported calendar range.</p> : null}
           </>}

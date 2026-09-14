@@ -2,6 +2,7 @@
 
 import {
   Suspense,
+  useEffect,
   useState,
   type Dispatch,
   type ReactNode,
@@ -10,7 +11,7 @@ import {
 import { ChevronDown, Pencil, Plus, Save, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import useBookkeepingHierarchy from "@/hooks/useBookkeepingHierarchy";
-import { withBookkeepingHierarchy } from "@/utils/bookkeepingExpenseHierarchy";
+import { reconcileBookkeepingDuplicates, withoutBookkeepingHierarchy, withBookkeepingHierarchy } from "@/utils/bookkeepingExpenseHierarchy";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea } from "@/components/ui/Field";
 import OverlayPortal from "@/components/ui/OverlayPortal";
@@ -83,9 +84,16 @@ function LivingPlanEditor() {
     downloadBackup,
   } = useFutureExpensePlans();
   const bookkeeping = useBookkeepingHierarchy();
+  const reconciledLibrary = bookkeeping.data
+    ? reconcileBookkeepingDuplicates(savedLibrary, bookkeeping.data.types, bookkeeping.data.categories)
+    : savedLibrary;
+  useEffect(() => {
+    if (!bookkeeping.data || JSON.stringify(savedLibrary) === JSON.stringify(reconciledLibrary)) return;
+    try { saveLibrary(reconciledLibrary); } catch { /* Surface existing cloud error in the editor. */ }
+  }, [bookkeeping.data, reconciledLibrary, saveLibrary, savedLibrary]);
   const library = bookkeeping.data
     ? withBookkeepingHierarchy(
-        savedLibrary,
+        reconciledLibrary,
         bookkeeping.data.types,
         bookkeeping.data.categories,
       )
@@ -135,7 +143,7 @@ function LivingPlanEditor() {
       return false;
     }
     try {
-      saveLibrary(next);
+      saveLibrary(withoutBookkeepingHierarchy(next));
       setError("");
       return true;
     } catch (cause) {

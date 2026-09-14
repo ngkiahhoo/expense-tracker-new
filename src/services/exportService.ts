@@ -65,3 +65,14 @@ export async function fetchCategories() {
   return (data || []) as unknown as Category[];
 }
 
+export async function fetchPlanningAndEventData() {
+  const tables = ["future_expense_workspace", "cloud_feature_workspaces", "recurring_expenses", "payment_plans", "payment_installments", "payment_names"];
+  const optionalTables = new Set(["recurring_expenses", "payment_plans", "payment_installments", "payment_names"]);
+  const results = await Promise.all(tables.map(async (table) => {
+    const { data, error } = await supabase.from(table).select("*");
+    if (error && !optionalTables.has(table)) throw new Error(`Could not export ${table}: ${error.message}`);
+    return [table, error ? { unavailable: error.message } : data || []] as const;
+  }));
+  return Object.fromEntries(results);
+}
+

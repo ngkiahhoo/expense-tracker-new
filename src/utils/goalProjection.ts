@@ -3,6 +3,7 @@ import type { Currency } from "../types/currency";
 import type { FutureExpenseLibrary } from "../types/futureExpense";
 import type { Expense } from "../types/expense";
 import type { Income } from "../types/income";
+import type { PaymentPlan } from "../types/paymentPlan";
 import { livingPlanCashFlow } from "./livingExpense";
 import { addMonths, validDate } from "./expenseMath";
 
@@ -41,7 +42,37 @@ export function savingTimeline(current: number, target: number, saving: number |
   return { remaining, state, months, date: months === null ? null : dateAfterMonths(today, months) };
 }
 
-export function projectGoal(goal: GoalInput, assets: Asset[], library: FutureExpenseLibrary, today: string) {
+function scheduledCommitments(plans: PaymentPlan[], currency: Currency, start: string) {
+  const byMonth = new Map<string, number>();
+  for (const plan of plans) {
+    if (plan.currency !== currency) continue;
+    for (const installment of plan.payment_installments) {
+      if (installment.status !== "scheduled" || installment.due_date < start) continue;
+      const month = installment.due_date.slice(0, 7);
+      byMonth.set(month, (byMonth.get(month) || 0) + Number(installment.amount));
+    }
+  }
+  return [...byMonth].map(([month, amount]) => ({ month, amount: round(amount) })).sort((a, b) => a.month.localeCompare(b.month));
+}
+
+function savingTimelineWithCommitments(current: number, target: number, saving: number | null, start: string, commitments: { month: string; amount: number }[]) {
+  if (saving === null || current >= target || commitments.length === 0) return savingTimeline(current, target, saving, start);
+  const byMonth = new Map(commitments.map(item => [item.month, item.amount]));
+  let balance = current;
+  for (let monthIndex = 0; monthIndex < 1200; monthIndex++) {
+    const date = addMonths(start, monthIndex);
+    const monthSaving = saving - (byMonth.get(date.slice(0, 7)) || 0);
+    if (monthSaving > 0 && balance + monthSaving >= target) {
+      const fraction = (target - balance) / monthSaving;
+      return { remaining: Math.max(0, round(target - current)), state: "growing", months: monthIndex + fraction, date: dateAfterMonths(date, fraction) };
+    }
+    balance += monthSaving;
+  }
+  const remaining = Math.max(0, round(target - current));
+  return { remaining, state: saving <= 0 ? "deficit" : "growing", months: null, date: null };
+}
+
+export function projectGoal(goal: GoalInput, assets: Asset[], library: FutureExpenseLibrary, today: string, paymentPlans: PaymentPlan[] = []) {
   const errors: string[] = [];
   const included = assets.filter(a => goal.includedAssetIds.includes(a.id));
   if (new Set(included.map(a => a.id)).size !== new Set(goal.includedAssetIds).size) errors.push("An included asset is no longer available. Review included assets.");
@@ -56,13 +87,14 @@ export function projectGoal(goal: GoalInput, assets: Asset[], library: FutureExp
   if (cashFlow) errors.push(...cashFlow.errors);
   const saving = errors.length ? null : cashFlow?.saving ?? null;
   const projectionStart = nextProjectionDate(today);
-  const timeline = current === null ? null : savingTimeline(current, goal.targetAmount, saving, projectionStart ?? today);
+  const commitments = projectionStart ? scheduledCommitments(paymentPlans, goal.currency, projectionStart) : [];
+  const timeline = current === null ? null : savingTimelineWithCommitments(current, goal.targetAmount, saving, projectionStart ?? today, commitments);
   const targetMonths = goal.targetDate && projectionStart ? monthsUntil(projectionStart, goal.targetDate) : null;
   if (goal.targetDate && targetMonths === null) errors.push("Enter a valid target date.");
   const required = timeline && targetMonths !== null && targetMonths > 0 ? timeline.remaining / targetMonths : null;
   const difference = required === null || saving === null ? null : saving - required;
   const paceStatus = difference === null ? null : Math.abs(difference) < 0.01 ? "On Track" : difference > 0 ? "Ahead of Plan" : "Behind Plan";
-  return { current, plan, cashFlow, saving, timeline, errors, targetMonths, required, difference, paceStatus, projectionStart, progress: current === null ? null : Math.max(0, Math.min(100, current / goal.targetAmount * 100)) };
+  return { current, plan, cashFlow, saving, timeline, errors, targetMonths, required, difference, paceStatus, projectionStart, scheduledCommitments: commitments, progress: current === null ? null : Math.max(0, Math.min(100, current / goal.targetAmount * 100)) };
 }
 
 export function goalMilestones(current: number, target: number, saving: number | null, today: string) {
