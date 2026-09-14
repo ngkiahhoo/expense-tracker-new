@@ -1,10 +1,7 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { useCallback } from "react";
+import useCloudFeatureWorkspace from "@/hooks/useCloudFeatureWorkspace";
 
 export interface SavedNote {
   id: string;
@@ -13,141 +10,40 @@ export interface SavedNote {
   updatedAt: string;
 }
 
-const STORAGE_KEY =
-  "expense-tracker-saved-notes";
-
-function normalizeNote(
-  content: string
-) {
-  return content
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function createId() {
-  if (
-    typeof crypto !== "undefined" &&
-    "randomUUID" in crypto
-  ) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}`;
-}
+const storageKey = "expense-tracker-saved-notes";
+const normalizeContent = (content: string) => content.trim().replace(/\s+/g, " ");
+const normalize = (value: unknown): SavedNote[] => Array.isArray(value)
+  ? value.flatMap((item): SavedNote[] => {
+      if (!item || typeof item !== "object") return [];
+      const note = item as Record<string, unknown>;
+      const content = typeof note.content === "string" ? normalizeContent(note.content) : "";
+      return typeof note.id === "string" && content && typeof note.createdAt === "string" && typeof note.updatedAt === "string"
+        ? [{ id: note.id, content, createdAt: note.createdAt, updatedAt: note.updatedAt }]
+        : [];
+    })
+  : [];
+const isEmpty = (notes: SavedNote[]) => notes.length === 0;
+const createId = () => typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now());
 
 export default function useSavedNotes() {
-  const [savedNotes, setSavedNotes] =
-    useState<SavedNote[]>(() => {
-      if (typeof window === "undefined") {
-        return [];
-      }
-
-      const stored =
-        window.localStorage.getItem(
-          STORAGE_KEY
-        );
-
-      if (!stored) {
-        return [];
-      }
-
-      try {
-        const parsed =
-          JSON.parse(stored) as SavedNote[];
-
-        return Array.isArray(parsed)
-          ? parsed
-          : [];
-      } catch {
-        return [];
-      }
-    });
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(savedNotes)
-    );
-  }, [savedNotes]);
-
-  const addSavedNote =
-    useCallback((content: string) => {
-      const normalized =
-        normalizeNote(content);
-
-      if (!normalized) {
-        return;
-      }
-
-      setSavedNotes((current) => {
-        const exists =
-          current.some(
-            (item) =>
-              item.content.toLowerCase() ===
-              normalized.toLowerCase()
-          );
-
-        if (exists) {
-          return current;
-        }
-
-        const now =
-          new Date().toISOString();
-
-        return [
-          {
-            id: createId(),
-            content: normalized,
-            createdAt: now,
-            updatedAt: now,
-          },
-          ...current,
-        ];
-      });
-    }, []);
-
-  const updateSavedNote =
-    useCallback(
-      (
-        id: string,
-        content: string
-      ) => {
-        const normalized =
-          normalizeNote(content);
-
-        if (!normalized) {
-          return;
-        }
-
-        setSavedNotes((current) =>
-          current.map((item) =>
-            item.id === id
-              ? {
-                  ...item,
-                  content: normalized,
-                  updatedAt:
-                    new Date().toISOString(),
-                }
-              : item
-          )
-        );
-      },
-      []
-    );
-
-  const deleteSavedNote =
-    useCallback((id: string) => {
-      setSavedNotes((current) =>
-        current.filter(
-          (item) => item.id !== id
-        )
-      );
-    }, []);
-
-  return {
-    savedNotes,
-    addSavedNote,
-    updateSavedNote,
-    deleteSavedNote,
-  };
+  const workspace = useCloudFeatureWorkspace<SavedNote[]>({
+    key: "saved_notes",
+    initial: [],
+    normalize,
+    legacyKey: storageKey,
+    shouldImport: isEmpty,
+  });
+  const addSavedNote = useCallback((content: string) => {
+    const normalized = normalizeContent(content);
+    if (!normalized || workspace.value.some(note => note.content.toLowerCase() === normalized.toLowerCase())) return;
+    const now = new Date().toISOString();
+    workspace.save([{ id: createId(), content: normalized, createdAt: now, updatedAt: now }, ...workspace.value]);
+  }, [workspace]);
+  const updateSavedNote = useCallback((id: string, content: string) => {
+    const normalized = normalizeContent(content);
+    if (!normalized) return;
+    workspace.save(workspace.value.map(note => note.id === id ? { ...note, content: normalized, updatedAt: new Date().toISOString() } : note));
+  }, [workspace]);
+  const deleteSavedNote = useCallback((id: string) => workspace.save(workspace.value.filter(note => note.id !== id)), [workspace]);
+  return { savedNotes: workspace.value, addSavedNote, updateSavedNote, deleteSavedNote, storageError: workspace.storageError, loading: workspace.loading };
 }

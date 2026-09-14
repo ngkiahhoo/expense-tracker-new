@@ -28,6 +28,12 @@ export function monthsUntil(today: string, target: string): number | null {
   return whole + (Date.parse(target) - from) / (to - from);
 }
 
+/** Current balances already include this month; projected cash flow starts next month. */
+export function nextProjectionDate(today: string): string | null {
+  if (!validDate(today)) return null;
+  return addMonths(`${today.slice(0, 7)}-01`, 1);
+}
+
 export function savingTimeline(current: number, target: number, saving: number | null, today: string) {
   const remaining = Math.max(0, round(target - current));
   const state = remaining === 0 ? "reached" : saving === null ? "missing" : saving < 0 ? "deficit" : saving === 0 ? "stalled" : "growing";
@@ -49,13 +55,14 @@ export function projectGoal(goal: GoalInput, assets: Asset[], library: FutureExp
   if (plan && plan.currency !== goal.currency) errors.push(`Living Cost Plan must use ${goal.currency}. Currency conversion is not configured.`);
   if (cashFlow) errors.push(...cashFlow.errors);
   const saving = errors.length ? null : cashFlow?.saving ?? null;
-  const timeline = current === null ? null : savingTimeline(current, goal.targetAmount, saving, today);
-  const targetMonths = goal.targetDate ? monthsUntil(today, goal.targetDate) : null;
+  const projectionStart = nextProjectionDate(today);
+  const timeline = current === null ? null : savingTimeline(current, goal.targetAmount, saving, projectionStart ?? today);
+  const targetMonths = goal.targetDate && projectionStart ? monthsUntil(projectionStart, goal.targetDate) : null;
   if (goal.targetDate && targetMonths === null) errors.push("Enter a valid target date.");
   const required = timeline && targetMonths !== null && targetMonths > 0 ? timeline.remaining / targetMonths : null;
   const difference = required === null || saving === null ? null : saving - required;
   const paceStatus = difference === null ? null : Math.abs(difference) < 0.01 ? "On Track" : difference > 0 ? "Ahead of Plan" : "Behind Plan";
-  return { current, plan, cashFlow, saving, timeline, errors, targetMonths, required, difference, paceStatus, progress: current === null ? null : Math.max(0, Math.min(100, current / goal.targetAmount * 100)) };
+  return { current, plan, cashFlow, saving, timeline, errors, targetMonths, required, difference, paceStatus, projectionStart, progress: current === null ? null : Math.max(0, Math.min(100, current / goal.targetAmount * 100)) };
 }
 
 export function goalMilestones(current: number, target: number, saving: number | null, today: string) {

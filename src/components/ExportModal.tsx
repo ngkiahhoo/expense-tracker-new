@@ -1,5 +1,7 @@
 "use client";
 
+import OverlayPortal from "@/components/ui/OverlayPortal";
+
 import { useState } from "react";
 
 import ActionIconButton from "@/components/ui/ActionIconButton";
@@ -22,6 +24,7 @@ export default function ExportModal({
   const [copied, setCopied] = useState(false);
 
   return (
+    <OverlayPortal>
     <div
       className={overlayStyles.backdrop}
       onClick={onClose}
@@ -80,5 +83,6 @@ export default function ExportModal({
         </div>
       </Card>
     </div>
+    </OverlayPortal>
   );
 }

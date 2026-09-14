@@ -1,5 +1,7 @@
 "use client";
 
+import OverlayPortal from "@/components/ui/OverlayPortal";
+
 import type {
   FocusEventHandler,
   ReactNode,
@@ -27,14 +29,15 @@ export default function QuickActionSheet({
   widthClass,
 }:QuickActionSheetProps) {
   return (
+    <OverlayPortal>
     <div
       className={`
         fixed
         inset-x-0
-        bottom-24
+        bottom-[calc(6rem+env(safe-area-inset-bottom))]
         z-40
         px-4
-        md:bottom-28
+        md:bottom-[calc(7rem+env(safe-area-inset-bottom))]
         md:px-6
         lg:inset-x-auto
         lg:top-8
@@ -48,7 +51,7 @@ export default function QuickActionSheet({
     >
       <div
         className={cn(
-          "mx-auto max-h-[68vh] w-full max-w-md overflow-y-auto md:max-w-2xl md:max-h-[72vh] lg:max-w-none lg:max-h-full",
+          "mx-auto max-h-[min(68dvh,calc(100dvh-7rem-env(safe-area-inset-bottom)))] w-full max-w-md overflow-y-auto md:max-w-2xl md:max-h-[72vh] lg:max-w-none lg:max-h-full",
           overlayStyles.sheetPanel,
           "rounded-3xl"
         )}
@@ -77,5 +80,6 @@ export default function QuickActionSheet({
         </div>
       </div>
     </div>
+    </OverlayPortal>
   );
 }

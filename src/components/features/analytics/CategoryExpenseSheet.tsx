@@ -1,5 +1,7 @@
 "use client";
 
+import OverlayPortal from "@/components/ui/OverlayPortal";
+
 import {
   useState,
   type FocusEvent,
@@ -131,13 +133,14 @@ export default function CategoryExpenseSheet({
       : selectedCategoryName || "Expense records";
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-3 py-3 backdrop-blur-md sm:px-6" onClick={onClose}>
+    <OverlayPortal>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:px-6" onClick={onClose}>
       <div
-        className="glass-surface w-full max-w-3xl overflow-hidden rounded-[24px] border border-white/15 shadow-2xl"
+        className="glass-surface flex max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-full max-w-3xl flex-col overflow-hidden rounded-[24px] border border-white/15 shadow-2xl"
         onClick={(event) => event.stopPropagation()}
         onFocusCapture={handleDialogFocus}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-white/10 bg-black/35 p-4 backdrop-blur-xl">
+        <div className="shrink-0 flex items-center justify-between gap-3 border-b border-white/10 bg-black/35 p-4 backdrop-blur-xl">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
               {level === "types" ? "Expense analysis" : level === "categories" ? "Type details" : "Category details"}
@@ -167,8 +170,8 @@ export default function CategoryExpenseSheet({
           </div>
         </div>
 
-        <div className="space-y-4 p-4">
-          <div className="max-h-[68vh] space-y-3 overflow-y-auto pr-1">
+        <div className="min-h-0 overflow-y-auto overscroll-contain p-4">
+          <div className="space-y-3 pr-1">
             {level === "types" && (
               <>
                 {typeSummaries.length === 0 ? (
@@ -252,7 +255,7 @@ export default function CategoryExpenseSheet({
                             {expense.note || "Expense"}
                           </p>
                           <p className="mt-1 text-sm text-zinc-400">
-                            {expense.categories?.name || "Uncategorized"}
+                            {expense.categories?.name || categories.find(category => category.id === expense.category_id)?.name || "Uncategorized"}
                           </p>
                         </div>
 
@@ -298,5 +301,6 @@ export default function CategoryExpenseSheet({
         </div>
       </div>
     </div>
+    </OverlayPortal>
   );
 }

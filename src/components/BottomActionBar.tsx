@@ -6,6 +6,7 @@ import {
   Home,
   CalendarSync,
   CalendarClock,
+  CalendarRange,
   ClipboardList,
   FolderTree,
   Moon,
@@ -19,12 +20,7 @@ import {
 import BottomBarButton from "@/components/BottomBarButton";
 
 export type BottomTool =
-  | "expense"
-  | "recurring"
-  | "payments"
-  | "categories"
-  | "records"
-  | "income";
+  "expense" | "recurring" | "payments" | "categories" | "records" | "income";
 
 const ACTION_BUTTONS_PER_ROW = 2;
 
@@ -39,15 +35,19 @@ const actionTools = [
 // Match the two-column Action / Settings row; new tools add rows above it.
 const actionRows = Array.from(
   { length: Math.ceil(actionTools.length / ACTION_BUTTONS_PER_ROW) },
-  (_, row) => actionTools.slice(row * ACTION_BUTTONS_PER_ROW, (row + 1) * ACTION_BUTTONS_PER_ROW)
+  (_, row) =>
+    actionTools.slice(
+      row * ACTION_BUTTONS_PER_ROW,
+      (row + 1) * ACTION_BUTTONS_PER_ROW,
+    ),
 ).reverse();
 
 interface BottomActionBarProps {
-  activeTool:BottomTool | null;
-  onToggle:(tool:Exclude<BottomTool, "income">) => void;
-  theme:"dark" | "light";
-  onToggleTheme:() => void;
-  onNavigate:() => void;
+  activeTool: BottomTool | null;
+  onToggle: (tool: Exclude<BottomTool, "income">) => void;
+  theme: "dark" | "light";
+  onToggleTheme: () => void;
+  onNavigate: () => void;
 }
 
 export default function BottomActionBar({
@@ -56,15 +56,14 @@ export default function BottomActionBar({
   theme,
   onToggleTheme,
   onNavigate,
-}:BottomActionBarProps) {
-  const [activeMenu, setActiveMenu] =
-    useState<"actions" | "settings" | null>(null);
+}: BottomActionBarProps) {
+  const [activeMenu, setActiveMenu] = useState<"actions" | "settings" | null>(
+    null,
+  );
 
-  const isActionsOpen =
-    activeMenu === "actions";
+  const isActionsOpen = activeMenu === "actions";
 
-  const isSettingsOpen =
-    activeMenu === "settings";
+  const isSettingsOpen = activeMenu === "settings";
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bottom-glow-bar px-3 pb-[env(safe-area-inset-bottom)] lg:px-6">
@@ -85,7 +84,7 @@ export default function BottomActionBar({
           <div className="min-h-0 overflow-hidden">
             {isActionsOpen && (
               <div className="flex flex-col gap-2">
-                {actionRows.map(row => (
+                {actionRows.map((row) => (
                   <div key={row[0].tool} className="grid grid-cols-2 gap-2">
                     {row.map(({ tool, icon, label }) => (
                       <BottomBarButton
@@ -106,10 +105,22 @@ export default function BottomActionBar({
 
             {isSettingsOpen && (
               <div className="grid grid-cols-2 gap-2">
-                <BottomBarButton active={false} href="/" icon={Home} label="Dashboard" onClick={() => { setActiveMenu(null); onNavigate(); }} />
+                <BottomBarButton
+                  active={false}
+                  href="/"
+                  icon={Home}
+                  label="Dashboard"
+                  onClick={() => {
+                    setActiveMenu(null);
+                    onNavigate();
+                  }}
+                />
                 <BottomBarButton
                   active={theme === "light"}
-                  onClick={() => { onToggleTheme(); setActiveMenu(null); }}
+                  onClick={() => {
+                    onToggleTheme();
+                    setActiveMenu(null);
+                  }}
                   icon={theme === "dark" ? Moon : Sun}
                   label="Theme"
                 />
@@ -117,16 +128,32 @@ export default function BottomActionBar({
                 <BottomBarButton
                   active={false}
                   href="/savings-goals"
-                  onClick={() => { setActiveMenu(null); onNavigate(); }}
+                  onClick={() => {
+                    setActiveMenu(null);
+                    onNavigate();
+                  }}
                   icon={Target}
                   label="Goals"
                 />
                 <BottomBarButton
                   active={false}
                   href="/future-expense-plans"
-                  onClick={() => { setActiveMenu(null); onNavigate(); }}
+                  onClick={() => {
+                    setActiveMenu(null);
+                    onNavigate();
+                  }}
                   icon={ClipboardList}
                   label="Living Cost"
+                />
+                <BottomBarButton
+                  active={false}
+                  href="/financial-events"
+                  onClick={() => {
+                    setActiveMenu(null);
+                    onNavigate();
+                  }}
+                  icon={CalendarRange}
+                  label="Events"
                 />
               </div>
             )}
@@ -138,9 +165,7 @@ export default function BottomActionBar({
             active={isActionsOpen}
             onClick={() =>
               setActiveMenu((current) =>
-                current === "actions"
-                  ? null
-                  : "actions"
+                current === "actions" ? null : "actions",
               )
             }
             icon={Sparkles}
@@ -151,9 +176,7 @@ export default function BottomActionBar({
             active={isSettingsOpen}
             onClick={() =>
               setActiveMenu((current) =>
-                current === "settings"
-                  ? null
-                  : "settings"
+                current === "settings" ? null : "settings",
               )
             }
             icon={Settings}

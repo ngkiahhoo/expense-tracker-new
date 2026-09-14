@@ -223,9 +223,9 @@ export const fieldStyles = {
 
 export const overlayStyles = {
   backdrop:
-    "fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 backdrop-blur-md",
+    "fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4 backdrop-blur-md",
   bottomSheet:
-    "fixed inset-0 z-50 flex items-end justify-center bg-black/45 px-4 pb-4 backdrop-blur-md sm:px-6",
+    "fixed inset-0 z-[60] flex items-end justify-center bg-black/45 px-4 pb-4 backdrop-blur-md sm:px-6",
   modalPanel:
     "glass-surface w-full rounded-3xl border border-white/15 p-5 shadow-2xl",
   sheetPanel:

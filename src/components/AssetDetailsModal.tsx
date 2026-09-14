@@ -1,5 +1,7 @@
 "use client";
 
+import OverlayPortal from "@/components/ui/OverlayPortal";
+
 import type useAssets from "@/hooks/useAssets";
 import type { ToastType } from "@/contexts/ToastContext";
 import ActionIconButton from "@/components/ui/ActionIconButton";
@@ -30,8 +32,9 @@ export default function AssetDetailsModal({
   onToast,
 }:AssetDetailsModalProps) {
   return (
+    <OverlayPortal>
     <div className={overlayStyles.backdrop}>
-      <div className={cn(overlayStyles.modalPanel, "max-h-[calc(100vh-2rem)] max-w-3xl overflow-y-auto")}>
+      <div className={cn(overlayStyles.modalPanel, "max-h-[calc(100dvh-2rem)] max-w-3xl overflow-y-auto")}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-2xl font-bold">
@@ -159,5 +162,6 @@ export default function AssetDetailsModal({
         </div>
       </div>
     </div>
+    </OverlayPortal>
   );
 }

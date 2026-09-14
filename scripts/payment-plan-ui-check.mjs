@@ -48,8 +48,8 @@ try {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body), headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } });
   });
   await page.goto('http://localhost:3100');
-  await page.getByRole('button', { name: 'Action Tools' }).click();
-  await page.getByRole('button', { name: 'Pay Later Installments' }).click();
+  await page.getByRole('button', { name: 'Action', exact: true }).click();
+  await page.getByRole('button', { name: 'Pay Later', exact: true }).click();
   await page.getByRole('heading', { name: 'Pay Later & Installments' }).waitFor();
   await page.getByLabel('Payment type').selectOption('installment');
   await page.getByRole('button', { name: 'Add name', exact: true }).click();
@@ -102,8 +102,8 @@ try {
   missingSetup = true;
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await page.getByRole('button', { name: 'Close panel', exact: true }).click();
-  await page.getByRole('button', { name: 'Action Tools' }).click();
-  await page.getByRole('button', { name: 'Pay Later Installments' }).click();
+  await page.getByRole('button', { name: 'Action', exact: true }).click();
+  await page.getByRole('button', { name: 'Pay Later', exact: true }).click();
   await page.getByText('Payment plans are not set up in this database yet.', { exact: false }).waitFor();
   assert.equal(await page.getByText('No MYR payment plans yet.', { exact: true }).count(), 0);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false);

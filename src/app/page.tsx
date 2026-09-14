@@ -344,13 +344,7 @@ export default function Home() {
     void refreshAll();
   }, [refreshAll]);
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("light-theme", theme === "light");
 
-    return () => {
-      document.documentElement.classList.remove("light-theme");
-    };
-  }, [theme]);
 
   useEffect(() => {
     const interval = setInterval(
@@ -654,7 +648,7 @@ export default function Home() {
               onSelectCategory={(item) => {
                 setDrilldownCategoryKey(`${item.categoryId ?? "uncategorized"}:${item.categoryName}`);
                 setDrilldownCategoryName(item.categoryName);
-                setDrilldownTypeName(item.expenses[0]?.categories?.types?.name || null);
+                setDrilldownTypeName((item.expenses[0]?.categories || categories.find(category => category.id === item.categoryId))?.types?.name || "Uncategorized");
                 setDrilldownMonth(selectedMonth);
                 setShowExpenseDrilldown(true);
               }}

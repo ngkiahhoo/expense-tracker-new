@@ -30,6 +30,10 @@ export async function getIncomes(selectedMonth: string) {
 }
 
 export async function createIncome(payload: IncomePayload) {
+  const currency = normalizeCurrency(payload.currency);
+  const { requireMainAsset } = await import("./assetService");
+  const mainAssetError = await requireMainAsset(currency);
+  if (mainAssetError) return mainAssetError;
   const { error } = await supabase.from("incomes").insert([payload]);
 
   if (!error) {
@@ -66,6 +70,13 @@ export async function updateIncome(
   const prevCurrency = normalizeCurrency(existingIncome.currency);
   const newCurrency = normalizeCurrency(payload.currency ?? prevCurrency);
   const delta = newAmount - prevAmount;
+  const { requireMainAsset } = await import("./assetService");
+  const previousMainAssetError = await requireMainAsset(prevCurrency);
+  if (previousMainAssetError) return previousMainAssetError;
+  if (newCurrency !== prevCurrency) {
+    const newMainAssetError = await requireMainAsset(newCurrency);
+    if (newMainAssetError) return newMainAssetError;
+  }
 
   const { error } = await supabase.from("incomes").update(payload).eq("id", id);
 
@@ -99,6 +110,9 @@ export async function removeIncome(id: number) {
   const existingIncome = existing as Income;
   const prevAmount = Number(existingIncome.amount || 0);
   const prevCurrency = normalizeCurrency(existingIncome.currency);
+  const { requireMainAsset } = await import("./assetService");
+  const mainAssetError = await requireMainAsset(prevCurrency);
+  if (mainAssetError) return mainAssetError;
 
   const { error } = await supabase.from("incomes").delete().eq("id", id);
 

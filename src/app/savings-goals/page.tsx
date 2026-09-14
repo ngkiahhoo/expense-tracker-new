@@ -50,8 +50,31 @@ export default function SavingsGoalsPage() {
   const blocked = data.loading || !!data.error || plans.loading || !!plans.storageError || !hierarchy.data || !!hierarchy.error;
   const result = goal && !blocked ? projectGoal(goal, data.assets, library, today) : null;
   const money = (amount: number) => formatCurrencyAmount(amount, goal?.currency ?? "MYR");
-  const milestones = goal && result?.current !== null && result?.current !== undefined && !result.errors.length ? goalMilestones(result.current, goal.targetAmount, result.saving, today) : [];
+  const milestones = goal && result?.current !== null && result?.current !== undefined && !result.errors.length ? goalMilestones(result.current, goal.targetAmount, result.saving, result.projectionStart ?? today) : [];
   const actual = goal && data.history ? actualSavingCheck(data.history.expenses, data.history.incomes, goal.currency, today) : null;
+  const matchingAssetIds = (currency: Currency) => data.assets
+    .filter(asset => asset.currency === currency)
+    .map(asset => asset.id);
+  function startNewGoal() {
+    const next = blankForm();
+    next.includedAssetIds = matchingAssetIds(next.currency);
+    setForm(next);
+  }
+  function includeMatchingAssets(goalToUpdate: SavingsGoal) {
+    const includedAssetIds = [
+      ...new Set([
+        ...goalToUpdate.includedAssetIds,
+        ...matchingAssetIds(goalToUpdate.currency),
+      ]),
+    ];
+    persist(
+      goals.map(item =>
+        item.id === goalToUpdate.id
+          ? touchSavingsGoal({ ...item, includedAssetIds })
+          : item,
+      ),
+    );
+  }
   function persist(next: SavingsGoal[]) {
     try { saveGoals(next); setError(""); return true; }
     catch (e) { setError(e instanceof Error ? e.message : "Could not save goal."); return false; }
@@ -71,7 +94,7 @@ export default function SavingsGoalsPage() {
   }
   const cashFlow = result?.cashFlow;
   return <main className="mx-auto min-h-screen max-w-6xl space-y-6 px-4 py-6 text-white sm:px-6">
-    <header className="flex items-center justify-between gap-3"><h1 className="text-3xl font-semibold">Savings Goals</h1><Button disabled={!!goalsError} onClick={() => setForm(blankForm())}>New Goal</Button></header>
+    <header className="flex items-center justify-between gap-3"><h1 className="text-3xl font-semibold">Savings Goals</h1><Button disabled={!!goalsError || data.loading} onClick={startNewGoal}>New Goal</Button></header>
     {goalsError && <p role="alert">{goalsError}</p>}
     {error && <p role="alert">{error}</p>}
     {form && <Card><form onSubmit={submit} className="space-y-4">
@@ -79,7 +102,7 @@ export default function SavingsGoalsPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         <label>Goal name<Input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></label>
         <label>Target amount<Input required type="number" min="0.01" max="1000000000000" step="0.01" value={form.target} onChange={e => setForm({ ...form, target: e.target.value })} /></label>
-        <label>Currency<Select value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value as Currency })}><option>MYR</option><option>SGD</option></Select></label>
+        <label>Currency<Select value={form.currency} onChange={e => { const currency = e.target.value as Currency; setForm({ ...form, currency, includedAssetIds: form.id ? form.includedAssetIds : matchingAssetIds(currency) }); }}><option>MYR</option><option>SGD</option></Select></label>
         <label>Target date (optional)<Input type="date" value={form.targetDate} onChange={e => setForm({ ...form, targetDate: e.target.value })} /></label>
         <label>Living Cost Plan<Select value={form.living_plan_id} disabled={plans.loading || !!plans.storageError} onChange={e => setForm({ ...form, living_plan_id: e.target.value })}><option value="">Select a plan</option>{form.living_plan_id && !library.plans.some(p => p.id === form.living_plan_id) && <option value={form.living_plan_id}>Unavailable plan</option>}{library.plans.map(p => <option key={p.id} value={p.id}>{p.name} ({p.currency})</option>)}</Select></label>
         <label>Status<Select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as SavingsGoalStatus })}><option value="active">Active</option><option value="paused">Paused</option><option value="completed">Completed</option></Select></label>
@@ -95,10 +118,12 @@ export default function SavingsGoalsPage() {
     {goal && <>
       <Card className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-semibold">{goal.name}</h2><span className="capitalize">{goal.status}</span></div><div className="flex gap-2"><Button variant="secondary" onClick={() => edit(goal)}>Edit</Button><Button variant="secondary" onClick={() => { if (window.confirm(`Delete ${goal.name}?`)) persist(goals.filter(g => g.id !== goal.id)); }}>Delete</Button></div></div>
+        {!data.loading && matchingAssetIds(goal.currency).some(id => !goal.includedAssetIds.includes(id)) && <Button variant="secondary" onClick={() => includeMatchingAssets(goal)}>Include all {goal.currency} assets</Button>}
         {blocked ? <p role="status">{data.error || plans.storageError || hierarchy.error ? "Projection unavailable until data loads successfully." : "Loading projection..."}</p> : <>
           {result?.current !== null && result?.current !== undefined && <><p className="text-3xl font-semibold">{money(result.current)} / {money(goal.targetAmount)}</p><p>{result.progress?.toFixed(1)}% complete</p><progress aria-label="Goal progress" className="h-3 w-full accent-teal-500" max="100" value={result.progress ?? 0} /></>}
           {result?.errors.map(message => <p role="alert" key={message}>{message}</p>)}
           {!result?.errors.length && result?.timeline && <>
+            {result.projectionStart && <p className="text-sm text-slate-400">First projected income and saving: {displayDate(result.projectionStart)}</p>}
             <dl className="grid gap-4 sm:grid-cols-3"><Stat label="Remaining">{money(result.timeline.remaining)}</Stat>{result.timeline.state === "growing" && <><Stat label="Estimated Goal Date">{displayDate(result.timeline.date)}</Stat><Stat label="Estimated Time">{result.timeline.months!.toFixed(1)} months</Stat></>}</dl>
             {result.timeline.state === "reached" ? <p className="text-xl font-semibold text-teal-500">Goal reached</p> : !result.plan ? <p>Select a Living Cost Plan to calculate your projection.</p> : result.timeline.state === "stalled" ? <p>No progress under this plan. Income equals expenses.</p> : result.timeline.state === "deficit" ? <div><p>Goal cannot be reached under this plan.</p><p>Monthly deficit: {money(-result.saving!)}. Assets are decreasing by {money(-result.saving!)} / month.</p></div> : !result.timeline.date ? <p>The estimated date is beyond the supported calendar range.</p> : null}
           </>}
@@ -112,7 +137,7 @@ export default function SavingsGoalsPage() {
       {result && !result.errors.length && result.timeline && <>
         {goal.targetDate && result.timeline.state !== "reached" ? <Card className="space-y-4"><h2 className="text-xl font-semibold">Target Date · {goal.targetDate}</h2>{result.targetMonths === 0 ? <p>Target date is today or has passed. The goal has not been reached.</p> : <><dl className="grid gap-4 sm:grid-cols-3"><Stat label="Required Pace">{result.required === null ? "Unavailable" : money(result.required) + " / month"}</Stat><Stat label="Expected Pace">{result.saving === null ? "Select a plan" : money(result.saving) + " / month"}</Stat><Stat label="Difference">{result.difference === null ? "Unavailable" : `${result.difference >= 0 ? "+" : ""}${money(result.difference)} / month`}</Stat></dl>{result.paceStatus && <p className="font-semibold">{result.paceStatus}</p>}</>}</Card> : !goal.targetDate && result.timeline.date ? <p>No target date — current projection reaches {money(goal.targetAmount)} around {displayDate(result.timeline.date)}.</p> : null}
         <Card className="space-y-4"><h2 className="text-xl font-semibold">Milestone Timeline</h2><ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{milestones.map(m => <li key={m.amount} className="rounded-xl border border-slate-300/30 p-4"><p className="font-semibold">{money(m.amount)}</p><p>{m.status}</p>{m.state !== "reached" && <p>{m.date ? displayDate(m.date) : "No projected date"}</p>}</li>)}</ol></Card>
-        {result.current !== null && result.saving !== null && <WhatIf key={`${goal.id}:${result.saving}`} current={result.current} target={goal.targetAmount} saving={result.saving} today={today} currency={goal.currency} />}
+        {result.current !== null && result.saving !== null && <WhatIf key={`${goal.id}:${result.saving}:${result.projectionStart}`} current={result.current} target={goal.targetAmount} saving={result.saving} today={result.projectionStart ?? today} currency={goal.currency} />}
         {result.saving !== null && <Card className="space-y-3"><h2 className="text-xl font-semibold">Reality Check</h2>{data.historyError ? <p>{data.historyError}</p> : !actual ? <p>Loading completed months...</p> : actual.average === null ? <p>No records in the last 3 completed months.</p> : <><dl className="grid gap-4 sm:grid-cols-3"><Stat label="Expected Saving">{money(result.saving)} / month</Stat><Stat label="Last 3 Completed Months Average">{money(actual.average)} / month</Stat><Stat label="Difference">{money(actual.average - result.saving)} / month</Stat></dl><p>{Math.abs(actual.average - result.saving) < 0.01 ? "Your recent actual saving pace matches this plan." : `Your recent actual saving pace is ${money(Math.abs(actual.average - result.saving))}/month ${actual.average < result.saving ? "below" : "above"} this plan.`}</p><p>{actual.months[0]} to {actual.months[2]}</p></>}</Card>}
       </>}
     </>}

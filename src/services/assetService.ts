@@ -68,6 +68,23 @@ export async function updateAssetMainStatus(id: number, isMain: boolean) {
   return updateAsset(id, { is_main: true, currency: targetCurrency });
 }
 
+export async function requireMainAsset(currency: Currency) {
+  const targetCurrency = normalizeCurrency(currency);
+  const { data, error } = await supabase
+    .from("assets")
+    .select("id")
+    .eq("is_main", true)
+    .eq("currency", targetCurrency)
+    .maybeSingle();
+
+  if (error) return error;
+  if (!data)
+    return new Error(
+      `Set a ${targetCurrency} Main Asset before recording income in ${targetCurrency}.`,
+    );
+  return null;
+}
+
 export async function adjustMainAssetValue(delta: number, currency: Currency = DEFAULT_CURRENCY) {
   if (delta === 0) return null;
 

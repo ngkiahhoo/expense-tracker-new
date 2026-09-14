@@ -57,7 +57,7 @@ export default function AssetRecordCard({
             fieldSize="md"
             className="h-12 rounded-xl"
           >
-            <option value="">Blank</option>
+            <option value="">Not main</option>
             <option value="main">Main</option>
           </Select>
 
