@@ -110,3 +110,15 @@ Browser suites use temporary Playwright and installed Edge, isolated local stora
 node scripts/life-scenario-ui-check.mjs <playwright-install>/index.mjs http://localhost:3101
 node scripts/future-expense-ui-check.mjs <playwright-install>/index.mjs http://localhost:3101
 ```
+
+## Standalone living expense planner
+
+Open /future-expense-plans, also available under Settings ? Living Cost. Create a plan, manage its shared types and categories, and enter monthly expense items. Choose 1?1200 whole months; money required is the included monthly total multiplied by months. No scenario, confirmation, income, assets, reserve, FX or other assumptions are required. All edits save in the existing browser-local planning workspace. The month count is a view setting and resets to 12 on reload.
+
+Disabled items and disabled parents are excluded. Unmapped enabled items or included items with a different currency block the total until corrected. Amounts are summed in cents. This simple projection repeats every item each month regardless of dates in the advanced scenario editor. Existing canonical storage names remain amount (monthly amount) and currency (plan base currency) for compatibility. Types and categories are shared across plans; safe deletion preserves children through reassignment. Plans referenced by saved scenarios cannot be deleted.
+
+Run npm run test:living-expenses for standalone calculation checks. The optional scripts/living-expense-ui-check.mjs accepts a Playwright module path and local server URL.
+
+### Bookkeeping categories in the standalone planner
+
+The standalone page now reads the existing Supabase types and categories directly and refreshes them when the tab regains focus. Category management is on the Dashboard only; the standalone planner makes no category writes. Stable bookkeeping IDs survive category renames and moves. Existing local items map by source category ID or an unambiguous category-and-type name match; unmatched or deleted categories require reselection without changing item IDs or amounts. The local workspace retains references for compatibility with Life Scenarios.

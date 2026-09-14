@@ -60,7 +60,7 @@ try {
   await page.locator('[aria-label="Category Meals"]').getByRole('combobox', { name: 'Parent type', exact: true }).selectOption({ label: 'Wants' });
   assert.equal((await stored()).library.mappings[0].future_type_id, (await stored()).library.types.find(t => t.name === 'Wants').id);
   await page.locator('[aria-label="Category Meals"]').getByRole('button', { name: 'Delete Category', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Safe deletion' }).getByRole('button', { name: 'Reassign and delete category', exact: true }).click();
+  assert.equal(await page.getByRole('dialog', { name: 'Safe deletion' }).getByRole('button', { name: 'Reassign and delete category', exact: true }).isDisabled(), true);
   assert.equal((await stored()).library.plans[0].items.length, 1);
   const foodCategoryId = (await stored()).library.plans[0].items[0].category_id;
   const dining = (await stored()).library.categories.find(c => c.name === 'Dining Out');

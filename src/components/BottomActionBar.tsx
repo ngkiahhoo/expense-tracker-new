@@ -104,7 +104,7 @@ export default function BottomActionBar({
             )}
 
             {isSettingsOpen && (
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <BottomBarButton
                   active={theme === "light"}
                   onClick={onToggleTheme}
@@ -119,6 +119,13 @@ export default function BottomActionBar({
                   icon={Target}
                   label="Goals"
                   description="Predict"
+                />
+                <BottomBarButton
+                  active={false}
+                  href="/future-expense-plans"
+                  icon={ClipboardList}
+                  label="Living Cost"
+                  description="Plan"
                 />
                 <BottomBarButton
                   active={false}
