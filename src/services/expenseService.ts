@@ -14,6 +14,20 @@ export type ExpensePayload = {
   recurring_expense_id?: number;
 };
 
+export async function getAllExpenseRecords(): Promise<Expense[]> {
+  const records: Expense[] = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase.from("expenses")
+      .select("*, categories(id, name, type_id, types(id, name))")
+      .order("expense_date", { ascending: false }).order("id", { ascending: false })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    records.push(...(data as Expense[]));
+    if (data.length < pageSize) return records;
+  }
+}
+
 export async function getExpenses(selectedMonth: string) {
   const { start, end } = getMonthDateRange(selectedMonth);
 

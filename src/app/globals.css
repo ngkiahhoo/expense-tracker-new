@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* Scenario surfaces follow the app's saved theme rather than the OS preference. */
-.life-scenarios .glass-surface {
+.expense-plans .glass-surface {
   background: #fff;
   border-color: #e2e8f0;
   box-shadow: 0 3px 16px rgb(15 23 42 / 4%);
@@ -11,29 +11,29 @@
   backdrop-filter: none;
   transition: none;
 }
-.life-scenarios .glass-surface::before { display: none; }
-.life-scenarios.scenario-dark .glass-surface {
+.expense-plans .glass-surface::before { display: none; }
+.expense-plans.expense-dark .glass-surface {
   background: #0f172a;
   border-color: #334155;
 }
-.life-scenarios input:not([type="checkbox"]),
-.life-scenarios select,
-.life-scenarios textarea {
+.expense-plans input:not([type="checkbox"]),
+.expense-plans select,
+.expense-plans textarea {
   color-scheme: light;
   color: #0f172a;
   background: #f8fafc;
   border-color: #cbd5e1;
 }
-.life-scenarios.scenario-dark input:not([type="checkbox"]),
-.life-scenarios.scenario-dark select,
-.life-scenarios.scenario-dark textarea {
+.expense-plans.expense-dark input:not([type="checkbox"]),
+.expense-plans.expense-dark select,
+.expense-plans.expense-dark textarea {
   color-scheme: dark;
   color: #f1f5f9;
   background: #1e293b;
   border-color: #475569;
 }
-.life-scenarios input[type="checkbox"] { accent-color: #0d9488; }
-.life-scenarios :focus-visible { outline-color: #0d9488; }
+.expense-plans input[type="checkbox"] { accent-color: #0d9488; }
+.expense-plans :focus-visible { outline-color: #0d9488; }
 
 /* ROOT */
 

@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { moduleURL } from './load-typescript.mjs';
+const { mergeLegacyLibrary, assertExpenseLibrary } = await import(moduleURL('src/utils/expenseStorage.ts'));
+const { emptyExpenseLibrary, newExpensePlan } = await import(moduleURL('src/utils/futureExpense.ts'));
+const cloud = emptyExpenseLibrary(), local = emptyExpenseLibrary();
+const plan = newExpensePlan('MYR', '2027'); local.plans.push(plan);
+const imported = mergeLegacyLibrary(cloud, local, []);
+assert.equal(imported.library.plans[0].name, '2027');
+assertExpenseLibrary(imported.library);
+assert.equal(mergeLegacyLibrary(imported.library, local, imported.imported_ids).library.plans.length, 1);
+const edited = structuredClone(imported.library); edited.plans[0].name = 'Edited on phone';
+assert.equal(mergeLegacyLibrary(edited, local, []).library.plans[0].name, 'Edited on phone');
+assert.equal(mergeLegacyLibrary(emptyExpenseLibrary(), local, imported.imported_ids).library.plans.length, 0, 'Deleted plans must not be resurrected by old browser storage');
+assert.equal(local.plans[0].name, '2027', 'Migration preserves original data');
+assert.throws(() => assertExpenseLibrary({ plans: [] }));
+assert.throws(() => assertExpenseLibrary({ ...local, plans: [plan, plan] }));
+console.log('PASS migration, repeated imports, cloud edit preservation, deletion tombstones, untouched backup and invalid data');

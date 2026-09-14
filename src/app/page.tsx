@@ -17,9 +17,7 @@ import {
   toneStyles,
 } from "@/components/ui/styles";
 import AssetDetailsModal from "../components/AssetDetailsModal";
-import BottomActionBar, {
-  type BottomTool,
-} from "../components/BottomActionBar";
+import { useAppTools } from "@/components/AppShell";
 import CategoryPanel from "../components/CategoryPanel";
 import DashboardAnalyticsSection from "../components/DashboardAnalyticsSection";
 import DashboardSummarySection from "../components/DashboardSummarySection";
@@ -84,12 +82,10 @@ export default function Home() {
     fetchDashboardHistory,
   } = useDashboardHistory(activeCurrency);
 
-  const [activeTool, setActiveTool] =
-    useState<BottomTool | null>(null);
+  const { activeTool, setActiveTool } = useAppTools();
 
   const {
     theme,
-    toggleTheme,
   } = useThemePreference();
 
   const [showAssetModal, setShowAssetModal] = useState(false);
@@ -128,7 +124,7 @@ export default function Home() {
   const [showIncomeList, setShowIncomeList] =
     useState(true);
 
-  const [showCategories, setShowCategories] =
+  const [showCategories] =
     useState(true);
 
   const {
@@ -155,7 +151,6 @@ export default function Home() {
     fetchExpenses,
     saveExpense,
     deleteExpense,
-    deleteMonthExpenses,
     startEdit,
     resetExpenseForm,
   } = useExpenses(
@@ -490,28 +485,6 @@ export default function Home() {
     return copied;
   }
 
-  function toggleTool(
-    tool: Exclude<BottomTool, "income">
-  ) {
-    setActiveTool((current) =>
-      current === tool
-        ? null
-        : tool
-    );
-
-    if (tool === "expense") {
-      setShowExpenseForm(true);
-    }
-
-    if (tool === "categories") {
-      setShowCategories(true);
-    }
-
-    if (tool === "recurring") {
-      void fetchRecurringExpenses();
-    }
-  }
-
   function openIncomeCrud() {
     setShowIncomeList(true);
     setShowIncomeForm(true);
@@ -815,12 +788,8 @@ export default function Home() {
 
             {activeTool === "records" && (
                   <ExpenseRecordsPanel
-                    expenses={expenses}
-                    loading={loading}
                     startEdit={handleStartEdit}
                     deleteExpense={handleDeleteExpense}
-                    deleteMonthExpenses={deleteMonthExpenses}
-                    selectedMonth={selectedMonth}
                   />
             )}
           </QuickActionSheet>
@@ -842,12 +811,6 @@ export default function Home() {
           />
         )}
 
-        <BottomActionBar
-          activeTool={activeTool}
-          onToggle={toggleTool}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
 
       </div>
 

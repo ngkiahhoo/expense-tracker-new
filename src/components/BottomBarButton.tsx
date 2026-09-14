@@ -9,7 +9,6 @@ interface BottomBarButtonProps {
   href?: string;
   icon: LucideIcon;
   label: string;
-  description: string;
 }
 
 export default function BottomBarButton({
@@ -18,11 +17,13 @@ export default function BottomBarButton({
   href,
   icon: Icon,
   label,
-  description,
 }: BottomBarButtonProps) {
   const className = `
         bottom-bar-button
         ${active ? "bottom-bar-button-active" : "bottom-bar-button-idle"}
+        flex
+        flex-col
+        justify-center
         min-h-16
         min-w-0
         rounded-2xl
@@ -71,22 +72,6 @@ export default function BottomBarButton({
         </span>
       </div>
 
-      <p
-        className={`
-          bottom-bar-button-description
-          mt-1
-          truncate
-          text-[11px]
-          leading-none
-          ${
-            active
-              ? "text-zinc-700"
-              : "text-zinc-500"
-          }
-        `}
-      >
-        {description}
-      </p>
     </>
   );
 
@@ -94,6 +79,7 @@ export default function BottomBarButton({
     return (
       <Link
         href={href}
+        onClick={onClick}
         aria-current={active ? "page" : undefined}
         className={className}
       >

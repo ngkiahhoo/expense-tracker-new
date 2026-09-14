@@ -3,10 +3,10 @@
 import { useState } from "react";
 
 import {
+  Home,
   CalendarSync,
   CalendarClock,
   ClipboardList,
-  Compass,
   FolderTree,
   Moon,
   Plus,
@@ -26,17 +26,17 @@ export type BottomTool =
   | "records"
   | "income";
 
-const ACTION_BUTTONS_PER_ROW = 4;
+const ACTION_BUTTONS_PER_ROW = 2;
 
 const actionTools = [
-  { tool: "expense", icon: Plus, label: "Add", description: "Expense" },
-  { tool: "recurring", icon: CalendarSync, label: "Repeat", description: "Monthly" },
-  { tool: "categories", icon: FolderTree, label: "Cat", description: "CRUD" },
-  { tool: "records", icon: ClipboardList, label: "Records", description: "History" },
-  { tool: "payments", icon: CalendarClock, label: "Pay Later", description: "Installments" },
+  { tool: "expense", icon: Plus, label: "Add" },
+  { tool: "recurring", icon: CalendarSync, label: "Repeat" },
+  { tool: "categories", icon: FolderTree, label: "Category" },
+  { tool: "records", icon: ClipboardList, label: "Records" },
+  { tool: "payments", icon: CalendarClock, label: "Pay Later" },
 ] as const;
 
-// Append new tools; each group of four adds a row above the existing tool rows.
+// Match the two-column Action / Settings row; new tools add rows above it.
 const actionRows = Array.from(
   { length: Math.ceil(actionTools.length / ACTION_BUTTONS_PER_ROW) },
   (_, row) => actionTools.slice(row * ACTION_BUTTONS_PER_ROW, (row + 1) * ACTION_BUTTONS_PER_ROW)
@@ -47,6 +47,7 @@ interface BottomActionBarProps {
   onToggle:(tool:Exclude<BottomTool, "income">) => void;
   theme:"dark" | "light";
   onToggleTheme:() => void;
+  onNavigate:() => void;
 }
 
 export default function BottomActionBar({
@@ -54,6 +55,7 @@ export default function BottomActionBar({
   onToggle,
   theme,
   onToggleTheme,
+  onNavigate,
 }:BottomActionBarProps) {
   const [activeMenu, setActiveMenu] =
     useState<"actions" | "settings" | null>(null);
@@ -84,18 +86,17 @@ export default function BottomActionBar({
             {isActionsOpen && (
               <div className="flex flex-col gap-2">
                 {actionRows.map(row => (
-                  <div key={row[0].tool} className="grid grid-cols-4 gap-2">
-                    {row.map(({ tool, icon, label, description }) => (
+                  <div key={row[0].tool} className="grid grid-cols-2 gap-2">
+                    {row.map(({ tool, icon, label }) => (
                       <BottomBarButton
                         key={tool}
                         active={activeTool === tool}
                         onClick={() => {
                           onToggle(tool);
-                          if (tool === "payments") setActiveMenu(null);
+                          setActiveMenu(null);
                         }}
                         icon={icon}
                         label={label}
-                        description={description}
                       />
                     ))}
                   </div>
@@ -104,35 +105,28 @@ export default function BottomActionBar({
             )}
 
             {isSettingsOpen && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                <BottomBarButton active={false} href="/" icon={Home} label="Dashboard" onClick={() => { setActiveMenu(null); onNavigate(); }} />
                 <BottomBarButton
                   active={theme === "light"}
-                  onClick={onToggleTheme}
+                  onClick={() => { onToggleTheme(); setActiveMenu(null); }}
                   icon={theme === "dark" ? Moon : Sun}
                   label="Theme"
-                  description={theme === "dark" ? "Dark" : "Light"}
                 />
 
                 <BottomBarButton
                   active={false}
                   href="/savings-goals"
+                  onClick={() => { setActiveMenu(null); onNavigate(); }}
                   icon={Target}
                   label="Goals"
-                  description="Predict"
                 />
                 <BottomBarButton
                   active={false}
                   href="/future-expense-plans"
+                  onClick={() => { setActiveMenu(null); onNavigate(); }}
                   icon={ClipboardList}
                   label="Living Cost"
-                  description="Plan"
-                />
-                <BottomBarButton
-                  active={false}
-                  href="/life-scenarios"
-                  icon={Compass}
-                  label="Life Plans"
-                  description="Scenarios"
                 />
               </div>
             )}
@@ -151,7 +145,6 @@ export default function BottomActionBar({
             }
             icon={Sparkles}
             label="Action"
-            description="Tools"
           />
 
           <BottomBarButton
@@ -165,7 +158,6 @@ export default function BottomActionBar({
             }
             icon={Settings}
             label="Settings"
-            description="Theme"
           />
         </div>
       </div>

@@ -1,0 +1,30 @@
+"use client";
+
+import { createContext, useContext, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import BottomActionBar, { type BottomTool } from "./BottomActionBar";
+import useThemePreference from "../hooks/useThemePreference";
+
+const ToolsContext = createContext<{ activeTool: BottomTool | null; setActiveTool: Dispatch<SetStateAction<BottomTool | null>> } | null>(null);
+export function useAppTools() {
+  const context = useContext(ToolsContext);
+  if (!context) throw new Error("App tools require AppShell");
+  return context;
+}
+
+export default function AppShell({ children }: { children: ReactNode }) {
+  const [activeTool, setActiveTool] = useState<BottomTool | null>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+  const { theme, toggleTheme } = useThemePreference();
+  return <ToolsContext.Provider value={{ activeTool, setActiveTool }}>
+    <div className={`${theme === "light" ? "light-theme" : ""} min-h-screen app-background pb-[calc(7rem+env(safe-area-inset-bottom))]`}>
+      {children}
+      <BottomActionBar key={pathname} activeTool={pathname === "/" ? activeTool : null}
+        onToggle={tool => {
+          setActiveTool(current => pathname === "/" && current === tool ? null : tool);
+          if (pathname !== "/") router.push("/");
+        }} theme={theme} onToggleTheme={toggleTheme} onNavigate={() => setActiveTool(null)} />
+    </div>
+  </ToolsContext.Provider>;
+}

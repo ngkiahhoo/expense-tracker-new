@@ -1,5 +1,5 @@
 import type { Currency } from "./currency";
-import type { Assumption } from "./lifeScenario";
+interface Assumption { amount: number; currency: Currency; source_type: "HISTORICAL" | "RECURRING" | "EXISTING_COMMITMENT" | "USER_CREATED" | "USER_OVERRIDE" | "ESTIMATED"; }
 
 export type ExpenseBehavior = "MANDATORY" | "REDUCIBLE" | "OPTIONAL" | "COMMITMENT";
 export interface FutureExpenseType {
@@ -46,6 +46,8 @@ export interface FutureExpensePlan {
   name: string;
   description: string;
   currency: Currency;
+  monthly_income?: number;
+  months_to_project?: number;
   items: FutureExpenseItem[];
   confirmed: boolean;
   created_at: string;
@@ -61,17 +63,4 @@ export interface FutureExpenseLibrary {
   types: FutureExpenseType[];
   categories: FutureExpenseCategory[];
   mappings: HistoricalCategoryMapping[];
-}
-export interface ExpenseCalendarEntry {
-  date: string;
-  phase_id: string | null;
-  kind: "LIVING" | "LIABILITY" | "ONE_TIME";
-  amount: number;
-  inflation_effect: number;
-  item_id: string;
-  name: string;
-  type_id?: string;
-  category_id?: string;
-  behavior_tag?: ExpenseBehavior;
-  is_fixed: boolean;
 }

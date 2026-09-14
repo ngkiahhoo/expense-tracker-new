@@ -29,3 +29,13 @@ export function projectLivingExpenses(plan: FutureExpensePlan, library: FutureEx
     errors: [...new Set(errors)],
   };
 }
+
+/** The same monthly cash flow supplies both the plan editor and goal projections. */
+export function livingPlanCashFlow(plan: FutureExpensePlan, library: FutureExpenseLibrary) {
+  const expenses = projectLivingExpenses(plan, library, 1);
+  const income = plan.monthly_income ?? 0;
+  const errors = [...expenses.errors];
+  if (!Number.isFinite(income) || income < 0 || income > 1e12) errors.push("Enter monthly income between 0 and one trillion.");
+  const saving = errors.length || expenses.monthly === null ? null : (Math.round(income * 100) - Math.round(expenses.monthly * 100)) / 100;
+  return { income, expenses: expenses.monthly, saving, savingsRate: saving === null || income === 0 ? null : saving / income * 100, errors };
+}

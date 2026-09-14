@@ -8,17 +8,17 @@ import {
   ChevronRight,
   Search,
 } from "lucide-react";
-import ActionIconButton from "@/components/ui/ActionIconButton";
+import useExpenseRecords from "@/hooks/useExpenseRecords";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Select } from "@/components/ui/Field";
+import { Input, Select } from "@/components/ui/Field";
 import {
   cn,
   emptyStateStyles,
   fieldStyles,
 } from "@/components/ui/styles";
 import ExpenseCard from "./ExpenseCard";
-import { confirmDelete } from "../utils/confirm";
+
 
 import type { Expense } from "../types/expense";
 
@@ -26,14 +26,8 @@ type SortField = "name" | "category" | "date" | "note";
 type SortDirection = "asc" | "desc";
 
 interface ExpenseRecordsPanelProps {
-  expenses: Expense[];
-  loading: boolean;
   startEdit: (expense: Expense) => void;
   deleteExpense: (id: number) => void;
-  deleteMonthExpenses: (
-    selectedMonth: string
-  ) => Promise<{ success: boolean; error?: string }>;
-  selectedMonth: string;
 }
 
 const PAGE_SIZE = 10;
@@ -72,13 +66,13 @@ function searchHaystack(expense: Expense) {
 }
 
 export default function ExpenseRecordsPanel({
-  expenses,
-  loading,
   startEdit,
   deleteExpense,
-  deleteMonthExpenses,
-  selectedMonth,
 }: ExpenseRecordsPanelProps) {
+  const { expenses, loading, error } = useExpenseRecords();
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const invalidRange = !!dateFrom && !!dateTo && dateFrom > dateTo;
   const [query, setQuery] = useState("");
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
@@ -87,11 +81,10 @@ export default function ExpenseRecordsPanel({
   const filteredExpenses = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    const matched = normalizedQuery
-      ? expenses.filter((expense) =>
-          searchHaystack(expense).includes(normalizedQuery)
-        )
-      : expenses;
+    const matched = expenses.filter(expense => !invalidRange &&
+      (!dateFrom || expense.expense_date >= dateFrom) &&
+      (!dateTo || expense.expense_date <= dateTo) &&
+      (!normalizedQuery || searchHaystack(expense).includes(normalizedQuery)));
 
     return [...matched].sort((a, b) => {
       const result = sortValue(a, sortField).localeCompare(
@@ -105,7 +98,7 @@ export default function ExpenseRecordsPanel({
 
       return sortDirection === "asc" ? result : -result;
     });
-  }, [expenses, query, sortDirection, sortField]);
+  }, [expenses, query, sortDirection, sortField, dateFrom, dateTo, invalidRange]);
 
   const totalPages = Math.max(
     1,
@@ -150,7 +143,7 @@ export default function ExpenseRecordsPanel({
           />
         </div>
 
-        <div className="grid grid-cols-[1fr_auto_auto] gap-2">
+        <div className="grid grid-cols-[1fr_auto] gap-2">
           <Select
             value={sortField}
             onChange={(event) => {
@@ -184,18 +177,16 @@ export default function ExpenseRecordsPanel({
             )}
           </Button>
 
-          <ActionIconButton
-            kind="delete"
-            onClick={() => {
-              if (confirmDelete("Delete all expenses for this month?")) {
-                deleteMonthExpenses(selectedMonth);
-              }
-            }}
-            title="Delete current month expenses"
-            aria-label="Delete current month expenses"
-          />
         </div>
+        <div className="grid gap-3 sm:grid-cols-2 md:col-span-2">
+          <label className="text-sm">From date<Input type="date" value={dateFrom} max={dateTo || undefined} onChange={e => { setDateFrom(e.target.value); setPage(1); }} /></label>
+          <label className="text-sm">To date<Input type="date" value={dateTo} min={dateFrom || undefined} onChange={e => { setDateTo(e.target.value); setPage(1); }} /></label>
+          <Button variant="outline" onClick={() => { setDateFrom(""); setDateTo(""); setQuery(""); setPage(1); }}>Clear filters</Button>
+          <p className="text-sm text-zinc-500">{dateFrom || dateTo ? "Custom date range" : "All dates / All currencies"}</p>
+        </div>
+        {invalidRange && <p role="alert">From date must be on or before To date.</p>}
       </Card>
+      {error && <p role="alert">{error}</p>}
 
       <div className="flex items-center justify-between gap-3 px-1 text-xs text-zinc-500">
         <span>
@@ -211,7 +202,7 @@ export default function ExpenseRecordsPanel({
         </div>
       )}
 
-      {!loading && expenses.length === 0 && (
+      {!loading && !error && expenses.length === 0 && (
         <div className={emptyStateStyles}>
           <h3 className="mb-2 text-xl font-bold">No expenses yet</h3>
 
@@ -228,7 +219,7 @@ export default function ExpenseRecordsPanel({
             <h3 className="mb-2 text-xl font-bold">No matching records</h3>
 
             <p className="text-sm text-zinc-400">
-              Try another keyword.
+              Try another keyword or date range.
             </p>
           </div>
         )}

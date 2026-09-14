@@ -1,7 +1,6 @@
-import type { Assumption, LifeScenario, LifeScenarioPhase, ScenarioExpense } from "../types/lifeScenario";
 import type { Currency } from "../types/currency";
-import type { ExpenseBehavior, ExpenseCalendarEntry, FutureExpenseCategory, FutureExpenseItem, FutureExpenseLibrary, FutureExpensePlan, FutureExpenseType } from "../types/futureExpense";
-import { addMonths, nextDay, round, uid, validDate } from "./scenarioMath";
+import type { ExpenseBehavior, FutureExpenseCategory, FutureExpenseItem, FutureExpenseLibrary, FutureExpensePlan, FutureExpenseType } from "../types/futureExpense";
+import { round, uid, validDate } from "./expenseMath";
 
 export const emptyExpenseLibrary = (): FutureExpenseLibrary => ({ plans: [], types: [], categories: [], mappings: [] });
 export const behaviors: ExpenseBehavior[] = ["MANDATORY", "REDUCIBLE", "OPTIONAL", "COMMITMENT"];
@@ -17,7 +16,7 @@ export function newExpenseCategory(type_id: string, name = "New category"): Futu
 }
 export function newExpensePlan(currency: Currency, name = "Monthly living plan"): FutureExpensePlan {
   const now = new Date().toISOString();
-  return { id: uid(), name, description: "", currency, items: [], confirmed: false, created_at: now, updated_at: now };
+  return { id: uid(), name, description: "", currency, monthly_income: 0, months_to_project: 12, items: [], confirmed: false, created_at: now, updated_at: now };
 }
 export function newExpenseItem(plan: FutureExpensePlan): FutureExpenseItem {
   const now = new Date().toISOString();
@@ -43,25 +42,6 @@ export function itemIsEnabled(item: FutureExpenseItem, library: FutureExpenseLib
   const category = library.categories.find(c => c.id === item.category_id);
   return item.enabled && !!category?.is_active && category.type_id === item.type_id && !!library.types.find(t => t.id === item.type_id)?.is_active;
 }
-export function amountIn(a: Assumption, currency: Currency, fx: Record<Currency, number>) {
-  const rate = a.currency === currency ? 1 : fx[a.currency];
-  return Number.isFinite(a.amount) && Number.isFinite(rate) && rate > 0 ? a.amount * rate : null;
-}
-export function expensePlanSummary(plan: FutureExpensePlan, library: FutureExpenseLibrary, currency: Currency, fx: Record<Currency, number>, overrides: LifeScenarioPhase["expense_overrides"] = {}) {
-  const byType: Record<string, number> = {}, byCategory: Record<string, number> = {};
-  let total = 0, fixed = 0, missingFx = false;
-  for (const item of plan.items) {
-    const value = { ...item, ...overrides[item.id] };
-    if (!itemIsEnabled(value, library)) continue;
-    const amount = amountIn(value, currency, fx);
-    if (amount === null) { missingFx = true; continue; }
-    total += amount;
-    if (item.is_fixed || itemBehavior(item, library) === "COMMITMENT") fixed += amount;
-    byType[item.type_id!] = (byType[item.type_id!] || 0) + amount;
-    byCategory[item.category_id!] = (byCategory[item.category_id!] || 0) + amount;
-  }
-  return { total: round(total), fixed: round(fixed), byType, byCategory, missingFx };
-}
 export function validateExpensePlan(plan: FutureExpensePlan, library: FutureExpenseLibrary): string[] {
   const errors: string[] = [];
   if (!plan.name.trim()) errors.push("Enter an expense plan name.");
@@ -84,25 +64,11 @@ export function validateExpensePlan(plan: FutureExpensePlan, library: FutureExpe
   }
   return [...new Set(errors)];
 }
-export function importExpenseSuggestions(plan: FutureExpensePlan, library: FutureExpenseLibrary, suggestions: ScenarioExpense[], source: "HISTORICAL" | "RECURRING"): FutureExpensePlan {
-  const next = structuredClone(plan); const now = new Date().toISOString();
-  for (const suggestion of suggestions.filter(x => x.source_type === source)) {
-    const reference = suggestion.source_reference_id || (suggestion.id.startsWith("recurring-") ? `recurring:${suggestion.id.slice(10)}` : suggestion.id.startsWith("category-") ? `historical:${suggestion.currency}:${suggestion.id.slice(9)}` : `${source.toLowerCase()}:${suggestion.id}`);
-    if (next.items.some(x => x.source_reference_id === reference)) continue;
-    const mapping = library.mappings.find(m => m.source_category_id === suggestion.source_category_id);
-    const matches = library.categories.filter(c => c.name.trim().toLowerCase() === (suggestion.source_category_name || suggestion.name).trim().toLowerCase());
-    const mapped = mapping ? library.categories.find(c => c.id === mapping.future_category_id && c.type_id === mapping.future_type_id) : matches.length === 1 ? matches[0] : undefined;
-    next.items.push({ ...newExpenseItem(plan), name: suggestion.name, amount: suggestion.amount, currency: suggestion.currency, source_type: source,
-      source_reference_id: reference, source_category_id: suggestion.source_category_id, type_id: mapped?.type_id || null, category_id: mapped?.id || null,
-      historical_average: source === "HISTORICAL" ? suggestion.amount : undefined, historical_currency: source === "HISTORICAL" ? suggestion.currency : undefined,
-      is_fixed: source === "RECURRING", repeat_day: suggestion.repeat_day, enabled: suggestion.enabled, updated_at: now });
-  }
-  next.confirmed = false; next.updated_at = now;
-  return next;
-}
 export function duplicateExpensePlan(plan: FutureExpensePlan, library: FutureExpenseLibrary, factor = 1, name = `${plan.name} (Copy)`): FutureExpensePlan {
   if (!Number.isFinite(factor) || factor < 0 || factor > 5) throw new Error("Use an explicit multiplier between 0 and 5.");
   const next = newExpensePlan(plan.currency, name); next.description = plan.description;
+  next.monthly_income = plan.monthly_income ?? 0;
+  next.months_to_project = plan.months_to_project ?? 12;
   next.items = plan.items.map(item => ({ ...structuredClone(item), id: uid(), plan_id: next.id,
     amount: round(item.amount * (["REDUCIBLE", "OPTIONAL"].includes(itemBehavior(item, library)) && !item.is_fixed ? factor : 1)),
     source_type: factor === 1 ? item.source_type : "USER_OVERRIDE", created_at: next.created_at, updated_at: next.updated_at }));
@@ -136,43 +102,4 @@ export function deleteExpenseType(library: FutureExpenseLibrary, id: string, des
   next.types = next.types.filter(t => t.id !== id);
   next.mappings = next.mappings.filter(m => m.future_type_id !== id);
   return next;
-}
-export function planForDate(s: LifeScenario, library: FutureExpenseLibrary, date: string) {
-  const phase = s.phases.find(p => p.start_date <= date && p.end_date >= date);
-  const plan = library.plans.find(p => p.id === (phase ? phase.expense_plan_id : s.expense_plan_id));
-  return { phase, plan };
-}
-/** Only selected, explicitly confirmed plans supply living expenses. History is never read here. */
-export function buildExpenseCalendar(s: LifeScenario, library: FutureExpenseLibrary): ExpenseCalendarEntry[] {
-  const entries: ExpenseCalendarEntry[] = [];
-  const recurringOccurrences = new Set<string>();
-  if (!validDate(s.start_date) || !validDate(s.projection_end_date) || s.projection_end_date < s.start_date || s.projection_end_date > addMonths(s.start_date, 600)) return entries;
-  for (let month = s.start_date.slice(0, 7) + "-01", index = 0; month <= s.projection_end_date; month = addMonths(month, 1), index++) {
-    const end = nextDay(addMonths(month, 1), -1), days = Number(end.slice(8));
-    const from = month < s.start_date ? s.start_date : month, to = end > s.projection_end_date ? s.projection_end_date : end;
-    const inflation = s.inflation_enabled ? Math.pow(1 + s.inflation_rate / 100, index / 12) : 1;
-    for (let day = Number(from.slice(8)); day <= Number(to.slice(8)); day++) {
-      const date = `${month.slice(0, 7)}-${String(day).padStart(2, "0")}`;
-      const { phase, plan } = planForDate(s, library, date);
-      if (!plan?.confirmed) continue;
-      for (const item of plan.items) {
-        const value = { ...item, ...phase?.expense_overrides[item.id] };
-        if (!itemIsEnabled(value, library) || (item.start_date && date < item.start_date) || (item.end_date && date > item.end_date)) continue;
-        if (item.repeat_day && day !== Math.min(item.repeat_day, days)) continue;
-        const occurrence = item.source_reference_id?.startsWith("recurring:") && item.repeat_day ? `${month}:${item.source_reference_id}` : null;
-        if (occurrence && recurringOccurrences.has(occurrence)) continue;
-        const converted = amountIn(value, s.currency, s.fx);
-        if (converted === null) throw new Error(`Set an FX assumption for ${item.name}.`);
-        if (occurrence) recurringOccurrences.add(occurrence);
-        const behavior = itemBehavior(item, library);
-        const fixed = item.is_fixed || behavior === "COMMITMENT";
-        const raw = converted / (item.repeat_day ? 1 : days);
-        const amount = raw * (fixed ? 1 : inflation);
-        entries.push({ date, phase_id: phase?.id || null, kind: "LIVING", amount, inflation_effect: amount - raw, item_id: item.id, name: item.name, type_id: item.type_id!, category_id: item.category_id!, behavior_tag: behavior, is_fixed: fixed });
-      }
-    }
-  }
-  for (const payment of s.baseline.repayments.filter(p => p.date >= s.start_date && p.date <= s.projection_end_date)) entries.push({ date: payment.date, phase_id: s.phases.find(p => p.start_date <= payment.date && p.end_date >= payment.date)?.id || null, kind: "LIABILITY", amount: amountIn(payment, s.currency, s.fx)!, inflation_effect: 0, item_id: payment.id, name: payment.name, is_fixed: true });
-  for (const event of s.events.filter(e => e.direction === "expense" && e.date >= s.start_date && e.date <= s.projection_end_date)) entries.push({ date: event.date, phase_id: s.phases.find(p => p.start_date <= event.date && p.end_date >= event.date)?.id || null, kind: "ONE_TIME", amount: amountIn(event, s.currency, s.fx)!, inflation_effect: 0, item_id: event.id, name: event.description, is_fixed: false });
-  return entries;
 }
