@@ -531,7 +531,7 @@ export default function FinancialEventsPage() {
           </div>
         </div>
       )}
-      <Card className="relative z-20 space-y-3 overflow-visible">
+      <Card className="relative z-20 space-y-3 !overflow-visible">
         <div>
           <h2 className="text-xl font-semibold">Event currencies</h2>
           <p className="text-sm text-zinc-400">
