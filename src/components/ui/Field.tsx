@@ -26,11 +26,20 @@ export interface TextareaProps
 export function Input({
   className = "",
   fieldSize = "lg",
+  onFocus,
   ...props
 }: InputProps) {
   return (
     <input
       {...props}
+      onFocus={(event) => {
+        // New numeric records commonly start at zero. Select that placeholder
+        // so typing an amount replaces it instead of producing values like 0500.
+        if (props.type === "number" && Number(event.currentTarget.value) === 0) {
+          event.currentTarget.select();
+        }
+        onFocus?.(event);
+      }}
       className={cn(
         fieldStyles.base,
         fieldStyles.sizes[fieldSize],
@@ -74,4 +83,3 @@ export function Textarea({
     />
   );
 }
-
