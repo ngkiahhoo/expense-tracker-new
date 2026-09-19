@@ -30,10 +30,12 @@ import DashboardAnalyticsSection from "../components/DashboardAnalyticsSection";
 import DashboardSummarySection from "../components/DashboardSummarySection";
 import ExportModal from "../components/ExportModal";
 import ExpensePanel from "../components/ExpensePanel";
+import ExpenseReminderPanel from "../components/ExpenseReminderPanel";
 import ExpenseRecordsPanel from "../components/ExpenseRecordsPanel";
 import IncomePanel from "../components/IncomePanel";
 import MetricCard from "../components/MetricCard";
 import QuickActionSheet from "../components/QuickActionSheet";
+import ReminderLogsPanel from "../components/ReminderLogsPanel";
 import RecurringExpensePanel from "../components/RecurringExpensePanel";
 import PaymentPlanPanel from "../components/PaymentPlanPanel";
 import usePaymentPlans from "../hooks/usePaymentPlans";
@@ -44,6 +46,7 @@ import useAssets from "../hooks/useAssets";
 import useCategories from "../hooks/useCategories";
 import useCategoryBreakdown from "../hooks/useCategoryBreakdown";
 import useDashboardHistory from "../hooks/useDashboardHistory";
+import useExpenseReminder from "../hooks/useExpenseReminder";
 import useExpenses from "../hooks/useExpenses";
 import useIncome from "../hooks/useIncome";
 import useMonthOptions from "../hooks/useMonthOptions";
@@ -517,6 +520,21 @@ export default function Home() {
     return copied;
   }
 
+  function openExpenseFromReminder() {
+    if (!confirmPanelClose()) return;
+    setEditingId(null);
+    setShowExpenseForm(true);
+    setActiveTool("expense");
+  }
+
+  const expenseReminder = useExpenseReminder({
+    expenses: allExpenses,
+    loading: historyLoading,
+    readError: historyError,
+    onAddExpense: openExpenseFromReminder,
+    toast,
+  });
+
   function openIncomeCrud() {
     if (!confirmPanelClose()) return;
     setShowBalance(false);
@@ -575,6 +593,10 @@ export default function Home() {
       ? "Pay Later & Installments"
       : activeTool === "categories"
       ? "Category CRUD"
+      : activeTool === "reminders"
+      ? "Reminders"
+      : activeTool === "reminderLogs"
+      ? "Reminder Logs"
       : "Expense Records";
 
   const sheetWidthClass =
@@ -857,6 +879,19 @@ export default function Home() {
                   </fieldset>
               </>
             )}
+
+            {activeTool === "reminders" && (
+              <ExpenseReminderPanel
+                settings={expenseReminder.settings}
+                lastSent={expenseReminder.lastSent}
+                todaysExpenseCount={expenseReminder.todaysExpenseCount}
+                onChange={expenseReminder.setSettings}
+                onTest={expenseReminder.testReminder}
+                onToast={toast.showToast}
+              />
+            )}
+
+            {activeTool === "reminderLogs" && <ReminderLogsPanel />}
 
             {activeTool === "records" && (
                   <ExpenseRecordsPanel

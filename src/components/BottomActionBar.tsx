@@ -10,8 +10,10 @@ import {
   ClipboardList,
   Download,
   FolderTree,
+  Bell,
   Moon,
   Plus,
+  ScrollText,
   Settings,
   Sparkles,
   Sun,
@@ -22,7 +24,7 @@ import BottomBarButton from "@/components/BottomBarButton";
 import { createSupabaseBackup, downloadSupabaseBackup } from "@/utils/supabaseBackup";
 
 export type BottomTool =
-  "expense" | "recurring" | "payments" | "categories" | "records" | "income";
+  "expense" | "recurring" | "payments" | "categories" | "records" | "income" | "reminders" | "reminderLogs";
 
 const BOTTOM_BUTTONS_PER_ROW = 3;
 const EXPORTING_STATUS = "Exporting...";
@@ -173,6 +175,24 @@ export default function BottomActionBar({
                   }}
                   icon={theme === "dark" ? Moon : Sun}
                   label="Theme"
+                />
+                <BottomBarButton
+                  active={activeTool === "reminders"}
+                  onClick={() => {
+                    onToggle("reminders");
+                    setActiveMenu(null);
+                  }}
+                  icon={Bell}
+                  label="Reminder"
+                />
+                <BottomBarButton
+                  active={activeTool === "reminderLogs"}
+                  onClick={() => {
+                    onToggle("reminderLogs");
+                    setActiveMenu(null);
+                  }}
+                  icon={ScrollText}
+                  label="Logs"
                 />
                 <BottomBarButton
                   active={false}
