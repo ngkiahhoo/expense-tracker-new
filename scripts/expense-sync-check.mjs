@@ -18,6 +18,7 @@ globalThis.fixture = {
 };
 let source = ts.transpileModule(readFileSync('src/hooks/useFutureExpensePlans.ts','utf8'), {compilerOptions:{module:ts.ModuleKind.ES2022,target:ts.ScriptTarget.ES2022}}).outputText;
 source=source.replace(/from "react"/,`from ${JSON.stringify(dataURL('export const {useState,useRef,useEffect}=globalThis.fixture;'))}`).replace(/from "\.\.\/lib\/supabase"/,`from ${JSON.stringify(dataURL('export const {supabase}=globalThis.fixture;'))}`).replace(/from "\.\.\/utils\/([^" ]+)"/g,(_,p)=>`from ${JSON.stringify(moduleURL('src/utils/'+p+'.ts'))}`);
+source = source.replace(/from "\.\/useUnsavedChanges"/, `from ${JSON.stringify(dataURL('export default function useUnsavedChanges() {}'))}`);
 const {default:hook}=await import(dataURL(source));
 const render=()=>{si=0;ri=0;const result=hook();mounted=true;return result;};
 const tick=()=>new Promise(r=>setTimeout(r,15));

@@ -10,6 +10,13 @@ import {
 
 import PullToRefresh from "react-simple-pull-to-refresh";
 import { Wallet } from "lucide-react";
+import LoadState from "@/components/ui/LoadState";
+import { Button } from "@/components/ui/Button";
+import useSessionState from "@/hooks/useSessionState";
+import useUnsavedChanges, { confirmPanelClose } from "@/hooks/useUnsavedChanges";
+import { defaultListFilters } from "@/components/ui/ListToolbar";
+import { getMonthDateRange } from "@/utils/monthRange";
+import { formatCurrencyAmount } from "@/utils/currency";
 
 import { useToast } from "@/contexts/ToastContext";
 import {
@@ -80,6 +87,8 @@ export default function Home() {
     allExpenses,
     allIncomes,
     fetchDashboardHistory,
+    error: historyError,
+    loading: historyLoading,
   } = useDashboardHistory(activeCurrency);
 
   const { activeTool, setActiveTool } = useAppTools();
@@ -89,6 +98,19 @@ export default function Home() {
   } = useThemePreference();
 
   const [showAssetModal, setShowAssetModal] = useState(false);
+  const [showBalance, setShowBalance] = useState(false);
+  const [editReturn, setEditReturn] = useState<"records" | "drilldown" | null>(null);
+  const [, setRecordFilters] = useSessionState("records:filters", defaultListFilters);
+  const [, setRecordFrom] = useSessionState("records:from", "");
+  const [, setRecordTo] = useSessionState("records:to", "");
+  const [, setRecordPage] = useSessionState("records:page", 1);
+  const [, setUpdatedExpense] = useSessionState("records:updated", 0);
+  const [, setUpdatedIncome] = useSessionState("income:updated", 0);
+  useEffect(() => {
+    const close = () => setActiveTool(null);
+    window.addEventListener("expense:close-saved", close);
+    return () => window.removeEventListener("expense:close-saved", close);
+  }, [setActiveTool]);
 
   function handlePopupFocus(
     event: FocusEvent<HTMLDivElement>
@@ -147,6 +169,9 @@ export default function Home() {
 
     loading,
     error,
+    readError: expenseReadError,
+    reading: expenseReading,
+    editingCurrency,
 
     fetchExpenses,
     saveExpense,
@@ -168,6 +193,8 @@ export default function Home() {
     setIncomeNote,
 
     incomeEditingId,
+    incomeDate, setIncomeDate, incomeLoading, incomeError, incomeEditingCurrency,
+    reading: incomeReading, readError: incomeReadError, resetIncomeForm,
 
     fetchIncome,
     addIncome,
@@ -188,6 +215,7 @@ export default function Home() {
     setSelectedType,
 
     editingCategoryId,
+    categoryLoading, categoryError,
 
     fetchCategories,
     addCategory,
@@ -267,6 +295,8 @@ export default function Home() {
   );
 
   const assets = useAssets(selectedMonth);
+  const { fetchAssets } = assets;
+  useUnsavedChanges(activeTool === "expense" ? !!(amount || note || editingId) : activeTool === "income" ? !!(incomeAmount || incomeNote || incomeEditingId) : false, activeTool === "expense" ? loading : activeTool === "income" ? incomeLoading : false);
 
   const refreshPaymentTransactions = useCallback(async () => {
     await Promise.all([fetchExpenses(), fetchDashboardHistory()]);
@@ -324,6 +354,7 @@ export default function Home() {
     await generateDueRecurringExpenses();
 
     await Promise.all([
+      fetchAssets(),
       fetchExpenses(),
       fetchIncome(),
       fetchCategories(),
@@ -332,6 +363,7 @@ export default function Home() {
 
     await fetchDashboardHistory();
   }, [
+    fetchAssets,
     fetchCategories,
     fetchDashboardHistory,
     fetchExpenses,
@@ -367,9 +399,13 @@ export default function Home() {
       await saveExpense();
 
     if (result.success) {
-      addSavedNote(
-        noteToSave
-      );
+      if (editingId) {
+        setUpdatedExpense(editingId);
+        setActiveTool(editReturn === "records" ? "records" : null);
+        if (editReturn === "drilldown") setShowExpenseDrilldown(true);
+      }
+      try { addSavedNote(noteToSave); }
+      catch { toast.showToast("Expense saved. The note shortcut could not be synced.", "warning"); }
       await fetchDashboardHistory();
       toast.showToast(result.message || "Expense saved successfully", "success");
     } else {
@@ -428,6 +464,8 @@ export default function Home() {
   async function handleAddIncome() {
     const result = await addIncome();
     if (result.success) {
+      if (incomeEditingId) setUpdatedIncome(incomeEditingId);
+      setShowIncomeForm(false);
       await fetchDashboardHistory();
       toast.showToast(result.message || "Income added successfully", "success");
     } else {
@@ -480,17 +518,19 @@ export default function Home() {
   }
 
   function openIncomeCrud() {
+    if (!confirmPanelClose()) return;
+    setShowBalance(false);
     setShowIncomeList(true);
-    setShowIncomeForm(true);
+    setShowIncomeForm(false);
     setActiveTool("income");
   }
 
-  function openExpenseBreakdown() {
-    setDrilldownMonth(selectedMonth);
-    setDrilldownCategoryKey(null);
-    setDrilldownCategoryName(null);
-    setDrilldownTypeName(null);
-    setShowExpenseDrilldown(true);
+  function openScopedRecords() {
+    if (!confirmPanelClose()) return;
+    const range = getMonthDateRange(selectedMonth);
+    setRecordFilters({ ...defaultListFilters, currency: activeCurrency });
+    setRecordFrom(range.start); setRecordTo(range.end); setRecordPage(1);
+    setShowBalance(false); setActiveTool("records");
   }
 
   function closeExpenseDrilldown() {
@@ -504,7 +544,8 @@ export default function Home() {
   function handleStartEdit(
     expense: Expense
   ) {
-    closeExpenseDrilldown();
+    setEditReturn(activeTool === "records" ? "records" : showExpenseDrilldown ? "drilldown" : null);
+    setShowExpenseDrilldown(false);
     startEdit(expense);
     setShowExpenseForm(true);
     setActiveTool("expense");
@@ -583,14 +624,17 @@ export default function Home() {
               activeCurrency={activeCurrency}
               assetCount={activeCurrencyAssets.length}
               assetTotal={activeCurrencyAssetTotal}
+              loading={assets.loading}
+              error={!!assets.error}
               currentMonth={currentMonth}
               months={months}
-              onAssetClick={() => setShowAssetModal(true)}
+              onAssetClick={() => { if (!confirmPanelClose()) return; setActiveTool(null); setShowBalance(false); setShowAssetModal(true); }}
               onCurrencyChange={handleCurrencyChange}
               onMonthChange={setSelectedMonth}
               selectedMonth={selectedMonth}
             />
 
+            <LoadState error={expenseReadError || incomeReadError || assets.error} retry={() => void refreshAll()} />
             {error && (
 
               <div
@@ -611,6 +655,8 @@ export default function Home() {
                 icon={Wallet}
                 label="Monthly Income"
                 amount={totalIncome}
+                loading={incomeReading}
+                error={!!incomeReadError}
                 currency={activeCurrency}
                 onAmountClick={openIncomeCrud}
               />
@@ -620,9 +666,11 @@ export default function Home() {
                 tone="danger"
                 label="Total Spending"
                 amount={totalSpending}
+                loading={expenseReading}
+                error={!!expenseReadError}
                 currency={activeCurrency}
                 helper={`${spendingPercent}% of income`}
-                onAmountClick={openExpenseBreakdown}
+                onAmountClick={openScopedRecords}
               />
 
               <MetricCard
@@ -630,12 +678,16 @@ export default function Home() {
                 tone="balance"
                 label="Balance"
                 amount={balance}
+                loading={expenseReading || incomeReading}
+                error={!!expenseReadError || !!incomeReadError}
+                onAmountClick={() => { if (!confirmPanelClose()) return; setActiveTool(null); setShowBalance(true); }}
                 currency={activeCurrency}
                 helper={`${balancePercent}% of income`}
               />
             </div>
 
-            <DashboardAnalyticsSection
+            <LoadState loading={historyLoading} error={historyError} retry={() => void fetchDashboardHistory()} />
+            {!historyLoading && !historyError && !expenseReadError && !incomeReadError && !expenseReading && !incomeReading && <DashboardAnalyticsSection
               analytics={analytics}
               breakdown={categoryBreakdown}
               currency={activeCurrency}
@@ -660,7 +712,7 @@ export default function Home() {
                 setShowExpenseDrilldown(true);
               }}
               totalIncome={totalIncome}
-            />
+            />}
 
           </div>
 
@@ -668,12 +720,25 @@ export default function Home() {
 
         {activeTool && (
           <QuickActionSheet
-            title={sheetTitle}
+            title={`${sheetTitle}${activeTool === "income" ? ` - ${selectedMonth} ${activeCurrency}` : ""}`}
             widthClass={sheetWidthClass}
-            onClose={() => setActiveTool(null)}
+            onClose={() => {
+              if (activeTool === "expense" && editingId) {
+                setEditingId(null); resetExpenseForm();
+                setActiveTool(editReturn === "records" ? "records" : null);
+                if (editReturn === "drilldown") setShowExpenseDrilldown(true);
+              } else {
+                if (activeTool === "income" && incomeEditingId) resetIncomeForm();
+                setActiveTool(null);
+              }
+            }}
             onFocusCapture={handlePopupFocus}
           >
             {activeTool === "expense" && (
+              <>
+                  <p className="mb-3 text-sm text-zinc-400">{editingCurrency || activeCurrency} · {assets.assets.find(a => a.is_main && normalizeCurrency(a.currency) === (editingCurrency || activeCurrency))?.name || "No main account selected"}</p>
+                  <LoadState error={error} />
+                  <LoadState error={categoryError} retry={fetchCategories} />
                   <ExpensePanel
                     showExpenseForm={showExpenseForm}
                     setShowExpenseForm={setShowExpenseForm}
@@ -688,8 +753,8 @@ export default function Home() {
                     setSelectedCategory={setSelectedCategory}
                     categories={categories}
                     editingId={editingId}
-                    currency={activeCurrency}
-                    loading={loading}
+                    currency={editingCurrency || activeCurrency}
+                    loading={loading || categoryLoading}
                     saveExpense={handleSaveExpense}
                     resetExpenseForm={resetExpenseForm}
                     setEditingId={setEditingId}
@@ -698,6 +763,7 @@ export default function Home() {
                     updateSavedNote={updateSavedNote}
                     deleteSavedNote={deleteSavedNote}
                   />
+              </>
             )}
 
             {activeTool === "payments" && (
@@ -758,7 +824,14 @@ export default function Home() {
                     incomeNote={incomeNote}
                     setIncomeNote={setIncomeNote}
                     incomeEditingId={incomeEditingId}
-                    currency={activeCurrency}
+                    incomeDate={incomeDate}
+                    setIncomeDate={setIncomeDate}
+                    loading={incomeLoading}
+                    reading={incomeReading}
+                    error={incomeReadError || incomeError}
+                    retry={() => void fetchIncome()}
+                    cancelEdit={resetIncomeForm}
+                    currency={incomeEditingCurrency || activeCurrency}
                     addIncome={handleAddIncome}
                     startEditIncome={handleStartEditIncome}
                     deleteIncome={handleDeleteIncome}
@@ -766,6 +839,9 @@ export default function Home() {
             )}
 
             {activeTool === "categories" && (
+              <>
+                  <LoadState loading={categoryLoading} error={categoryError} retry={fetchCategories} />
+                  <fieldset disabled={categoryLoading}>
                   <CategoryPanel
                     showCategories={showCategories}
                     newCategory={newCategory}
@@ -778,6 +854,8 @@ export default function Home() {
                     deleteCategory={handleDeleteCategory}
                     categories={categories}
                   />
+                  </fieldset>
+              </>
             )}
 
             {activeTool === "records" && (
@@ -813,10 +891,14 @@ export default function Home() {
     {showAssetModal && (
       <AssetDetailsModal
         assets={assets}
+        initialCurrency={activeCurrency}
         onClose={() => setShowAssetModal(false)}
         onToast={toast.showToast}
       />
     )}
+    {showBalance && <QuickActionSheet title={`Balance - ${selectedMonth} ${activeCurrency}`} widthClass="lg:w-[430px]" onClose={() => setShowBalance(false)}>
+      <dl className="space-y-4"><div><dt className="text-sm text-zinc-400">Income</dt><dd><Button variant="outline" onClick={openIncomeCrud}>{formatCurrencyAmount(totalIncome, activeCurrency)}</Button></dd></div><div><dt className="text-sm text-zinc-400">Spending</dt><dd><Button variant="outline" onClick={openScopedRecords}>{formatCurrencyAmount(totalSpending, activeCurrency)}</Button></dd></div><div className="border-t border-white/10 pt-3"><dt>Income minus spending</dt><dd className="break-all text-xl font-semibold">{formatCurrencyAmount(balance, activeCurrency)}</dd></div></dl>
+    </QuickActionSheet>}
 
     {showExportModal && exportPayload && (
       <ExportModal

@@ -23,7 +23,7 @@ export async function getIncomes(selectedMonth: string) {
 
   if (error) {
     logServiceError("Failed to fetch incomes", error);
-    return [];
+    throw error;
   }
 
   return data || [];

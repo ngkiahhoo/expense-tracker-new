@@ -21,15 +21,16 @@ export function ToastContainer() {
   const { toasts, removeToast } = useToast();
 
   return (
-    <div className="fixed top-4 right-4 z-[70] max-w-sm space-y-2 pointer-events-none">
-      {toasts.map((toast: { id: string; message: string; type: ToastType }) => (
+    <div aria-live="polite" className="fixed left-3 right-3 top-4 z-[80] ml-auto max-w-sm space-y-2 pointer-events-none">
+      {toasts.map((toast) => (
         <div
           key={toast.id}
+          role={toast.type === "error" ? "alert" : "status"}
           className={`
             ${getToastStyles(toast.type)}
             text-white
             rounded-lg
-            p-4
+            p-3
             shadow-lg
             flex
             items-center
@@ -43,7 +44,9 @@ export function ToastContainer() {
           `}
         >
           <p className="text-sm font-medium">{toast.message}</p>
+          {toast.action && <button className="shrink-0 text-sm font-semibold underline" onClick={() => { removeToast(toast.id); toast.action?.onClick(); }}>{toast.action.label}</button>}
           <ActionIconButton
+            className="!h-8 !w-8 shrink-0"
             kind="close"
             onClick={() => removeToast(toast.id)}
             title="Close notification"

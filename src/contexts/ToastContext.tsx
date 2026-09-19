@@ -9,11 +9,12 @@ export interface Toast {
   message: string;
   type: ToastType;
   duration?: number;
+  action?: { label: string; onClick: () => void };
 }
 
 interface ToastContextType {
   toasts: Toast[];
-  showToast: (message: string, type: ToastType, duration?: number) => void;
+  showToast: (message: string, type: ToastType, duration?: number, action?: Toast["action"]) => void;
   removeToast: (id: string) => void;
 }
 
@@ -27,11 +28,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const showToast = useCallback(
-    (message: string, type: ToastType, duration = 3000) => {
+    (message: string, type: ToastType, duration = 3000, action?: Toast["action"]) => {
       const id = `${Date.now()}-${Math.random()}`;
-      const toast: Toast = { id, message, type, duration };
+      const toast: Toast = { id, message, type, duration, action };
 
-      setToasts((current) => [...current, toast]);
+      setToasts([toast]);
 
       if (duration > 0) {
         setTimeout(() => removeToast(id), duration);

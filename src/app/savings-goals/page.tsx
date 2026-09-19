@@ -14,6 +14,7 @@ import { dateKey } from "@/utils/expenseMath";
 import { projectGoal, goalMilestones, whatIfSaving, actualSavingCheck } from "@/utils/goalProjection";
 import { formatCurrencyAmount } from "@/utils/currency";
 import type { Currency } from "@/types/currency";
+import useUnsavedChanges, { confirmPanelClose } from "@/hooks/useUnsavedChanges";
 
 interface GoalForm {
   id: string; name: string; target: string; targetDate: string; currency: Currency;
@@ -45,6 +46,7 @@ export default function SavingsGoalsPage() {
   const library = hierarchy.data ? withBookkeepingHierarchy(plans.library, hierarchy.data.types, hierarchy.data.categories) : plans.library;
   const [selected, setSelected] = useState("");
   const [form, setForm] = useState<GoalForm | null>(null);
+  useUnsavedChanges(!!form);
   const [error, setError] = useState("");
   const goal = goals.find(g => g.id === selected) ?? goals[0];
   const blocked = data.loading || !!data.error || plans.loading || !!plans.storageError || !hierarchy.data || !!hierarchy.error;
@@ -108,7 +110,7 @@ export default function SavingsGoalsPage() {
         <label>Status<Select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as SavingsGoalStatus })}><option value="active">Active</option><option value="paused">Paused</option><option value="completed">Completed</option></Select></label>
       </div>
       <fieldset className="space-y-2"><legend className="mb-2 font-semibold">Included assets</legend>{data.loading ? <p>Loading assets...</p> : data.assets.map(a => <label key={a.id} className="flex items-center gap-3"><input type="checkbox" checked={form.includedAssetIds.includes(a.id)} onChange={e => setForm({ ...form, includedAssetIds: e.target.checked ? [...form.includedAssetIds, a.id] : form.includedAssetIds.filter(id => id !== a.id) })} />{a.name} · {formatCurrencyAmount(a.current_value, a.currency)}</label>)}{form.includedAssetIds.filter(id => !data.assets.some(a => a.id === id)).map(id => <label key={id} className="flex gap-3"><input type="checkbox" checked onChange={() => setForm({ ...form, includedAssetIds: form.includedAssetIds.filter(value => value !== id) })} />Unavailable asset #{id}</label>)}</fieldset>
-      <div className="flex gap-2"><Button type="submit">Save Goal</Button><Button type="button" variant="secondary" onClick={() => setForm(null)}>Cancel</Button></div>
+      <div className="sticky bottom-24 flex flex-wrap gap-2 bg-zinc-950 py-3"><Button type="submit">Save Goal</Button><Button type="button" variant="secondary" onClick={() => { if (confirmPanelClose()) setForm(null); }}>Cancel</Button></div>
     </form></Card>}
     {!!goals.length && <label className="block">Savings Goal<Select value={goal?.id ?? ""} onChange={e => setSelected(e.target.value)}>{goals.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</Select></label>}
     {!goals.length && !form && !goalsError && <Card><h2 className="text-xl font-semibold">Create your first savings goal</h2></Card>}

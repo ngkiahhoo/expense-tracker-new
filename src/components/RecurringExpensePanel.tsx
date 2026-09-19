@@ -20,6 +20,10 @@ import { formatCurrencyAmount } from "../utils/currency";
 import type { Category } from "../types/category";
 import type { Currency } from "../types/currency";
 import type { RecurringExpense } from "../types/recurringExpense";
+import ListToolbar, { defaultListFilters } from "./ui/ListToolbar";
+import useSessionState from "@/hooks/useSessionState";
+import useUnsavedChanges from "@/hooks/useUnsavedChanges";
+import { SheetFooter } from "./QuickActionSheet";
 
 interface RecurringExpensePanelProps {
   recurringExpenses: RecurringExpense[];
@@ -80,6 +84,9 @@ export default function RecurringExpensePanel({
   startEditRecurringExpense,
   resetRecurringExpenseForm,
 }: RecurringExpensePanelProps) {
+  const [filters, setFilters] = useSessionState("recurring-list:filters", defaultListFilters);
+  useUnsavedChanges(!!(recurringName || recurringAmount || recurringEditingId), recurringLoading);
+  const visible = recurringExpenses.filter(e => (filters.currency === "all" || (e.currency ?? "MYR") === filters.currency) && (filters.status === "all" || e.is_active === (filters.status === "active")) && `${e.name} ${e.description} ${e.categories?.name || ""}`.toLowerCase().includes(filters.query.trim().toLowerCase())).sort((a, b) => (filters.sort === "name" ? a.name.localeCompare(b.name) : a.repeat_day - b.repeat_day) * (filters.direction === "asc" ? 1 : -1));
   function cancelEdit() {
     setRecurringEditingId(null);
     resetRecurringExpenseForm();
@@ -201,7 +208,7 @@ export default function RecurringExpensePanel({
           </label>
         </div>
 
-        <div className="flex gap-3">
+        <SheetFooter>
           <Button
             onClick={saveRecurringExpense}
             disabled={recurringLoading}
@@ -223,17 +230,18 @@ export default function RecurringExpensePanel({
               aria-label="Cancel edit"
             />
           )}
-        </div>
+        </SheetFooter>
       </Card>
 
       <div className="space-y-3">
+        <ListToolbar value={filters} onChange={setFilters} currencies={["MYR", "SGD"]} statuses={[{ value: "active", label: "Active" }, { value: "paused", label: "Paused" }]} />
         {recurringLoading && recurringExpenses.length === 0 && (
           <div className={cn(emptyStateStyles, "text-zinc-400")}>
             Loading...
           </div>
         )}
 
-        {!recurringLoading && recurringExpenses.length === 0 && (
+        {!recurringLoading && !recurringError && recurringExpenses.length === 0 && (
           <div className={emptyStateStyles}>
             <h3 className="mb-2 text-xl font-bold">
               No recurring expenses yet
@@ -245,7 +253,8 @@ export default function RecurringExpensePanel({
           </div>
         )}
 
-        {recurringExpenses.map((expense) => (
+        {!recurringLoading && !recurringError && recurringExpenses.length > 0 && !visible.length && <p className="text-sm text-zinc-400">No matching schedules.</p>}
+        {visible.map((expense) => (
           <Card key={expense.id} variant="item" padding="sm">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">

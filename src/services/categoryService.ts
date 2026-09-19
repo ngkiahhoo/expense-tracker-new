@@ -20,7 +20,7 @@ export async function getCategories() {
 
   if (error) {
     logServiceError("Failed to fetch categories", error);
-    return [];
+    throw error;
   }
 
   return (data || []) as unknown as Category[];

@@ -18,6 +18,8 @@ interface MetricCardProps {
   helper?: string;
   action?: ReactNode;
   onAmountClick?: () => void;
+  loading?: boolean;
+  error?: boolean;
 }
 
 export default function MetricCard({
@@ -30,11 +32,12 @@ export default function MetricCard({
   helper,
   action,
   onAmountClick,
+  loading = false, error = false,
 }: MetricCardProps) {
   const amountContent = (
-    <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+    <span className="inline-flex max-w-full flex-wrap items-baseline gap-2 break-all">
       <span className="text-base text-zinc-400">{currencyLabel(currency)}</span>
-      <span>{amount.toFixed(2)}</span>
+      <span>{error ? "Unavailable" : loading ? "Loading..." : amount.toFixed(2)}</span>
     </span>
   );
 
@@ -60,6 +63,8 @@ export default function MetricCard({
             {onAmountClick ? (
               <button
                 type="button"
+                aria-label={`View ${label} details`}
+                disabled={loading || error}
                 onClick={onAmountClick}
                 className={cn(
                   "-mx-2 rounded-xl px-2 py-1 text-left transition hover:bg-white/5 focus-visible:bg-white/5",
@@ -77,7 +82,7 @@ export default function MetricCard({
         {action && <div className="shrink-0">{action}</div>}
       </div>
 
-      {helper && (
+      {helper && !loading && !error && (
         <p className="mt-1 text-sm text-zinc-400">
           {helper}
         </p>

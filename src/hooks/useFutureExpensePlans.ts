@@ -4,6 +4,8 @@ import { supabase } from "../lib/supabase";
 import type { FutureExpenseLibrary } from "../types/futureExpense";
 import { emptyExpenseLibrary } from "../utils/futureExpense";
 import { assertExpenseLibrary, mergeLegacyLibrary } from "../utils/expenseStorage";
+import { reportSyncState } from "../utils/syncStatus";
+import useUnsavedChanges from "./useUnsavedChanges";
 
 const legacyKey = "expense-tracker-future-planning-v2";
 const backupKey = "expense-tracker-expense-pending-v1";
@@ -16,8 +18,10 @@ export default function useFutureExpensePlans() {
   const [storageError, setError] = useState("");
   const [status, setStatus] = useState("Loading plans from database…");
   const [hasBackup, setHasBackup] = useState(false);
+  useUnsavedChanges(hasBackup);
   const worker = useRef<() => void>(() => {});
   const state = useRef<{ row: Row | null; pending: FutureExpenseLibrary | null; busy: boolean; generation: number }>({ row: null, pending: null, busy: false, generation: 0 });
+  useEffect(() => { reportSyncState({ key: "Living Cost", pending: hasBackup, error: storageError, retry: () => worker.current() }); }, [hasBackup, storageError]);
 
   useEffect(() => {
     let alive = true;
@@ -66,8 +70,10 @@ export default function useFutureExpensePlans() {
           if (alive) setLibrary(row.library);
         }
         succeeded = true;
+        reportSyncState({ key: "Living Cost", pending: !!s.pending, error: "", retry: () => worker.current() });
         if (alive) { setLoading(false); setStatus("Saved to database · Syncs across devices"); }
       } catch (e) {
+        reportSyncState({ key: "Living Cost", pending: !!s.pending, error: `Not synced: ${e instanceof Error ? e.message : (e as { message?: string }).message || "Please retry."}`, retry: () => worker.current() });
         if (alive) { setLoading(false); setError(`Database sync failed: ${e instanceof Error ? e.message : (e as { message?: string }).message || "Please retry."}`); setStatus("Not synced — changes have not been confirmed in the database."); }
       } finally {
         s.busy = false;

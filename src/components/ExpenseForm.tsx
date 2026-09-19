@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
+import { SheetFooter } from "./QuickActionSheet";
 import {
   BookmarkPlus,
 } from "lucide-react";
@@ -57,6 +58,20 @@ export default function ExpenseForm({
   deleteSavedNote,
 }: ExpenseFormProps) {
   const [selectedSavedNote, setSelectedSavedNote] = useState("");
+  const amountId = useId();
+  const submitLock = useRef(false);
+  const [another, setAnother] = useState(true);
+  async function submit() {
+    if (submitLock.current || loading) return;
+    submitLock.current = true;
+    try {
+      const saved = await saveExpense();
+      if (saved && !editingId) {
+        if (another) document.getElementById(amountId)?.focus();
+        else window.dispatchEvent(new Event("expense:close-saved"));
+      }
+    } finally { submitLock.current = false; }
+  }
 
   function handleSavedNoteSelect(id: string) {
     setSelectedSavedNote(id);
@@ -92,7 +107,14 @@ export default function ExpenseForm({
 
   return (
     <Card variant="default" padding="lg" className="space-y-4">
+      <fieldset disabled={loading} className="min-w-0 space-y-4">
       <Input
+        id={amountId}
+        aria-label="Expense amount"
+        inputMode="decimal"
+        min="0.01"
+        step="0.01"
+        disabled={loading}
         type="number"
         placeholder={`${currencyLabel(currency)} Expense Amount`}
         value={amount}
@@ -159,13 +181,15 @@ export default function ExpenseForm({
 
       <Input
         type="date"
+        aria-label="Expense date"
         value={expenseDate}
         onChange={(event) => setExpenseDate(event.target.value)}
       />
 
       <Select
         value={selectedCategory}
-        onChange={(event) => setSelectedCategory(event.target.value)}
+        aria-label="Expense category"
+        onChange={(event) => { setSelectedCategory(event.target.value); document.getElementById(amountId)?.focus(); }}
       >
         <option value="">Select Category</option>
 
@@ -178,9 +202,10 @@ export default function ExpenseForm({
         ))}
       </Select>
 
-      <div className="flex gap-3">
+      {!editingId && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={another} onChange={e => setAnother(e.target.checked)} />Add another after saving</label>}
+      <SheetFooter>
       <Button
-        onClick={saveExpense}
+        onClick={() => void submit()}
         disabled={loading}
         size="lg"
         className="flex-1"
@@ -195,12 +220,14 @@ export default function ExpenseForm({
       {editingId && (
         <ActionIconButton
           kind="close"
+          disabled={loading}
           onClick={cancelEdit}
           title="Cancel edit"
           aria-label="Cancel edit"
         />
       )}
-    </div>
+    </SheetFooter>
+      </fieldset>
     </Card>
   );
 }

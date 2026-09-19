@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useRef,
   useState,
 } from "react";
 
@@ -20,6 +21,8 @@ import type { Income } from "../types/income";
 import type { Currency } from "../types/currency";
 import { DEFAULT_CURRENCY, normalizeCurrency } from "../utils/currency";
 import { notifyTransactionsChanged } from "../utils/transactionEvents";
+import { dateKey, validDate } from "../utils/expenseMath";
+import useSessionState from "./useSessionState";
 
 export default function useIncome(
   selectedMonth:string,
@@ -30,16 +33,20 @@ export default function useIncome(
     useState<Income[]>([]);
 
   const [incomeAmount, setIncomeAmount] =
-    useState("");
+    useSessionState("income-draft:amount", "");
 
   const [incomeNote, setIncomeNote] =
-    useState("");
+    useSessionState("income-draft:note", "");
 
   const [incomeEditingId, setIncomeEditingId] =
-    useState<number | null>(null);
+    useSessionState<number | null>("income-draft:id", null);
 
   const [incomeEditingCurrency, setIncomeEditingCurrency] =
-    useState<Currency | null>(null);
+    useSessionState<Currency | null>("income-draft:currency", null);
+  const [incomeDate, setIncomeDate] = useSessionState("income-draft:date", dateKey());
+  const [readError, setReadError] = useState("");
+  const [loadedMonth, setLoadedMonth] = useState("");
+  const readRequest = useRef(0), saving = useRef(false);
 
   const [incomeLoading, setIncomeLoading] =
     useState(false);
@@ -48,6 +55,7 @@ export default function useIncome(
     useState("");
 
   const fetchIncome = useCallback(async () => {
+    const request = ++readRequest.current;
 
     try {
       const data =
@@ -55,22 +63,26 @@ export default function useIncome(
           selectedMonth
         );
 
+      if (request !== readRequest.current) return;
       setIncomes(data);
-      setIncomeError("");
+      setLoadedMonth(selectedMonth);
+      setReadError("");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to fetch income";
-      setIncomeError(msg);
+      if (request === readRequest.current) setReadError(msg);
     }
   }, [selectedMonth]);
 
   async function addIncome() {
+    if (saving.current) return { success: false, error: "Saving is already in progress." };
+    saving.current = true;
 
     try {
       setIncomeLoading(true);
       setIncomeError("");
 
-      if (!incomeAmount) {
-        const msg = "Please enter amount";
+      if (!incomeAmount || !Number.isFinite(Number(incomeAmount)) || Number(incomeAmount) <= 0 || !validDate(incomeDate)) {
+        const msg = "Enter an amount above zero and a valid date.";
         setIncomeError(msg);
         return { success: false, error: msg };
       }
@@ -86,7 +98,7 @@ export default function useIncome(
           incomeNote,
 
         income_date:
-          `${selectedMonth}-01`,
+          incomeDate,
 
         currency:
           incomeEditingCurrency ||
@@ -134,6 +146,7 @@ export default function useIncome(
       setIncomeNote("");
 
       setIncomeEditingCurrency(null);
+      setIncomeDate(dateKey());
 
       await fetchIncome();
 
@@ -149,6 +162,7 @@ export default function useIncome(
       setIncomeError(msg);
       return { success: false, error: msg };
     } finally {
+      saving.current = false;
       setIncomeLoading(false);
     }
   }
@@ -156,6 +170,8 @@ export default function useIncome(
   async function deleteIncome(
     id:number
   ) {
+    if (saving.current) return { success: false, error: "Another change is still saving." };
+    saving.current = true;
 
     try {
       setIncomeLoading(true);
@@ -183,6 +199,7 @@ export default function useIncome(
       setIncomeError(msg);
       return { success: false, error: msg };
     } finally {
+      saving.current = false;
       setIncomeLoading(false);
     }
   }
@@ -190,6 +207,7 @@ export default function useIncome(
   function startEditIncome(
     income:Income
   ) {
+    setIncomeDate(income.income_date);
 
     setIncomeEditingId(
       income.id
@@ -220,6 +238,12 @@ export default function useIncome(
     setIncomeNote,
 
     incomeEditingId,
+    incomeDate,
+    setIncomeDate,
+    incomeEditingCurrency,
+    readError,
+    reading: loadedMonth !== selectedMonth && !readError,
+    resetIncomeForm: () => { setIncomeEditingId(null); setIncomeEditingCurrency(null); setIncomeAmount(""); setIncomeNote(""); setIncomeDate(dateKey()); },
 
     incomeLoading,
     incomeError,

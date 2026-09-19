@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getAssets,
   createAsset,
@@ -14,8 +14,9 @@ import { DEFAULT_CURRENCY, normalizeCurrency } from "@/utils/currency";
 
 export default function useAssets(selectedMonth: string) {
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const mutation = useRef(false);
 
   const [assetName, setAssetName] = useState("");
   const [assetValue, setAssetValue] = useState("");
@@ -23,34 +24,29 @@ export default function useAssets(selectedMonth: string) {
   const [assetNote, setAssetNote] = useState("");
   const [assetEditingId, setAssetEditingId] = useState<number | null>(null);
 
-  useEffect(() => {
-    void fetchAssets();
-  }, [selectedMonth]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handler = () => {
-      void fetchAssets();
-    };
-
-    window.addEventListener("asset:updated", handler);
-    return () => window.removeEventListener("asset:updated", handler);
-  }, []);
-
-  async function fetchAssets() {
+  const fetchAssets = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getAssets();
       setAssets(data);
+      setError("");
     } catch {
       setError("Failed to fetch assets");
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => { const timer = setTimeout(() => void fetchAssets(), 0); return () => clearTimeout(timer); }, [selectedMonth, fetchAssets]);
+  useEffect(() => {
+    const handler = () => { void fetchAssets(); };
+    window.addEventListener("asset:updated", handler);
+    return () => window.removeEventListener("asset:updated", handler);
+  }, [fetchAssets]);
 
   async function saveAsset() {
+    if (mutation.current) return { success: false, error: "Another change is still saving." };
+    mutation.current = true;
     try {
       setLoading(true);
       setError("");
@@ -62,7 +58,7 @@ export default function useAssets(selectedMonth: string) {
       }
 
       const value = Number(assetValue);
-      if (Number.isNaN(value)) {
+      if (!Number.isFinite(value)) {
         const msg = "Current value must be a number.";
         setError(msg);
         return { success: false, error: msg };
@@ -93,6 +89,7 @@ export default function useAssets(selectedMonth: string) {
       setError(msg);
       return { success: false, error: msg };
     } finally {
+      mutation.current = false;
       setLoading(false);
     }
   }
@@ -111,10 +108,11 @@ export default function useAssets(selectedMonth: string) {
     setAssetValue(String(asset.current_value));
     setAssetCurrency(normalizeCurrency(asset.currency));
     setAssetNote(asset.note || "");
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function deleteAssetById(id: number) {
+    if (mutation.current) return { success: false, error: "Another change is still saving." };
+    mutation.current = true;
     try {
       setLoading(true);
       const err = await removeAsset(id);
@@ -130,11 +128,14 @@ export default function useAssets(selectedMonth: string) {
       setError(msg);
       return { success: false, error: msg };
     } finally {
+      mutation.current = false;
       setLoading(false);
     }
   }
 
   async function setMainAsset(id: number, isMain: boolean) {
+    if (mutation.current) return { success: false, error: "Another change is still saving." };
+    mutation.current = true;
     try {
       setLoading(true);
       setError("");
@@ -153,12 +154,14 @@ export default function useAssets(selectedMonth: string) {
       setError(msg);
       return { success: false, error: msg };
     } finally {
+      mutation.current = false;
       setLoading(false);
     }
   }
 
   return {
     assets,
+    fetchAssets,
     loading,
     error,
     assetName,

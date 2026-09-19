@@ -11,7 +11,8 @@
     "test": "node scripts/ai-check.mjs",
     "test:living-expenses": "node scripts/living-expense-check.mjs",
     "test:expense-sync": "node scripts/expense-storage-check.mjs && node scripts/expense-sync-check.mjs",
-    "test:goals": "node scripts/goal-projection-check.mjs"
+    "test:goals": "node scripts/goal-projection-check.mjs",
+    "test:cloud-workspace": "node scripts/cloud-workspace-check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",

@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useRef,
   useState,
 } from "react";
 
@@ -16,17 +17,23 @@ export default function useDashboardHistory(
 ) {
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [allIncomes, setAllIncomes] = useState<Income[]>([]);
+  const [error, setError] = useState("");
+  const [loadedCurrency, setLoadedCurrency] = useState("");
+  const request = useRef(0);
 
   const fetchDashboardHistory = useCallback(async () => {
+    const id = ++request.current;
     try {
       const history = await getDashboardHistory(activeCurrency);
+      if (id !== request.current) return history;
       setAllExpenses(history.expenses);
       setAllIncomes(history.incomes);
+      setLoadedCurrency(activeCurrency);
+      setError("");
       return history;
     } catch (error) {
       logServiceError("Failed to load full monthly history", error);
-      setAllExpenses([]);
-      setAllIncomes([]);
+      if (id === request.current) setError("Could not load analytics history. Retry to refresh.");
       return {
         expenses: [],
         incomes: [],
@@ -37,6 +44,8 @@ export default function useDashboardHistory(
   return {
     allExpenses,
     allIncomes,
+    error,
+    loading: loadedCurrency !== activeCurrency && !error,
     fetchDashboardHistory,
   };
 }

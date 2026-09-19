@@ -1,5 +1,10 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import ListToolbar, { defaultListFilters } from "@/components/ui/ListToolbar";
+import LoadState from "@/components/ui/LoadState";
+import useSessionState from "@/hooks/useSessionState";
+import useUnsavedChanges, { confirmPanelClose } from "@/hooks/useUnsavedChanges";
+import { useToast } from "@/contexts/ToastContext";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -95,6 +100,7 @@ function EventForm({
   onCancel: () => void;
 }) {
   const [draft, setDraft] = useState(event);
+  useUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(event));
   const [error, setError] = useState("");
   const [myrRate, setMyrRate] = useState<number | null>(
     event.currency === "MYR" ? 1 : null,
@@ -362,7 +368,7 @@ function EventForm({
             {rateError}
           </p>
         )}
-        <div className="flex gap-2">
+        <div className="sticky bottom-0 flex flex-wrap gap-2 bg-zinc-950 py-3">
           <Button type="submit">Save event</Button>
           <Button type="button" variant="secondary" onClick={onCancel}>
             Cancel
@@ -374,14 +380,20 @@ function EventForm({
 }
 
 export default function FinancialEventsPage() {
-  const { events, storageError, saveEvents } = useFinancialEvents();
+  const { events, storageError, saveEvents, loading, retry } = useFinancialEvents();
+  const toast = useToast();
+  const currentEvents = useRef(events);
+  useEffect(() => { currentEvents.current = events; }, [events]);
+  const [filters, setFilters] = useSessionState("event-list:filters", defaultListFilters);
+  const [updatedEventId, setUpdatedEventId] = useState("");
+  const visibleEvents = events.filter(e => (filters.currency === "all" || e.currency === filters.currency) && (filters.status === "all" || (filters.status === "completed" ? !!e.completedAt : !e.completedAt)) && `${e.name} ${e.description} ${e.items.map(i => i.name).join(" ")}`.toLowerCase().includes(filters.query.trim().toLowerCase())).sort((a, b) => (filters.sort === "name" ? a.name.localeCompare(b.name) : a.startDate.localeCompare(b.startDate)) * (filters.direction === "asc" ? 1 : -1));
   const { currencies, addCurrency, removeCurrency } = useEventCurrencies();
   const [form, setForm] = useState<FinancialEvent | null>(null);
   const [error, setError] = useState("");
   const [currencyDraft, setCurrencyDraft] = useState("");
   const currencySearch = useFrankfurterCurrencies(currencyDraft);
   const [applyingId, setApplyingId] = useState("");
-  const [expandedEventId, setExpandedEventId] = useState("");
+  const [expandedEventId, setExpandedEventId] = useSessionState("event-list:expanded", "");
   function persist(next: FinancialEvent[]) {
     try {
       saveEvents(next);
@@ -507,14 +519,14 @@ export default function FinancialEventsPage() {
           </p>
         </div>
         <Button
-          disabled={!!storageError}
+          disabled={loading || !!storageError}
           onClick={() => setForm(newFinancialEvent(currencies[0] || "MYR"))}
         >
           <Plus size={18} />
           New event
         </Button>
       </header>
-      {storageError && <p role="alert">{storageError}</p>}
+      <LoadState loading={loading} error={storageError} retry={retry} />
       {error && <p role="alert">{error}</p>}
       {form && (
         <div className={overlayStyles.backdrop} role="dialog" aria-modal="true" aria-label="Event editor">
@@ -522,10 +534,10 @@ export default function FinancialEventsPage() {
             <EventForm
               event={form}
               currencies={currencies}
-              onCancel={() => setForm(null)}
+              onCancel={() => { if (confirmPanelClose()) setForm(null); }}
               onSave={(event) => {
                 const exists = events.some((value) => value.id === event.id);
-                if (persist(exists ? events.map((value) => value.id === event.id ? event : value) : [...events, event])) setForm(null);
+                if (persist(exists ? events.map((value) => value.id === event.id ? event : value) : [...events, event])) { setForm(null); setUpdatedEventId(event.id); setExpandedEventId(event.id); }
               }}
             />
           </div>
@@ -596,7 +608,8 @@ export default function FinancialEventsPage() {
           )}
         </div>
       </Card>
-      {!events.length && !form && (
+      <ListToolbar value={filters} onChange={setFilters} currencies={[...new Set(events.map(e => e.currency))]} statuses={[{ value: "pending", label: "Planned" }, { value: "completed", label: "Completed" }]} />
+      {!loading && !storageError && !events.length && !form && (
         <Card>
           <h2 className="text-xl font-semibold">Create your first event</h2>
           <p className="mt-2 text-zinc-400">
@@ -606,13 +619,12 @@ export default function FinancialEventsPage() {
         </Card>
       )}
       <div className="grid gap-4">
-        {events
-          .slice()
-          .sort((a, b) => a.startDate.localeCompare(b.startDate))
+        {!loading && !storageError && events.length > 0 && !visibleEvents.length && <p className="text-sm text-zinc-400">No matching events.</p>}
+        {visibleEvents
           .map((event) => {
             const expanded = expandedEventId === event.id;
             return (
-            <Card key={event.id} className="space-y-3">
+            <Card key={event.id} className={`space-y-3 ${updatedEventId === event.id ? "ring-2 ring-teal-400" : ""}`}>
               <button
                 type="button"
                 className="flex w-full flex-wrap items-start justify-between gap-3 text-left"
@@ -711,8 +723,8 @@ export default function FinancialEventsPage() {
                   size="sm"
                   variant="secondary"
                   onClick={() => {
-                    if (window.confirm("Delete " + event.name + "?"))
-                      persist(events.filter((value) => value.id !== event.id));
+                    if (event.completedAt && !window.confirm(`Remove ${event.name} from plans? Its posted income or expense will remain in your records.`)) return;
+                    if (persist(events.filter((value) => value.id !== event.id))) toast.showToast("Event removed from plans.", "success", 8000, { label: "Undo", onClick: () => { if (!currentEvents.current.some(value => value.id === event.id)) persist([...currentEvents.current, event]); } });
                   }}
                 >
                   Delete

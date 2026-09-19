@@ -7,6 +7,7 @@ export default function useExpenseRecords() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [revision, setRevision] = useState(0);
   useEffect(() => {
     let alive = true, request = 0;
     async function refresh() {
@@ -25,6 +26,6 @@ export default function useExpenseRecords() {
     window.addEventListener("transactions:changed", refresh);
     window.addEventListener("focus", refresh);
     return () => { alive = false; window.removeEventListener("transactions:changed", refresh); window.removeEventListener("focus", refresh); };
-  }, []);
-  return { expenses, loading, error };
+  }, [revision]);
+  return { expenses, loading, error, retry: () => setRevision(value => value + 1) };
 }

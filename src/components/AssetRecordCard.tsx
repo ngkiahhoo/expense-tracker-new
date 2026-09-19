@@ -27,9 +27,9 @@ export default function AssetRecordCard({
   return (
     <Card variant="muted" padding="sm" className="overflow-hidden">
       <div className="grid gap-4">
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="truncate text-lg font-bold">
+            <div className="break-words text-lg font-bold">
               {asset.name}
             </div>
 
@@ -44,7 +44,7 @@ export default function AssetRecordCard({
             className="min-w-0 text-right text-lg font-bold text-emerald-300 sm:text-2xl"
             title={formattedValue}
           >
-            <span className="whitespace-nowrap">
+            <span className="break-all">
               {formattedValue}
             </span>
           </div>

@@ -24,6 +24,8 @@ interface DashboardSummarySectionProps {
   onCurrencyChange:(currency:string) => void;
   onMonthChange:(month:string) => void;
   selectedMonth:string;
+  loading?: boolean;
+  error?: boolean;
 }
 
 export default function DashboardSummarySection({
@@ -36,6 +38,7 @@ export default function DashboardSummarySection({
   onCurrencyChange,
   onMonthChange,
   selectedMonth,
+  loading, error,
 }:DashboardSummarySectionProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -43,6 +46,10 @@ export default function DashboardSummarySection({
         className="cursor-pointer text-left"
         variant="info"
         onClick={onAssetClick}
+        role="button"
+        tabIndex={0}
+        aria-label="View Total Assets details"
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onAssetClick(); } }}
       >
         <div>
           <div className="mb-3 flex items-center gap-2 text-zinc-400">
@@ -53,13 +60,13 @@ export default function DashboardSummarySection({
           <div className="space-y-2">
             <div className="block w-full rounded-xl border border-cyan-500/20 bg-black/30 px-3 py-3 text-left transition hover:border-cyan-300">
               <div className="text-2xl font-bold text-cyan-400">
-                {formatCurrencyAmount(assetTotal, activeCurrency)}
+                {error ? "Unavailable" : loading ? "Loading..." : formatCurrencyAmount(assetTotal, activeCurrency)}
               </div>
             </div>
           </div>
 
           <p className="mt-2 text-sm text-zinc-400">
-            {assetCount} record{assetCount === 1 ? "" : "s"}
+            {!loading && !error && <>{assetCount} record{assetCount === 1 ? "" : "s"}</>}
           </p>
         </div>
       </Card>
@@ -76,6 +83,7 @@ export default function DashboardSummarySection({
 
         <div className="mt-4 grid grid-cols-[minmax(0,1fr)_96px] gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
           <Select
+            aria-label="View month"
             value={selectedMonth}
             onChange={(event) => onMonthChange(event.target.value)}
             className="w-full text-base sm:text-lg"
@@ -93,6 +101,7 @@ export default function DashboardSummarySection({
 
           <Select
             value={activeCurrency}
+            aria-label="Dashboard currency"
             onChange={(event) => onCurrencyChange(event.target.value)}
             className="w-full text-base sm:text-lg"
             title="Currency for new records and current dashboard"

@@ -15,7 +15,7 @@ export async function getAssets() {
 
   if (error) {
     logServiceError("Failed to fetch assets", error);
-    return [] as Asset[];
+    throw error;
   }
 
   return (data || []) as Asset[];

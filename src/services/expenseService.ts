@@ -53,7 +53,7 @@ export async function getExpenses(selectedMonth: string) {
 
   if (error) {
     logServiceError("Failed to fetch expenses", error);
-    return [];
+    throw error;
   }
 
   return data || [];

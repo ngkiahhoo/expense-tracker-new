@@ -1,6 +1,11 @@
 "use client";
 
 import OverlayPortal from "@/components/ui/OverlayPortal";
+import { useRef, useState } from "react";
+import useSessionState from "@/hooks/useSessionState";
+import useUnsavedChanges, { confirmPanelClose } from "@/hooks/useUnsavedChanges";
+import ListToolbar, { defaultListFilters, type ListFilters } from "./ui/ListToolbar";
+import LoadState from "./ui/LoadState";
 
 import type useAssets from "@/hooks/useAssets";
 import type { ToastType } from "@/contexts/ToastContext";
@@ -16,6 +21,8 @@ import type { Currency } from "@/types/currency";
 import {
   CURRENCIES,
   currencyLabel,
+  normalizeCurrency,
+  formatCurrencyAmount,
 } from "@/utils/currency";
 
 type AssetsController = ReturnType<typeof useAssets>;
@@ -24,16 +31,23 @@ interface AssetDetailsModalProps {
   assets:AssetsController;
   onClose:() => void;
   onToast:(message:string, type:ToastType) => void;
+  initialCurrency: Currency;
 }
 
 export default function AssetDetailsModal({
   assets,
   onClose,
   onToast,
+  initialCurrency,
 }:AssetDetailsModalProps) {
+  const [filters, setFilters] = useSessionState<ListFilters>(`asset-list:${initialCurrency}`, { ...defaultListFilters, currency: initialCurrency, sort: "name" });
+  const [updatedId, setUpdatedId] = useState<number | null>(null);
+  const editor = useRef<HTMLDivElement>(null);
+  useUnsavedChanges(!!(assets.assetName || assets.assetValue || assets.assetNote), assets.loading);
+  const visible = assets.assets.filter(a => (filters.currency === "all" || normalizeCurrency(a.currency) === filters.currency) && `${a.name} ${a.note}`.toLowerCase().includes(filters.query.trim().toLowerCase())).sort((a, b) => (filters.sort === "amount" ? Number(a.current_value) - Number(b.current_value) : a.name.localeCompare(b.name)) * (filters.direction === "asc" ? 1 : -1));
   return (
     <OverlayPortal>
-    <div className={overlayStyles.backdrop}>
+    <div className={overlayStyles.backdrop} role="dialog" aria-modal="true" aria-label="Asset Details">
       <div className={cn(overlayStyles.modalPanel, "max-h-[calc(100dvh-2rem)] max-w-3xl overflow-y-auto")}>
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -48,19 +62,22 @@ export default function AssetDetailsModal({
 
           <ActionIconButton
             kind="close"
-            onClick={onClose}
+            onClick={() => { if (confirmPanelClose()) onClose(); }}
             title="Close asset details"
             aria-label="Close asset details"
           />
         </div>
 
         <div className="mt-5 space-y-4">
-          {assets.loading ? (
+          <ListToolbar value={filters} onChange={setFilters} currencies={["MYR", "SGD"]} sorts={[{ value: "name", label: "Name" }, { value: "amount", label: "Amount" }]} />
+          <LoadState error={assets.error} retry={assets.fetchAssets} />
+          {assets.error ? null : assets.loading ? (
             <div className="text-zinc-400">
               Loading assets...
             </div>
-          ) : assets.assets && assets.assets.length > 0 ? (
-            assets.assets.map((asset) => (
+          ) : visible.length > 0 ? (
+            visible.map((asset) => (
+              <div key={asset.id} className={updatedId === asset.id ? "rounded-lg ring-2 ring-teal-400" : ""}>
               <AssetRecordCard
                 key={asset.id}
                 asset={asset}
@@ -74,8 +91,9 @@ export default function AssetDetailsModal({
                     res.success ? "success" : "error"
                   );
                 }}
-                onEdit={assets.startEditAsset}
+                onEdit={asset => { if ((assets.assetName || assets.assetValue) && !confirmPanelClose()) return; assets.startEditAsset(asset); editor.current?.scrollIntoView({ block: "start", behavior: "smooth" }); }}
                 onDelete={async (nextAsset) => {
+                  if (!window.confirm(`Delete ${nextAsset.name} (${formatCurrencyAmount(Number(nextAsset.current_value), nextAsset.currency)})? This removes the asset from your total.${nextAsset.is_main ? " It is your main account for this currency." : ""}`)) return;
                   const res = await assets.deleteAssetById(nextAsset.id);
 
                   onToast(
@@ -86,14 +104,15 @@ export default function AssetDetailsModal({
                   );
                 }}
               />
+              </div>
             ))
           ) : (
             <div className="text-zinc-400">
-              No assets yet.
+              No matching assets.
             </div>
           )}
 
-          <div className="mt-4 border-t border-zinc-800 pt-4">
+          <div ref={editor} className="mt-4 scroll-mt-4 border-t border-zinc-800 pt-4">
             <h3 className="font-bold">
               Create / Edit Asset
             </h3>
@@ -132,10 +151,13 @@ export default function AssetDetailsModal({
               />
             </div>
 
-            <div className="mt-3 flex gap-2">
+            <div className="sticky bottom-0 mt-3 flex flex-wrap gap-2 bg-zinc-950 py-3">
               <Button
+                disabled={assets.loading}
                 onClick={async () => {
+                  const editedId = assets.assetEditingId;
                   const res = await assets.saveAsset();
+                  if (res.success) setUpdatedId(editedId);
 
                   onToast(
                     res.success
@@ -146,7 +168,7 @@ export default function AssetDetailsModal({
                 }}
                 variant="primary"
               >
-                {assets.assetEditingId ? "Update Asset" : "Create Asset"}
+                {assets.loading ? "Saving..." : assets.assetEditingId ? "Update Asset" : "Create Asset"}
               </Button>
 
               {assets.assetEditingId && (

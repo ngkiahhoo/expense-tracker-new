@@ -17,6 +17,7 @@ import { Input, Select, Textarea } from "@/components/ui/Field";
 import OverlayPortal from "@/components/ui/OverlayPortal";
 import useFutureExpensePlans from "@/hooks/useFutureExpensePlans";
 import useThemePreference from "@/hooks/useThemePreference";
+import useUnsavedChanges from "@/hooks/useUnsavedChanges";
 import type { Currency } from "@/types/currency";
 import type {
   FutureExpenseItem,
@@ -108,6 +109,7 @@ function LivingPlanEditor() {
   const [selected, select] = useState("");
   const [error, setError] = useState("");
   const [drafts, setDrafts] = useState<FutureExpenseItem[]>([]);
+  useUnsavedChanges(drafts.length > 0);
   const [openTypes, setOpenTypes] = useState<Set<string>>(() => new Set());
   const [openCategories, setOpenCategories] = useState<Set<string>>(
     () => new Set(),

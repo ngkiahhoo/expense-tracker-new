@@ -1,6 +1,10 @@
 "use client";
 
 import { useRef, useState } from 'react';
+import ListToolbar, { defaultListFilters } from './ui/ListToolbar';
+import useSessionState from '@/hooks/useSessionState';
+import useUnsavedChanges from '@/hooks/useUnsavedChanges';
+import { SheetFooter } from './QuickActionSheet';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import type { Category } from '@/types/category';
@@ -37,6 +41,9 @@ export default function PaymentPlanPanel({ plans, names, categories, currency, m
   const [editing, setEditing] = useState<number | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editDate, setEditDate] = useState('');
+  const [filters, setFilters] = useSessionState(`payment-list:${currency}`, defaultListFilters);
+  const [expanded, setExpanded] = useSessionState<string[]>(`payment-list:expanded:${currency}`, []);
+  useUnsavedChanges(!!total || editing !== null, busy);
   const request = useRef<{ key: string; id: string } | null>(null);
   const lock = useRef(false);
   const today = paymentToday();
@@ -48,7 +55,11 @@ export default function PaymentPlanPanel({ plans, names, categories, currency, m
   const scheduleValid = schedule.length > 0 && validAmounts && difference === 0;
   const immediate = schedule.filter(i => i.due_date <= today).reduce((sum, i) => sum + i.amount, 0);
   const visiblePlans = plans.filter(p => p.currency === currency);
-  const groups = groupPaymentPlans(plans, currency);
+  const filteredPlans = plans.filter(p => p.name.toLowerCase().includes(filters.query.trim().toLowerCase()) && (filters.status === 'all' || p.payment_installments.some(i => i.status === filters.status)));
+  const groups = groupPaymentPlans(filteredPlans, currency).sort((a, b) => {
+    const firstDue = (group: typeof a) => group.plans.flatMap(p => p.payment_installments).map(i => i.due_date).sort()[0] || '';
+    return (filters.sort === 'name' ? a.name.localeCompare(b.name) : firstDue(a).localeCompare(firstDue(b))) * (filters.direction === 'asc' ? 1 : -1);
+  });
   const pending = visiblePlans.flatMap(p => p.payment_installments).filter(i => i.status === 'scheduled');
   const remaining = pending.reduce((sum, i) => sum + Number(i.amount), 0);
   const monthly = pending.reduce<Record<string, number>>((result, i) => {
@@ -85,7 +96,7 @@ export default function PaymentPlanPanel({ plans, names, categories, currency, m
         <span>{month}</span><span>−{money(amount)}<br />{mainBalance !== null && <span className="text-xs text-zinc-400">Balance {money(mainBalance - entries.slice(0, index + 1).reduce((sum, [, value]) => sum + value, 0))}</span>}</span>
       </div>)}
     </details>
-    <form className="space-y-3" onSubmit={event => {
+    <form id="payment-plan-form" className="space-y-3" onSubmit={event => {
       event.preventDefault();
       if (!scheduleValid || !category || !selectedName) { setMessage('Enter valid payment amounts that add up to the total, a name and a category.'); return; }
       void run(async () => {
@@ -118,11 +129,13 @@ export default function PaymentPlanPanel({ plans, names, categories, currency, m
         <Button type="button" disabled={busy} onClick={() => setAmountOverrides({})}>Split equally</Button>
       </details>}
       {scheduleValid && immediate > 0 && <p className="text-sm text-amber-400">Saving will immediately record {money(immediate)} in expenses and deduct it from Main Asset. Only add payments that are not already in your expenses.</p>}
-      <Button type="submit" disabled={busy || nameBusy || loading || !!error || !selectedName || mainBalance === null || !scheduleValid}>{busy ? 'Saving…' : scheduleValid && immediate > 0 ? `Create & post ${money(immediate)}` : 'Create plan'}</Button>
+      <SheetFooter><Button form="payment-plan-form" type="submit" disabled={busy || nameBusy || loading || !!error || !selectedName || mainBalance === null || !scheduleValid}>{busy ? 'Saving...' : scheduleValid && immediate > 0 ? `Create & post ${money(immediate)}` : 'Create plan'}</Button></SheetFooter>
     </form>
     <div className="flex items-center justify-between"><h3 className="font-semibold">Payment records</h3><Button type="button" disabled={busy} onClick={() => { void refresh(); }}>Refresh</Button></div>
+    <ListToolbar value={filters} onChange={setFilters} statuses={[{ value: 'scheduled', label: 'Scheduled' }, { value: 'posted', label: 'Posted' }, { value: 'cancelled', label: 'Cancelled' }, { value: 'reversed', label: 'Reversed' }]} />
+    {!loading && !error && visiblePlans.length > 0 && !groups.length && <p className="text-sm text-zinc-400">No matching payment plans.</p>}
     {loading ? <p>Loading…</p> : !error && visiblePlans.length === 0 && <p className="text-sm text-zinc-400">No {currency} payment plans yet.</p>}
-    {groups.map(group => <details key={group.key} className="rounded-xl border border-white/10 p-3">
+    {groups.map(group => <details key={group.key} open={expanded.includes(group.key)} onToggle={e => { const open = e.currentTarget.open; setExpanded(current => open ? [...new Set([...current, group.key])] : current.filter(key => key !== group.key)); }} className="rounded-lg border border-white/10 p-3">
       <summary className="cursor-pointer">
         <span className="font-medium">{group.name}</span>
         <span className="block text-xs text-zinc-400">{group.plans.length} plan(s) · {money(group.remaining)} remaining</span>
@@ -152,7 +165,7 @@ export default function PaymentPlanPanel({ plans, names, categories, currency, m
             {editDate <= today && <p className="text-amber-400">Saving posts this payment immediately.</p>}
             <Button disabled={busy || !buildPaymentSchedule(editAmount, 1, editDate).length} onClick={() => { void run(async () => { await changePaymentInstallment(item.id, false, Number(editAmount), editDate); setEditing(null); }); }}>Save payment</Button>
             <Button disabled={busy} onClick={() => setEditing(null)}>Close</Button>
-          </div> : <div className="flex gap-2"><Button disabled={busy} onClick={() => { setEditing(item.id); setEditAmount(String(item.amount)); setEditDate(item.due_date); }}>Edit</Button><Button disabled={busy} onClick={() => { void run(() => changePaymentInstallment(item.id, true, Number(item.amount), item.due_date)); }}>Cancel payment</Button></div>)}
+          </div> : <div className="flex flex-wrap gap-2"><Button disabled={busy} onClick={() => { setEditing(item.id); setEditAmount(String(item.amount)); setEditDate(item.due_date); }}>Edit</Button><Button disabled={busy} onClick={() => { if (window.confirm(`Cancel ${money(Number(item.amount))} due ${item.due_date}? It will no longer be deducted from your account.`)) void run(() => changePaymentInstallment(item.id, true, Number(item.amount), item.due_date)); }}>Cancel payment</Button></div>)}
         </div>)}
       </details>;
       })}

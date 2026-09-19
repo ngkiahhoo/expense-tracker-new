@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useRef,
   useState,
 } from "react";
 
@@ -11,6 +12,8 @@ import {
 import type { Currency } from "../types/currency";
 import { DEFAULT_CURRENCY, normalizeCurrency } from "../utils/currency";
 import { notifyTransactionsChanged } from "../utils/transactionEvents";
+import { dateKey, validDate } from "../utils/expenseMath";
+import useSessionState from "./useSessionState";
 
 import {
 
@@ -35,36 +38,38 @@ export default function useExpenses(
     useState<Expense[]>([]);
 
   const [amount, setAmount] =
-    useState("");
+    useSessionState("expense-draft:amount", "");
 
   const [note, setNote] =
-    useState("");
+    useSessionState("expense-draft:note", "");
 
   const [expenseDate, setExpenseDate] =
-    useState(
-      new Date()
-        .toISOString()
-        .split("T")[0]
-    );
+    useSessionState("expense-draft:date", dateKey());
 
   const [
     selectedCategory,
     setSelectedCategory,
-  ] = useState("");
+  ] = useSessionState("expense-draft:category", "");
 
   const [editingId, setEditingId] =
-    useState<number | null>(null);
+    useSessionState<number | null>("expense-draft:id", null);
 
   const [editingCurrency, setEditingCurrency] =
-    useState<Currency | null>(null);
+    useSessionState<Currency | null>("expense-draft:currency", null);
 
   const [loading, setLoading] =
     useState(false);
 
   const [error, setError] =
     useState("");
+  const [readError, setReadError] = useState("");
+  const [loadedMonth, setLoadedMonth] = useState("");
+  const readRequest = useRef(0);
+  const saving = useRef(false);
+  const deleting = useRef(new Set<number>());
 
   const fetchExpenses = useCallback(async () => {
+    const request = ++readRequest.current;
 
     try {
 
@@ -75,21 +80,27 @@ export default function useExpenses(
           selectedMonth
         );
 
+      if (request !== readRequest.current) return;
       setExpenses(data || []);
+      setReadError("");
+      setLoadedMonth(selectedMonth);
 
     } catch {
 
-      setError(
+      if (request !== readRequest.current) return;
+      setReadError(
         "Failed to fetch expenses"
       );
 
     } finally {
 
-      setLoading(false);
+      if (request === readRequest.current) setLoading(false);
     }
   }, [selectedMonth]);
 
   async function saveExpense() {
+    if (saving.current) return { success: false, error: "Saving is already in progress." };
+    saving.current = true;
 
     try {
 
@@ -99,12 +110,11 @@ export default function useExpenses(
 
       if (
         !amount ||
-        !note ||
-        !selectedCategory
+        !selectedCategory || !Number.isFinite(Number(amount)) || Number(amount) <= 0 || !validDate(expenseDate)
       ) {
 
         const errorMsg =
-          "Please fill all fields";
+          "Enter an amount above zero, a valid date and a category.";
 
         setError(
           errorMsg
@@ -146,7 +156,7 @@ export default function useExpenses(
       if (saveError) {
         const errorMsg = saveError.message || "Failed to save expense";
         setError(errorMsg);
-        throw errorMsg;
+        throw new Error(errorMsg);
       }
 
       if (editingId) {
@@ -176,6 +186,7 @@ export default function useExpenses(
       return { success: false, error: errorMsg };
 
     } finally {
+      saving.current = false;
 
       setLoading(false);
     }
@@ -187,20 +198,16 @@ export default function useExpenses(
 
     setNote("");
 
-    setSelectedCategory("");
-
     setEditingCurrency(null);
 
-    setExpenseDate(
-      new Date()
-        .toISOString()
-        .split("T")[0]
-    );
+    setExpenseDate(dateKey());
   }
 
   async function deleteExpense(
     id:number
   ) {
+    if (deleting.current.has(id)) return { success: false, error: "Deletion is already in progress." };
+    deleting.current.add(id);
 
     try {
 
@@ -230,7 +237,7 @@ export default function useExpenses(
       );
 
       return { success: false, error: msg };
-    }
+    } finally { deleting.current.delete(id); }
   }
 
   async function deleteMonthExpenses(
@@ -290,10 +297,6 @@ export default function useExpenses(
       normalizeCurrency(expense.currency)
     );
 
-    window.scrollTo({
-      top:0,
-      behavior:"smooth",
-    });
   }
 
   return {
@@ -316,6 +319,9 @@ export default function useExpenses(
     setEditingId,
 
     loading,
+    readError,
+    reading: loadedMonth !== selectedMonth && !readError,
+    editingCurrency,
 
     error,
 
