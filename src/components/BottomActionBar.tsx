@@ -24,7 +24,8 @@ import { createSupabaseBackup, downloadSupabaseBackup } from "@/utils/supabaseBa
 export type BottomTool =
   "expense" | "recurring" | "payments" | "categories" | "records" | "income";
 
-const ACTION_BUTTONS_PER_ROW = 2;
+const BOTTOM_BUTTONS_PER_ROW = 3;
+const EXPORTING_STATUS = "Exporting...";
 
 const actionTools = [
   { tool: "expense", icon: Plus, label: "Add" },
@@ -34,13 +35,13 @@ const actionTools = [
   { tool: "payments", icon: CalendarClock, label: "Pay Later" },
 ] as const;
 
-// Match the two-column Action / Settings row; new tools add rows above it.
+// Match the three-column Action / Plan / Settings row; new tools add rows above it.
 const actionRows = Array.from(
-  { length: Math.ceil(actionTools.length / ACTION_BUTTONS_PER_ROW) },
+  { length: Math.ceil(actionTools.length / BOTTOM_BUTTONS_PER_ROW) },
   (_, row) =>
     actionTools.slice(
-      row * ACTION_BUTTONS_PER_ROW,
-      (row + 1) * ACTION_BUTTONS_PER_ROW,
+      row * BOTTOM_BUTTONS_PER_ROW,
+      (row + 1) * BOTTOM_BUTTONS_PER_ROW,
     ),
 ).reverse();
 
@@ -59,17 +60,18 @@ export default function BottomActionBar({
   onToggleTheme,
   onNavigate,
 }: BottomActionBarProps) {
-  const [activeMenu, setActiveMenu] = useState<"actions" | "settings" | null>(
+  const [activeMenu, setActiveMenu] = useState<"actions" | "plans" | "settings" | null>(
     null,
   );
 
   const isActionsOpen = activeMenu === "actions";
+  const isPlansOpen = activeMenu === "plans";
 
   const isSettingsOpen = activeMenu === "settings";
   const [backupStatus, setBackupStatus] = useState("");
 
   async function exportAllData() {
-    setBackupStatus("Exporting…");
+    setBackupStatus(EXPORTING_STATUS);
     try {
       downloadSupabaseBackup(await createSupabaseBackup());
       setBackupStatus("Backup downloaded");
@@ -88,7 +90,7 @@ export default function BottomActionBar({
             transition-[grid-template-rows,opacity,margin]
             duration-300
             ${
-              isActionsOpen || isSettingsOpen
+              isActionsOpen || isPlansOpen || isSettingsOpen
                 ? "mb-3 grid-rows-[1fr] opacity-100"
                 : "mb-0 grid-rows-[0fr] opacity-0"
             }
@@ -98,7 +100,7 @@ export default function BottomActionBar({
             {isActionsOpen && (
               <div className="flex flex-col gap-2">
                 {actionRows.map((row) => (
-                  <div key={row[0].tool} className="grid grid-cols-2 gap-2">
+                  <div key={row[0].tool} className="grid grid-cols-3 gap-2">
                     {row.map(({ tool, icon, label }) => (
                       <BottomBarButton
                         key={tool}
@@ -116,28 +118,8 @@ export default function BottomActionBar({
               </div>
             )}
 
-            {isSettingsOpen && (
-              <div className="grid grid-cols-2 gap-2">
-                <BottomBarButton
-                  active={false}
-                  href="/"
-                  icon={Home}
-                  label="Dashboard"
-                  onClick={() => {
-                    setActiveMenu(null);
-                    onNavigate();
-                  }}
-                />
-                <BottomBarButton
-                  active={theme === "light"}
-                  onClick={() => {
-                    onToggleTheme();
-                    setActiveMenu(null);
-                  }}
-                  icon={theme === "dark" ? Moon : Sun}
-                  label="Theme"
-                />
-
+            {isPlansOpen && (
+              <div className="grid grid-cols-3 gap-2">
                 <BottomBarButton
                   active={false}
                   href="/savings-goals"
@@ -168,19 +150,43 @@ export default function BottomActionBar({
                   icon={CalendarRange}
                   label="Events"
                 />
+              </div>
+            )}
+
+            {isSettingsOpen && (
+              <div className="grid grid-cols-3 gap-2">
+                <BottomBarButton
+                  active={false}
+                  href="/"
+                  icon={Home}
+                  label="Dashboard"
+                  onClick={() => {
+                    setActiveMenu(null);
+                    onNavigate();
+                  }}
+                />
+                <BottomBarButton
+                  active={theme === "light"}
+                  onClick={() => {
+                    onToggleTheme();
+                    setActiveMenu(null);
+                  }}
+                  icon={theme === "dark" ? Moon : Sun}
+                  label="Theme"
+                />
                 <BottomBarButton
                   active={false}
                   onClick={() => void exportAllData()}
                   icon={Download}
-                  label={backupStatus === "Exporting…" ? "Exporting…" : "Export all data"}
+                  label={backupStatus === EXPORTING_STATUS ? EXPORTING_STATUS : "Export all data"}
                 />
-                {backupStatus && backupStatus !== "Exporting…" && <p role="status" className="col-span-2 rounded-xl bg-black/40 px-3 py-2 text-xs text-zinc-300">{backupStatus}</p>}
+                {backupStatus && backupStatus !== EXPORTING_STATUS && <p role="status" className="col-span-3 rounded-xl bg-black/40 px-3 py-2 text-xs text-zinc-300">{backupStatus}</p>}
               </div>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <BottomBarButton
             active={isActionsOpen}
             onClick={() =>
@@ -190,6 +196,17 @@ export default function BottomActionBar({
             }
             icon={Sparkles}
             label="Action"
+          />
+
+          <BottomBarButton
+            active={isPlansOpen}
+            onClick={() =>
+              setActiveMenu((current) =>
+                current === "plans" ? null : "plans",
+              )
+            }
+            icon={CalendarRange}
+            label="Plan"
           />
 
           <BottomBarButton
