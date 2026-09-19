@@ -35,9 +35,9 @@ export default function MetricCard({
   loading = false, error = false,
 }: MetricCardProps) {
   const amountContent = (
-    <span className="inline-flex max-w-full flex-wrap items-baseline gap-2 break-all">
+    <span className="inline-flex flex-nowrap items-baseline gap-2 whitespace-nowrap">
       <span className="text-base text-zinc-400">{currencyLabel(currency)}</span>
-      <span>{error ? "Unavailable" : loading ? "Loading..." : amount.toFixed(2)}</span>
+      <span className={amount.toFixed(2).length > 12 ? "text-xl" : undefined}>{error ? "Unavailable" : loading ? "Loading..." : amount.toFixed(2)}</span>
     </span>
   );
 
@@ -48,7 +48,7 @@ export default function MetricCard({
       className="flex h-full min-h-[124px] w-full flex-col justify-between md:min-h-[140px]"
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-zinc-400">
             {Icon && <Icon size={18} />}
             <span>{label}</span>
@@ -67,7 +67,7 @@ export default function MetricCard({
                 disabled={loading || error}
                 onClick={onAmountClick}
                 className={cn(
-                  "-mx-2 rounded-xl px-2 py-1 text-left transition hover:bg-white/5 focus-visible:bg-white/5",
+                  "-mx-2 inline-flex items-baseline rounded-xl px-2 py-1 text-left transition hover:bg-white/5 focus-visible:bg-white/5",
                   "outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/70"
                 )}
               >
