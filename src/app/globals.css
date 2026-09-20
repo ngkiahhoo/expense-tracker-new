@@ -648,6 +648,208 @@ html.light-theme body {
       0 12px 26px rgba(15, 23, 42, 0.08);
   }
 
+  .paylater-note,
+  .paylater-section,
+  .paylater-form,
+  .paylater-schedule,
+  .paylater-record-group,
+  .paylater-submetric,
+  .paylater-subpanel,
+  .paylater-total,
+  .paylater-schedule-row {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.5rem;
+  }
+
+  .paylater-note {
+    background: rgba(245, 158, 11, 0.11);
+    border-color: rgba(245, 158, 11, 0.28);
+    color: #fde68a;
+    padding: 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  .paylater-section,
+  .paylater-form {
+    background: rgba(10, 10, 12, 0.34);
+    padding: 0.75rem;
+  }
+
+  .paylater-metric {
+    border-radius: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 0.75rem;
+  }
+
+  .paylater-metric-success {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.28);
+    color: #d1fae5;
+  }
+
+  .paylater-metric-info {
+    background: rgba(14, 165, 233, 0.12);
+    border-color: rgba(14, 165, 233, 0.28);
+    color: #e0f2fe;
+  }
+
+  .paylater-schedule {
+    background: rgba(30, 41, 59, 0.72);
+    border-color: rgba(129, 140, 248, 0.38);
+    color: #f8fafc;
+    padding: 0.75rem;
+  }
+
+  .paylater-schedule-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.625rem;
+    background: rgba(2, 6, 23, 0.36);
+    padding: 0.75rem;
+  }
+
+  .paylater-total,
+  .paylater-subpanel,
+  .paylater-submetric {
+    background: rgba(2, 6, 23, 0.26);
+    padding: 0.625rem;
+  }
+
+  .paylater-record-group {
+    background: rgba(8, 145, 178, 0.1);
+    border-color: rgba(34, 211, 238, 0.28);
+    padding: 0.75rem;
+  }
+
+  .paylater-plan {
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 0.75rem 0;
+  }
+
+  .paylater-kicker {
+    color: rgba(226, 232, 240, 0.72);
+    font-size: 0.75rem;
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .paylater-help {
+    color: rgba(203, 213, 225, 0.78);
+  }
+
+  .paylater-status-scheduled {
+    background: rgba(14, 165, 233, 0.14);
+    border-color: rgba(14, 165, 233, 0.34);
+    color: #bae6fd;
+  }
+
+  .paylater-status-posted {
+    background: rgba(16, 185, 129, 0.14);
+    border-color: rgba(16, 185, 129, 0.34);
+    color: #bbf7d0;
+  }
+
+  .paylater-status-reversed {
+    background: rgba(168, 85, 247, 0.14);
+    border-color: rgba(168, 85, 247, 0.34);
+    color: #e9d5ff;
+  }
+
+  .paylater-status-cancelled {
+    background: rgba(148, 163, 184, 0.14);
+    border-color: rgba(148, 163, 184, 0.28);
+    color: #e2e8f0;
+  }
+
+  .light-theme .paylater-note {
+    background: #fff7ed;
+    border-color: #fed7aa;
+    color: #9a3412;
+  }
+
+  .light-theme .paylater-section,
+  .light-theme .paylater-form {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+
+  .light-theme .paylater-metric-success {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #064e3b;
+  }
+
+  .light-theme .paylater-metric-info {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e3a8a;
+  }
+
+  .light-theme .paylater-schedule {
+    background: #eef2ff;
+    border-color: #a5b4fc;
+    color: #1e1b4b;
+  }
+
+  .light-theme .paylater-schedule-row,
+  .light-theme .paylater-total,
+  .light-theme .paylater-subpanel,
+  .light-theme .paylater-submetric {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+
+  .light-theme .paylater-record-group {
+    background: #ecfeff;
+    border-color: #67e8f9;
+    color: #164e63;
+  }
+
+  .light-theme .paylater-plan {
+    border-top-color: #bae6fd;
+  }
+
+  .light-theme .paylater-kicker {
+    color: #64748b;
+  }
+
+  .light-theme .paylater-help {
+    color: #475569;
+  }
+
+  .light-theme .paylater-status-scheduled {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #075985;
+  }
+
+  .light-theme .paylater-status-posted {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #166534;
+  }
+
+  .light-theme .paylater-status-reversed {
+    background: #f3e8ff;
+    border-color: #d8b4fe;
+    color: #6b21a8;
+  }
+
+  .light-theme .paylater-status-cancelled {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
+  }
+
+  @media (min-width: 640px) {
+    .paylater-schedule-row {
+      grid-template-columns: minmax(0, 1fr) 9rem;
+      align-items: center;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .app-background::before,
     .app-background::after,
