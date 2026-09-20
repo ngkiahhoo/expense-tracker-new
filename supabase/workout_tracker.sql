@@ -73,8 +73,7 @@ create table if not exists workout_plan_exercises (
   target_rep_min integer,
   target_rep_max integer,
   target_duration_min integer,
-  target_duration_max integer,
-  rest_seconds integer not null default 90
+  target_duration_max integer
 );
 
 create table if not exists workout_routines (
@@ -122,7 +121,6 @@ create table if not exists workout_session_exercises (
   tracking_type_snapshot text not null,
   sort_order integer not null default 0,
   planned_sets_snapshot integer not null default 0,
-  rest_seconds_snapshot integer not null default 0,
   status text not null check (status in ('pending', 'completed', 'skipped', 'partial'))
 );
 

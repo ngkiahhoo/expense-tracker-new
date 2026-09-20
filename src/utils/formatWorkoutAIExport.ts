@@ -16,7 +16,6 @@ type WorkoutExercise = {
   nameSnapshot: string;
   trackingTypeSnapshot: TrackingType;
   plannedSetsSnapshot: number;
-  restSecondsSnapshot: number;
   targetRepMin?: number;
   targetRepMax?: number;
   targetDurationMin?: number;
@@ -37,7 +36,6 @@ type GymData = {
       targetRepMax?: number;
       targetDurationMin?: number;
       targetDurationMax?: number;
-      restSeconds: number;
     }>;
   }>;
   routines: Array<{
@@ -130,7 +128,7 @@ export function formatWorkoutAIExport(state: unknown) {
   ].join(",") + "\n\n");
 
   parts.push("=== PLANS CSV ===\n");
-  parts.push("plan,order,exercise,tracking_type,target_sets,target_reps,target_duration_seconds,rest_seconds\n");
+  parts.push("plan,order,exercise,tracking_type,target_sets,target_reps,target_duration_seconds\n");
   for (const plan of data.plans) {
     plan.exerciseIds.forEach((item, index) => {
       const exercise = exerciseById.get(item.exerciseId);
@@ -142,7 +140,6 @@ export function formatWorkoutAIExport(state: unknown) {
         item.targetSets,
         item.targetRepMin != null && item.targetRepMax != null ? `${item.targetRepMin}-${item.targetRepMax}` : "",
         item.targetDurationMin != null && item.targetDurationMax != null ? `${item.targetDurationMin}-${item.targetDurationMax}` : "",
-        item.restSeconds,
       ].join(",") + "\n");
     });
   }

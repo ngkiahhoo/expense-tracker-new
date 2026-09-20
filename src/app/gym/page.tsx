@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -39,7 +39,6 @@ type PlanExercise = {
   targetRepMax?: number;
   targetDurationMin?: number;
   targetDurationMax?: number;
-  restSeconds: number;
 };
 
 type Plan = {
@@ -68,7 +67,6 @@ type WorkoutExercise = {
   nameSnapshot: string;
   trackingTypeSnapshot: TrackingType;
   plannedSetsSnapshot: number;
-  restSecondsSnapshot: number;
   targetRepMin?: number;
   targetRepMax?: number;
   targetDurationMin?: number;
@@ -108,7 +106,6 @@ type GymData = {
 type ActiveWorkout = {
   session: WorkoutSession;
   currentExerciseIndex: number;
-  restUntil?: number;
 };
 
 type PersistedWorkoutState =
@@ -192,7 +189,6 @@ function seedData(): GymData {
       id: id("pe"),
       exerciseId: exercise.id,
       targetSets: exercise.trackingType === "time" ? 3 : 3,
-      restSeconds: exercise.trackingType === "time" ? 60 : 90,
       ...trackingDefault(exercise.trackingType),
     };
   };
@@ -284,7 +280,6 @@ function makeSession(plan: Plan, data: GymData, routineId?: string): WorkoutSess
         nameSnapshot: exercise?.name || "Unknown Exercise",
         trackingTypeSnapshot: exercise?.trackingType || "weight_reps",
         plannedSetsSnapshot: item.targetSets,
-        restSecondsSnapshot: item.restSeconds,
         targetRepMin: item.targetRepMin,
         targetRepMax: item.targetRepMax,
         targetDurationMin: item.targetDurationMin,
@@ -654,7 +649,6 @@ function GymPageContent() {
               id: id("pe"),
               exerciseId: exercise.id,
               targetSets: 3,
-              restSeconds: exercise.trackingType === "time" ? 60 : 90,
               ...trackingDefault(exercise.trackingType),
             }],
             updatedAt: new Date().toISOString(),
@@ -847,7 +841,6 @@ function GymPageContent() {
     setActive({
       ...active,
       session: { ...active.session, sets, exercises },
-      restUntil: Date.now() + exercise.restSecondsSnapshot * 1000,
     });
   }
 
@@ -878,7 +871,6 @@ function GymPageContent() {
     setActive({
       ...active,
       session: { ...active.session, sets: nextSets, exercises },
-      restUntil: undefined,
     });
   }
 
@@ -887,7 +879,7 @@ function GymPageContent() {
     const exercise = active.session.exercises[active.currentExerciseIndex];
     const exercises = active.session.exercises.map((item) => item.id === exercise.id ? { ...item, status } : item);
     const nextIndex = Math.min(active.currentExerciseIndex + 1, exercises.length - 1);
-    setActive({ ...active, session: { ...active.session, exercises }, currentExerciseIndex: nextIndex, restUntil: undefined });
+    setActive({ ...active, session: { ...active.session, exercises }, currentExerciseIndex: nextIndex });
   }
 
   function finishWorkout(status: SessionStatus) {
@@ -897,7 +889,6 @@ function GymPageContent() {
       setPausedWorkout({
         ...active,
         session: { ...active.session, status: "partial" },
-        restUntil: undefined,
       });
       setActive(null);
       setTab("home");
@@ -1164,7 +1155,7 @@ function GymPageContent() {
                               <button type="button" className="rounded-lg border border-red-300/30 px-2 py-1 text-xs text-red-300" onClick={() => removePlanExercise(plan.id, item.id)}>Remove</button>
                             </div>
                           </div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                             <label className="text-xs">
                               Sets
                               <Input fieldSize="md" type="number" min="1" value={item.targetSets} onChange={(event) => updatePlanExercise(plan.id, item.id, { targetSets: Number(event.target.value) || 1 })} />
@@ -1187,10 +1178,6 @@ function GymPageContent() {
                                 <Input fieldSize="md" type="number" min="1" value={item.targetDurationMax ?? 30} onChange={(event) => updatePlanExercise(plan.id, item.id, { targetDurationMax: Number(event.target.value) || 30 })} />
                               </label>
                             )}
-                            <label className="text-xs">
-                              Rest
-                              <Input fieldSize="md" type="number" min="0" value={item.restSeconds} onChange={(event) => updatePlanExercise(plan.id, item.id, { restSeconds: Number(event.target.value) || 0 })} />
-                            </label>
                           </div>
                         </li>
                       );
@@ -1538,20 +1525,11 @@ function WorkoutMode({
   const [showNavigator, setShowNavigator] = useState(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
 
-  const restLeft = active.restUntil ? Math.max(0, Math.ceil((active.restUntil - nowMs) / 1000)) : 0;
-  const previousRestLeft = useRef(restLeft);
   const elapsed = Math.floor((nowMs - new Date(active.session.startedAt).getTime()) / 1000);
   const timerValue = timerStartedAt ? Math.max(0, Math.floor((nowMs - timerStartedAt) / 1000)) : duration;
   const sessionStatus = getSessionStatus(active.session);
   const visibleOutlineButton = "border-slate-500/80 bg-slate-100 text-slate-950 hover:bg-white dark:border-white/35 dark:bg-white/[0.12] dark:text-white dark:hover:bg-white/[0.18]";
   const visibleDangerButton = "border-red-300/70 bg-red-100 text-red-800 hover:bg-red-50 dark:border-red-300/50 dark:bg-red-500/20 dark:text-red-50 dark:hover:bg-red-500/30";
-
-  useEffect(() => {
-    if (previousRestLeft.current > 0 && restLeft === 0) {
-      navigator.vibrate?.([120, 60, 120]);
-    }
-    previousRestLeft.current = restLeft;
-  }, [restLeft]);
 
   function completeCurrentSet() {
     if (current.trackingTypeSnapshot === "weight_reps") onCompleteSet({ weight, reps });
@@ -1602,7 +1580,7 @@ function WorkoutMode({
                       key={exercise.id}
                       type="button"
                       onClick={() => {
-                        onSetActive({ ...active, currentExerciseIndex: index, restUntil: undefined });
+                        onSetActive({ ...active, currentExerciseIndex: index });
                         setShowNavigator(false);
                       }}
                       className={`flex items-center justify-between gap-3 rounded-xl border p-3 text-left text-sm transition ${index === active.currentExerciseIndex ? "border-cyan-300 bg-cyan-300/15" : "border-white/10 bg-white/[0.05] hover:bg-white/[0.08]"}`}
