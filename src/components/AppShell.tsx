@@ -18,7 +18,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const [activeTool, setActiveTool] = useState<BottomTool | null>(null);
   const pathname = usePathname();
   const router = useRouter();
-  const { theme, toggleTheme } = useThemePreference();
+  const {
+    theme,
+    mode: themeMode,
+    timeZone: themeTimeZone,
+    setThemeMode,
+    setThemeTimeZone,
+  } = useThemePreference();
   useEffect(() => {
     document.documentElement.classList.toggle("light-theme", theme === "light");
   }, [theme]);
@@ -31,7 +37,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           if (activeTool && !confirmPanelClose()) return;
           setActiveTool(current => pathname === "/" && current === tool ? null : tool);
           if (pathname !== "/") router.push("/");
-        }} theme={theme} onToggleTheme={toggleTheme} onNavigate={() => setActiveTool(null)} />
+        }} theme={theme} themeMode={themeMode} themeTimeZone={themeTimeZone} onThemeModeChange={setThemeMode} onThemeTimeZoneChange={setThemeTimeZone} onNavigate={() => setActiveTool(null)} />
     </div>
   </ToolsContext.Provider>;
 }

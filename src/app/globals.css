@@ -1065,6 +1065,61 @@ html.light-theme body {
 input, select, textarea { min-width: 0; max-width: 100%; scroll-margin-block: 5rem; }
 button { max-width: 100%; }
 [role="dialog"] { overflow-wrap: anywhere; }
+
+/* Gym uses translucent dark-mode utility classes; strengthen them in light mode. */
+.light-theme .gym-light .border-white\/10 {
+  border-color: rgb(148 163 184 / 0.55);
+}
+
+.light-theme .gym-light .border-cyan-400\/20,
+.light-theme .gym-light .border-cyan-400\/25 {
+  border-color: rgb(8 145 178 / 0.45);
+}
+
+.light-theme .gym-light .bg-white\/\[0\.03\],
+.light-theme .gym-light .bg-white\/\[0\.04\],
+.light-theme .gym-light .bg-white\/\[0\.05\],
+.light-theme .gym-light .bg-white\/\[0\.06\] {
+  background-color: rgb(255 255 255 / 0.78);
+}
+
+.light-theme .gym-light .bg-cyan-400\/10 {
+  background-color: rgb(207 250 254 / 0.82);
+}
+
+.light-theme .gym-light .text-slate-500 {
+  color: rgb(71 85 105);
+}
+
+.light-theme .gym-light .text-slate-400,
+.light-theme .gym-light .text-slate-300 {
+  color: rgb(51 65 85);
+}
+
+.light-theme .gym-light .text-cyan-300,
+.light-theme .gym-light .text-cyan-400 {
+  color: rgb(8 145 178);
+}
+
+.light-theme .gym-light .text-red-300 {
+  color: rgb(185 28 28);
+}
+
+.light-theme .gym-light .gym-status-completed {
+  background-color: rgb(209 250 229 / 0.9);
+  color: rgb(4 120 87);
+}
+
+.light-theme .gym-light .gym-status-partial {
+  background-color: rgb(254 243 199 / 0.95);
+  color: rgb(180 83 9);
+}
+
+.light-theme .gym-light .gym-status-skipped {
+  background-color: rgb(226 232 240 / 0.95);
+  color: rgb(71 85 105);
+}
+
 @media (max-width: 640px) {
   [role="dialog"] input, [role="dialog"] select, [role="dialog"] textarea { font-size: 16px; }
 }
