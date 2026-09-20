@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Check,
   Dumbbell,
@@ -117,6 +117,7 @@ type PersistedWorkoutState =
   | {
       data: GymData;
       active: ActiveWorkout | null;
+      paused?: ActiveWorkout | null;
     };
 
 type SyncState = "local" | "syncing" | "supabase" | "fallback";
@@ -124,6 +125,7 @@ type GymTab = "home" | "library" | "plans" | "routines" | "history" | "progress"
 
 const storageKey = "expense-tracker-gym-mvp";
 const activeWorkoutKey = "expense-tracker-gym-active";
+const pausedWorkoutKey = "expense-tracker-gym-paused";
 const gymTabs: GymTab[] = ["home", "library", "plans", "routines", "history", "progress", "summary"];
 
 const trackingLabels: Record<TrackingType, string> = {
@@ -422,7 +424,7 @@ function reorderById<T extends { id: string }>(items: T[], sourceId: string, tar
 function normalizePersistedState(state: PersistedWorkoutState | null) {
   if (!state) return null;
   if ("data" in state) return state;
-  return { data: state, active: null };
+  return { data: state, active: null, paused: null };
 }
 
 export default function GymPage() {
@@ -459,9 +461,11 @@ function GymPageShell() {
 
 function GymPageContent() {
   const { theme } = useThemePreference();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [data, setData] = useState<GymData>(() => loadJson(storageKey, seedData()));
   const [active, setActive] = useState<ActiveWorkout | null>(() => loadJson<ActiveWorkout | null>(activeWorkoutKey, null));
+  const [pausedWorkout, setPausedWorkout] = useState<ActiveWorkout | null>(() => loadJson<ActiveWorkout | null>(pausedWorkoutKey, null));
   const [tab, setTab] = useState<GymTab>("home");
   const [lastFinishedSession, setLastFinishedSession] = useState<WorkoutSession | null>(null);
   const [newExerciseName, setNewExerciseName] = useState("");
@@ -489,6 +493,7 @@ function GymPageContent() {
         if (normalized) {
           setData(normalized.data);
           setActive(normalized.active);
+          setPausedWorkout(normalized.paused ?? null);
           setSyncState("supabase");
         }
         setHydrated(true);
@@ -508,17 +513,22 @@ function GymPageContent() {
     if (!hydrated) return;
     window.localStorage.setItem(storageKey, JSON.stringify(data));
     const timer = window.setTimeout(() => {
-      saveWorkoutState({ data, active })
+      saveWorkoutState({ data, active, paused: pausedWorkout })
         .then(() => setSyncState("supabase"))
         .catch(() => setSyncState("fallback"));
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [active, data, hydrated]);
+  }, [active, data, hydrated, pausedWorkout]);
 
   useEffect(() => {
     if (active) window.localStorage.setItem(activeWorkoutKey, JSON.stringify(active));
     else window.localStorage.removeItem(activeWorkoutKey);
   }, [active]);
+
+  useEffect(() => {
+    if (pausedWorkout) window.localStorage.setItem(pausedWorkoutKey, JSON.stringify(pausedWorkout));
+    else window.localStorage.removeItem(pausedWorkoutKey);
+  }, [pausedWorkout]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
@@ -813,6 +823,8 @@ function GymPageContent() {
   }
 
   function startWorkout(plan: Plan, routineId?: string) {
+    if (pausedWorkout && !window.confirm("Starting a new workout will discard the paused workout. Continue?")) return;
+    setPausedWorkout(null);
     setActive({ session: makeSession(plan, data, routineId), currentExerciseIndex: 0 });
   }
 
@@ -851,6 +863,17 @@ function GymPageContent() {
   function finishWorkout(status: SessionStatus) {
     if (!active) return;
     const session = { ...active.session, status, endedAt: new Date().toISOString() };
+    if (status === "partial") {
+      setPausedWorkout({
+        ...active,
+        session: { ...active.session, status: "partial" },
+        restUntil: undefined,
+      });
+      setActive(null);
+      setTab("home");
+      router.replace("/gym?tab=home");
+      return;
+    }
     setData((current) => ({
       ...current,
       sessions: [...current.sessions, session],
@@ -866,11 +889,26 @@ function GymPageContent() {
     setLastFinishedSession(session);
     setActive(null);
     setTab("summary");
+    router.replace("/gym?tab=summary");
   }
 
   function discardWorkout() {
     setActive(null);
+    setPausedWorkout(null);
     setTab("home");
+    router.replace("/gym?tab=home");
+  }
+
+  function continuePausedWorkout() {
+    if (!pausedWorkout) return;
+    setActive(pausedWorkout);
+    setPausedWorkout(null);
+  }
+
+  function discardPausedWorkout() {
+    if (!pausedWorkout) return;
+    if (!window.confirm(`Discard ${pausedWorkout.session.planNameSnapshot}? This workout will not be saved to history.`)) return;
+    setPausedWorkout(null);
   }
 
   function deleteHistorySession(sessionId: string) {
@@ -884,6 +922,7 @@ function GymPageContent() {
     if (lastFinishedSession?.id === sessionId) {
       setLastFinishedSession(null);
       setTab("history");
+      router.replace("/gym?tab=history");
     }
   }
 
@@ -899,6 +938,8 @@ function GymPageContent() {
           }
         : routine),
     }));
+    setTab("home");
+    router.replace("/gym?tab=home");
   }
 
   if (active) {
@@ -935,6 +976,19 @@ function GymPageContent() {
 
         {activeTab === "home" && (
           <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+            {pausedWorkout && (
+              <div className="rounded-2xl border border-amber-400/35 bg-amber-400/10 p-4 lg:col-span-2">
+                <p className="text-sm font-semibold uppercase tracking-wide text-amber-300">Workout in progress</p>
+                <h2 className="mt-2 text-2xl font-bold">{pausedWorkout.session.planNameSnapshot}</h2>
+                <p className="mt-1 text-sm text-slate-400">
+                  {pausedWorkout.session.exercises.filter((item) => item.status === "completed").length}/{pausedWorkout.session.exercises.length} exercises - {pausedWorkout.session.sets.length} sets logged
+                </p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <Button size="lg" onClick={continuePausedWorkout}>Continue this workout</Button>
+                  <Button className="border-red-300/70 bg-red-100 text-red-800 hover:bg-red-50 dark:border-red-300/50 dark:bg-red-500/20 dark:text-red-50 dark:hover:bg-red-500/30" variant="outline" size="lg" onClick={discardPausedWorkout}>Discard</Button>
+                </div>
+              </div>
+            )}
             <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
               <p className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Next Workout</p>
               <h2 className="mt-2 text-2xl font-bold">{recommendedPlan?.name || "Create a plan"}</h2>
@@ -1457,6 +1511,8 @@ function WorkoutMode({
   const elapsed = Math.floor((nowMs - new Date(active.session.startedAt).getTime()) / 1000);
   const timerValue = timerStartedAt ? Math.max(0, Math.floor((nowMs - timerStartedAt) / 1000)) : duration;
   const sessionStatus = getSessionStatus(active.session);
+  const visibleOutlineButton = "border-slate-500/80 bg-slate-100 text-slate-950 hover:bg-white dark:border-white/35 dark:bg-white/[0.12] dark:text-white dark:hover:bg-white/[0.18]";
+  const visibleDangerButton = "border-red-300/70 bg-red-100 text-red-800 hover:bg-red-50 dark:border-red-300/50 dark:bg-red-500/20 dark:text-red-50 dark:hover:bg-red-500/30";
 
   useEffect(() => {
     if (previousRestLeft.current > 0 && restLeft === 0) {
@@ -1482,19 +1538,7 @@ function WorkoutMode({
 
   return (
     <main className="min-h-screen bg-[#05070b] px-4 py-5 pb-32 text-slate-100">
-      <div className="mx-auto flex max-w-3xl flex-col gap-4">
-        <header className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm text-cyan-300">{active.session.planNameSnapshot}</p>
-            <h1 className="text-2xl font-bold">{secondsLabel(elapsed)} elapsed</h1>
-            <p className="mt-1 text-sm text-slate-400">Exercise {active.currentExerciseIndex + 1} of {active.session.exercises.length}</p>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <Button variant="outline" onClick={() => setShowNavigator((current) => !current)}>Exercises</Button>
-            <Button variant="outline" onClick={() => setShowFinishConfirm(true)}><X className="size-4" /> Finish</Button>
-          </div>
-        </header>
-
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
         {showNavigator && (
           <section className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -1538,34 +1582,16 @@ function WorkoutMode({
           </section>
         )}
 
-        <section className="rounded-3xl border border-cyan-400/25 bg-cyan-400/10 p-4">
+        <div className="mx-auto grid w-full max-w-3xl gap-4">
+        <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 shadow-2xl shadow-black/20">
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            <Button className={visibleOutlineButton} variant="outline" onClick={() => setShowNavigator((current) => !current)}>Exercises</Button>
+            <Button className={visibleDangerButton} variant="outline" onClick={() => setShowFinishConfirm(true)}><X className="size-4" /> Finish</Button>
+          </div>
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm">Exercise {active.currentExerciseIndex + 1} of {active.session.exercises.length}</p>
-            <span className="text-sm text-slate-400">{completedSets.length}/{current.plannedSetsSnapshot} sets</span>
+            <h3 className="font-semibold">Today - Set {completedSets.length + 1}</h3>
+            <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">{completedSets.length} done</span>
           </div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-cyan-300" style={{ width: `${((active.currentExerciseIndex + 1) / active.session.exercises.length) * 100}%` }} />
-          </div>
-          <h2 className="mt-6 text-3xl font-bold uppercase">{current.nameSnapshot}</h2>
-          <p className="text-sm text-cyan-300">
-            {trackingLabels[current.trackingTypeSnapshot]} 路 Target {current.plannedSetsSnapshot} sets
-            {current.targetRepMin != null && current.targetRepMax != null ? ` 路 ${current.targetRepMin}-${current.targetRepMax} reps` : ""}
-            {current.targetDurationMax != null ? ` 路 ${current.targetDurationMax}s` : ""}
-          </p>
-        </section>
-
-        <section className="rounded-2xl border border-white/10 p-4">
-          <h3 className="font-semibold">Last performed</h3>
-          {previous ? (
-            <div className="mt-2 grid gap-2">
-              <p className="text-sm text-slate-400">{niceDate(previous.session.startedAt)}</p>
-              {previous.sets.map((set) => <p key={set.id} className="rounded-xl bg-white/[0.05] p-2 text-sm">{set.setNumber}. {setLabel(set, current.trackingTypeSnapshot)}</p>)}
-            </div>
-          ) : <p className="mt-2 text-sm text-slate-400">No previous data for this exercise.</p>}
-        </section>
-
-        <section className="rounded-2xl border border-white/10 p-4">
-          <h3 className="font-semibold">Today - Set {completedSets.length + 1}</h3>
           <div className="mt-4 grid gap-3">
             {(current.trackingTypeSnapshot === "weight_reps" || current.trackingTypeSnapshot === "weight_time") && (
               <Stepper label="Weight" value={weight} suffix="kg" onChange={setWeight} onMinus={() => setWeight(Math.max(0, weight - 1))} onPlus={() => setWeight(weight + 1)} />
@@ -1581,7 +1607,7 @@ function WorkoutMode({
                 </div>
                 <div className="mt-3 flex gap-2">
                   <Button onClick={() => timerStartedAt ? stopTimerAndSave() : setTimerStartedAt(nowMs)}><Timer className="size-4" />{timerStartedAt ? "Stop & save" : "Start timer"}</Button>
-                  <Button variant="outline" onClick={() => setDuration(duration + 5)}>+5s</Button>
+                  <Button className={visibleOutlineButton} variant="outline" onClick={() => setDuration(duration + 5)}>+5s</Button>
                 </div>
                 {!timerStartedAt && (
                   <Input className="mt-3" fieldSize="md" type="number" min="0" value={duration} onChange={(event) => setDuration(Number(event.target.value) || 0)} />
@@ -1589,9 +1615,10 @@ function WorkoutMode({
               </div>
             )}
           </div>
-          <Button className="mt-4 w-full text-lg uppercase" size="lg" onClick={completeCurrentSet}><Check className="size-5" /> Complete Set</Button>
-          {completedSets.length >= current.plannedSetsSnapshot && (
-            <div className="mt-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3">
+          {completedSets.length < current.plannedSetsSnapshot ? (
+            <Button className="mt-4 w-full text-lg uppercase" size="lg" onClick={completeCurrentSet}><Check className="size-5" /> Complete Set</Button>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3">
               <p className="text-sm font-semibold text-emerald-200">Target sets reached</p>
               <div className="mt-3 grid gap-2">
                 <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 text-xs font-semibold uppercase text-emerald-100/70">
@@ -1614,7 +1641,7 @@ function WorkoutMode({
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <Button onClick={() => onFinishExercise("completed")}>Finish Exercise</Button>
-                <Button variant="outline" onClick={completeCurrentSet}>+ Add Set</Button>
+                  <Button className={visibleOutlineButton} variant="outline" onClick={completeCurrentSet}>+ Add Set</Button>
               </div>
             </div>
           )}
@@ -1626,13 +1653,44 @@ function WorkoutMode({
           </div>
           {showMore && (
             <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <Button variant="outline" onClick={() => onFinishExercise(completedSets.length ? "partial" : "skipped")}>Next Exercise</Button>
-              <Button variant="outline" disabled={active.currentExerciseIndex === 0} onClick={() => onSetActive({ ...active, currentExerciseIndex: active.currentExerciseIndex - 1 })}>Previous</Button>
-              <Button variant="outline" onClick={() => onFinishExercise("completed")}>Complete Exercise</Button>
+              <Button className={visibleOutlineButton} variant="outline" onClick={() => onFinishExercise(completedSets.length ? "partial" : "skipped")}>Next Exercise</Button>
+              <Button className={visibleOutlineButton} variant="outline" disabled={active.currentExerciseIndex === 0} onClick={() => onSetActive({ ...active, currentExerciseIndex: active.currentExerciseIndex - 1 })}>Previous</Button>
+              <Button className={visibleOutlineButton} variant="outline" onClick={() => onFinishExercise("completed")}>Complete Exercise</Button>
               <Button onClick={() => setShowFinishConfirm(true)}>Finish Workout</Button>
             </div>
           )}
         </section>
+
+        <section className="rounded-3xl border border-cyan-400/25 bg-cyan-400/10 p-5">
+          <div>
+            <p className="text-sm font-semibold text-cyan-200">{active.session.planNameSnapshot}</p>
+            <h1 className="mt-1 text-3xl font-bold">{secondsLabel(elapsed)} elapsed</h1>
+            <p className="mt-1 text-sm text-slate-400">Exercise {active.currentExerciseIndex + 1} of {active.session.exercises.length}</p>
+          </div>
+          <div className="mt-5 flex items-center justify-between gap-3">
+            <p className="text-sm">Exercise {active.currentExerciseIndex + 1} of {active.session.exercises.length}</p>
+            <span className="rounded-full bg-black/20 px-3 py-1 text-sm text-slate-200">{completedSets.length}/{current.plannedSetsSnapshot} sets</span>
+          </div>
+          <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full rounded-full bg-cyan-300" style={{ width: `${((active.currentExerciseIndex + 1) / active.session.exercises.length) * 100}%` }} />
+          </div>
+          <h2 className="mt-6 text-3xl font-bold uppercase leading-tight">{current.nameSnapshot}</h2>
+          <p className="mt-3 text-sm text-cyan-200">
+            {trackingLabels[current.trackingTypeSnapshot]} - Target {current.plannedSetsSnapshot} sets
+            {current.targetRepMin != null && current.targetRepMax != null ? ` - ${current.targetRepMin}-${current.targetRepMax} reps` : ""}
+            {current.targetDurationMax != null ? ` - ${current.targetDurationMax}s` : ""}
+          </p>
+          {previous && (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-3">
+              <h3 className="font-semibold">Last performed</h3>
+              <p className="mt-1 text-sm text-slate-400">{niceDate(previous.session.startedAt)}</p>
+              <div className="mt-2 grid gap-2">
+                {previous.sets.map((set) => <p key={set.id} className="rounded-xl bg-white/[0.05] p-3 text-sm">{set.setNumber}. {setLabel(set, current.trackingTypeSnapshot)}</p>)}
+              </div>
+            </div>
+          )}
+        </section>
+        </div>
       </div>
       {showFinishConfirm && (
         <div
@@ -1650,10 +1708,15 @@ function WorkoutMode({
             <p className="mt-2 text-sm text-amber-100/80">
               Completed: {active.session.exercises.filter((item) => item.status === "completed").length}/{active.session.exercises.length} exercises - {active.session.sets.length} sets.
             </p>
+            {sessionStatus === "partial" && active.session.routineId && (
+              <p className="mt-2 rounded-xl bg-amber-300/10 p-3 text-sm text-amber-50">
+                This will return to Home as an in-progress workout. Continue it later or discard it from the Home page.
+              </p>
+            )}
             <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              <Button onClick={() => onFinishWorkout(sessionStatus)}>Save & End</Button>
-              <Button variant="outline" onClick={onDiscardWorkout}>Discard</Button>
-              <Button variant="outline" onClick={() => setShowFinishConfirm(false)}>Keep Training</Button>
+              <Button className="bg-white text-black hover:bg-zinc-100" onClick={() => onFinishWorkout(sessionStatus)}>Save & End</Button>
+              <Button className="border-red-300/70 bg-red-100 text-red-800 hover:bg-red-50 dark:border-red-300/50 dark:bg-red-500/25 dark:text-red-50 dark:hover:bg-red-500/35" variant="outline" onClick={onDiscardWorkout}>Discard</Button>
+              <Button className="border-amber-200/80 bg-amber-50 text-amber-950 hover:bg-white dark:border-white/40 dark:bg-white/[0.14] dark:text-amber-50 dark:hover:bg-white/[0.2]" variant="outline" onClick={() => setShowFinishConfirm(false)}>Keep Training</Button>
             </div>
           </div>
         </div>
@@ -1664,17 +1727,39 @@ function WorkoutMode({
 
 function Stepper({ label, value, suffix = "", onChange, onMinus, onPlus }: { label: string; value: number; suffix?: string; onChange: (value: number) => void; onMinus: () => void; onPlus: () => void }) {
   return (
-    <div className="rounded-2xl bg-white/[0.05] p-3">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="font-semibold">{label}</span>
-        <label className="flex items-center gap-1">
-          <Input className="w-24 text-right text-2xl font-bold" fieldSize="md" type="number" min="0" value={value} onChange={(event) => onChange(Number(event.target.value) || 0)} />
-          <span className="text-xl font-bold">{suffix}</span>
-        </label>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold uppercase tracking-wide text-slate-300">{label}</span>
+        {suffix && <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-slate-300">{suffix}</span>}
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" size="lg" onClick={onMinus}>-</Button>
-        <Button size="lg" onClick={onPlus}>+</Button>
+      <div className="grid grid-cols-[4.5rem_minmax(0,1fr)_4.5rem] overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+        <button
+          type="button"
+          onClick={onMinus}
+          className="min-h-16 border-r border-white/10 text-3xl font-bold text-slate-100 transition hover:bg-white/10 active:bg-cyan-400/20"
+          aria-label={`Decrease ${label}`}
+        >
+          -
+        </button>
+        <label className="flex min-w-0 items-center justify-center gap-2 bg-white/[0.03] px-3">
+          <Input
+            className="h-16 border-0 bg-transparent p-0 text-center text-4xl font-black text-white shadow-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            fieldSize="md"
+            type="number"
+            min="0"
+            value={value}
+            onChange={(event) => onChange(Number(event.target.value) || 0)}
+          />
+          {suffix && <span className="text-xl font-bold text-slate-300">{suffix}</span>}
+        </label>
+        <button
+          type="button"
+          onClick={onPlus}
+          className="min-h-16 border-l border-white/10 bg-cyan-300 text-3xl font-black text-black transition hover:bg-cyan-200 active:bg-cyan-100"
+          aria-label={`Increase ${label}`}
+        >
+          +
+        </button>
       </div>
     </div>
   );
