@@ -8,6 +8,7 @@ import {
   CalendarSync,
   CalendarClock,
   CalendarRange,
+  ClipboardCopy,
   ClipboardList,
   Download,
   Dumbbell,
@@ -32,6 +33,9 @@ import {
 import BottomBarButton from "@/components/BottomBarButton";
 import { Select } from "@/components/ui/Field";
 import type { AppTheme, ThemeMode } from "@/hooks/useThemePreference";
+import { getWorkoutState, workoutStorageKey } from "@/services/workoutService";
+import { copyTextToClipboard } from "@/utils/clipboard";
+import { formatWorkoutAIExport } from "@/utils/formatWorkoutAIExport";
 import { createSupabaseBackup, downloadSupabaseBackup } from "@/utils/supabaseBackup";
 
 export type BottomTool =
@@ -39,6 +43,7 @@ export type BottomTool =
 
 const BOTTOM_BUTTONS_PER_ROW = 3;
 const EXPORTING_STATUS = "Exporting...";
+const COPYING_STATUS = "Copying...";
 
 const timeZoneOptions = [
   "Asia/Kuala_Lumpur",
@@ -118,6 +123,7 @@ export default function BottomActionBar({
   const isGym = pathname === "/gym";
   const [themeSettingsOpen, setThemeSettingsOpen] = useState(false);
   const [backupStatus, setBackupStatus] = useState("");
+  const [workoutExportStatus, setWorkoutExportStatus] = useState("");
 
   async function exportAllData() {
     setBackupStatus(EXPORTING_STATUS);
@@ -126,6 +132,24 @@ export default function BottomActionBar({
       setBackupStatus("Backup downloaded");
     } catch (cause) {
       setBackupStatus(cause instanceof Error ? cause.message : "Backup failed.");
+    }
+  }
+
+  async function copyWorkoutAIExport() {
+    setWorkoutExportStatus(COPYING_STATUS);
+    try {
+      let state: unknown = null;
+      try {
+        state = await getWorkoutState();
+      } catch {
+        const raw = window.localStorage.getItem(workoutStorageKey);
+        state = raw ? JSON.parse(raw) : null;
+      }
+
+      const copied = await copyTextToClipboard(formatWorkoutAIExport(state));
+      setWorkoutExportStatus(copied ? "AI export copied" : "Copy failed");
+    } catch (cause) {
+      setWorkoutExportStatus(cause instanceof Error ? cause.message : "AI export failed.");
     }
   }
 
@@ -330,6 +354,14 @@ export default function BottomActionBar({
                 />
                 {isGym && (
                   <BottomBarButton
+                    active={workoutExportStatus === "AI export copied"}
+                    onClick={() => void copyWorkoutAIExport()}
+                    icon={ClipboardCopy}
+                    label={workoutExportStatus === COPYING_STATUS ? COPYING_STATUS : "Export for AI"}
+                  />
+                )}
+                {isGym && (
+                  <BottomBarButton
                     active={activeTool === "income"}
                     href="/"
                     onClick={() => {
@@ -341,6 +373,7 @@ export default function BottomActionBar({
                   />
                 )}
                 {backupStatus && backupStatus !== EXPORTING_STATUS && <p role="status" className="col-span-3 rounded-xl bg-black/40 px-3 py-2 text-xs text-zinc-300">{backupStatus}</p>}
+                {workoutExportStatus && workoutExportStatus !== COPYING_STATUS && <p role="status" className="col-span-3 rounded-xl bg-black/40 px-3 py-2 text-xs text-zinc-300">{workoutExportStatus}</p>}
               </div>
             )}
           </div>

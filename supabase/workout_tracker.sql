@@ -6,7 +6,30 @@ create table if not exists workout_app_state (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists workout_shared_state (
+  state_key text primary key,
+  payload jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
 alter table workout_app_state enable row level security;
+alter table workout_shared_state enable row level security;
+
+drop policy if exists workout_shared_state_select on workout_shared_state;
+create policy workout_shared_state_select
+  on workout_shared_state for select
+  using (state_key = 'personal-gym');
+
+drop policy if exists workout_shared_state_insert on workout_shared_state;
+create policy workout_shared_state_insert
+  on workout_shared_state for insert
+  with check (state_key = 'personal-gym');
+
+drop policy if exists workout_shared_state_update on workout_shared_state;
+create policy workout_shared_state_update
+  on workout_shared_state for update
+  using (state_key = 'personal-gym')
+  with check (state_key = 'personal-gym');
 
 drop policy if exists workout_app_state_select_own on workout_app_state;
 create policy workout_app_state_select_own

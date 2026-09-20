@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Check,
   Dumbbell,
-  Ellipsis,
   Play,
   Plus,
   Trash2,
@@ -852,6 +851,37 @@ function GymPageContent() {
     });
   }
 
+  function deleteWorkoutSet(setId: string) {
+    if (!active) return;
+    const exercise = active.session.exercises[active.currentExerciseIndex];
+    const nextSets = active.session.sets
+      .filter((set) => set.id !== setId)
+      .map((set) => set.workoutExerciseId === exercise.id
+        ? {
+            ...set,
+            setNumber: active.session.sets
+              .filter((item) => item.id !== setId && item.workoutExerciseId === exercise.id)
+              .findIndex((item) => item.id === set.id) + 1,
+          }
+        : set);
+    const nextExerciseSetCount = nextSets.filter((set) => set.workoutExerciseId === exercise.id).length;
+    const exercises = active.session.exercises.map((item) => {
+      if (item.id !== exercise.id) return item;
+      const status: ExerciseStatus = nextExerciseSetCount === 0
+        ? "pending"
+        : nextExerciseSetCount >= item.plannedSetsSnapshot
+        ? "completed"
+        : "partial";
+      return { ...item, status };
+    });
+
+    setActive({
+      ...active,
+      session: { ...active.session, sets: nextSets, exercises },
+      restUntil: undefined,
+    });
+  }
+
   function finishExercise(status: ExerciseStatus = "completed") {
     if (!active) return;
     const exercise = active.session.exercises[active.currentExerciseIndex];
@@ -951,6 +981,7 @@ function GymPageContent() {
         nowMs={nowMs}
         onSetActive={setActive}
         onCompleteSet={completeSet}
+        onDeleteSet={deleteWorkoutSet}
         onFinishExercise={finishExercise}
         onFinishWorkout={finishWorkout}
         onDiscardWorkout={discardWorkout}
@@ -1481,6 +1512,7 @@ function WorkoutMode({
   nowMs,
   onSetActive,
   onCompleteSet,
+  onDeleteSet,
   onFinishExercise,
   onFinishWorkout,
   onDiscardWorkout,
@@ -1490,6 +1522,7 @@ function WorkoutMode({
   nowMs: number;
   onSetActive: (active: ActiveWorkout) => void;
   onCompleteSet: (values: { weight?: number; reps?: number; durationSeconds?: number }) => void;
+  onDeleteSet: (setId: string) => void;
   onFinishExercise: (status?: ExerciseStatus) => void;
   onFinishWorkout: (status: SessionStatus) => void;
   onDiscardWorkout: () => void;
@@ -1503,7 +1536,6 @@ function WorkoutMode({
   const [duration, setDuration] = useState(prefill?.durationSeconds || current.targetDurationMax || 30);
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [showNavigator, setShowNavigator] = useState(false);
-  const [showMore, setShowMore] = useState(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
 
   const restLeft = active.restUntil ? Math.max(0, Math.ceil((active.restUntil - nowMs) / 1000)) : 0;
@@ -1540,46 +1572,49 @@ function WorkoutMode({
     <main className="min-h-screen bg-[#05070b] px-4 py-5 pb-32 text-slate-100">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
         {showNavigator && (
-          <section className="rounded-2xl border border-cyan-300/30 bg-cyan-300/10 p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="font-semibold">{active.session.planNameSnapshot}</h2>
-              <button type="button" className="text-sm text-cyan-200" onClick={() => setShowNavigator(false)}>Close</button>
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 px-4 py-5 backdrop-blur-sm sm:items-center"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="exercise-navigator-title"
+            onClick={() => setShowNavigator(false)}
+          >
+            <div
+              className="max-h-[82vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-cyan-300/30 bg-[#0a1d20] p-4 shadow-2xl shadow-black/50"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 id="exercise-navigator-title" className="font-semibold">{active.session.planNameSnapshot}</h2>
+                <button type="button" className="text-sm text-cyan-100" onClick={() => setShowNavigator(false)}>Close</button>
+              </div>
+              <div className="grid gap-2">
+                {active.session.exercises.map((exercise, index) => {
+                  const statusLabel = exercise.status === "completed"
+                    ? "Completed"
+                    : exercise.status === "skipped"
+                    ? "Skipped"
+                    : index === active.currentExerciseIndex
+                    ? "Current"
+                    : "Pending";
+                  const setCount = active.session.sets.filter((set) => set.workoutExerciseId === exercise.id).length;
+                  return (
+                    <button
+                      key={exercise.id}
+                      type="button"
+                      onClick={() => {
+                        onSetActive({ ...active, currentExerciseIndex: index, restUntil: undefined });
+                        setShowNavigator(false);
+                      }}
+                      className={`flex items-center justify-between gap-3 rounded-xl border p-3 text-left text-sm transition ${index === active.currentExerciseIndex ? "border-cyan-300 bg-cyan-300/15" : "border-white/10 bg-white/[0.05] hover:bg-white/[0.08]"}`}
+                    >
+                      <span className="font-medium">{exercise.nameSnapshot}</span>
+                      <span className="text-xs text-slate-300">{statusLabel} - {setCount}/{exercise.plannedSetsSnapshot}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="grid gap-2">
-              {active.session.exercises.map((exercise, index) => {
-                const statusLabel = exercise.status === "completed"
-                  ? "Completed"
-                  : exercise.status === "skipped"
-                  ? "Skipped"
-                  : index === active.currentExerciseIndex
-                  ? "Current"
-                  : "Pending";
-                const setCount = active.session.sets.filter((set) => set.workoutExerciseId === exercise.id).length;
-                return (
-                  <button
-                    key={exercise.id}
-                    type="button"
-                    onClick={() => {
-                      onSetActive({ ...active, currentExerciseIndex: index, restUntil: undefined });
-                      setShowNavigator(false);
-                    }}
-                    className={`flex items-center justify-between gap-3 rounded-xl border p-3 text-left text-sm ${index === active.currentExerciseIndex ? "border-cyan-300 bg-cyan-300/15" : "border-white/10 bg-white/[0.03]"}`}
-                  >
-                    <span>{exercise.nameSnapshot}</span>
-                    <span className="text-xs text-slate-400">{statusLabel} - {setCount}/{exercise.plannedSetsSnapshot}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {restLeft > 0 && (
-          <section className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
-            <p className="text-sm font-semibold text-amber-300">REST</p>
-            <p className="text-4xl font-bold">{secondsLabel(restLeft)}</p>
-            <Button className="mt-3" onClick={() => onSetActive({ ...active, restUntil: undefined })}>Skip rest</Button>
-          </section>
+          </div>
         )}
 
         <div className="mx-auto grid w-full max-w-3xl gap-4">
@@ -1589,7 +1624,7 @@ function WorkoutMode({
             <Button className={visibleDangerButton} variant="outline" onClick={() => setShowFinishConfirm(true)}><X className="size-4" /> Finish</Button>
           </div>
           <div className="flex items-center justify-between gap-3">
-            <h3 className="font-semibold">Today - Set {completedSets.length + 1}</h3>
+            <h3 className="font-semibold">{current.nameSnapshot} Set {completedSets.length + 1}</h3>
             <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">{completedSets.length} done</span>
           </div>
           <div className="mt-4 grid gap-3">
@@ -1618,47 +1653,48 @@ function WorkoutMode({
           {completedSets.length < current.plannedSetsSnapshot ? (
             <Button className="mt-4 w-full text-lg uppercase" size="lg" onClick={completeCurrentSet}><Check className="size-5" /> Complete Set</Button>
           ) : (
-            <div className="mt-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3">
-              <p className="text-sm font-semibold text-emerald-200">Target sets reached</p>
-              <div className="mt-3 grid gap-2">
-                <div className="grid grid-cols-[2rem_1fr_1fr] gap-2 text-xs font-semibold uppercase text-emerald-100/70">
-                  <span>Set</span>
-                  <span>Last</span>
-                  <span>Today</span>
-                </div>
-                {completedSets.map((set, index) => (
-                  <div key={set.id} className="grid grid-cols-[2rem_1fr_1fr] gap-2 rounded-xl bg-black/10 p-2 text-sm">
-                    <span>{index + 1}</span>
-                    <span>{previous?.sets[index] ? setLabel(previous.sets[index], current.trackingTypeSnapshot) : "-"}</span>
-                    <span>{setLabel(set, current.trackingTypeSnapshot)}</span>
-                  </div>
-                ))}
-                {!!previous?.sets.length && (
-                  <p className="text-sm text-emerald-100">
-                    {completedSetComparison(previous.sets, completedSets, current.trackingTypeSnapshot)} / {completedSets.length} sets improved
-                  </p>
-                )}
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-2">
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-2">
                 <Button onClick={() => onFinishExercise("completed")}>Finish Exercise</Button>
-                  <Button className={visibleOutlineButton} variant="outline" onClick={completeCurrentSet}>+ Add Set</Button>
+                <Button className={visibleOutlineButton} variant="outline" onClick={completeCurrentSet}>+ Add Set</Button>
               </div>
-            </div>
+              <div className="mt-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3">
+                <p className="text-sm font-semibold text-emerald-200">Target sets reached</p>
+                <div className="mt-3 grid gap-2">
+                  <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-2 text-xs font-semibold uppercase text-emerald-100/70">
+                    <span>Set</span>
+                    <span>Last</span>
+                    <span>Today</span>
+                    <span className="sr-only">Delete</span>
+                  </div>
+                  {completedSets.map((set, index) => (
+                    <div key={set.id} className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-2 rounded-xl bg-black/10 p-2 text-sm">
+                      <span>{index + 1}</span>
+                      <span>{previous?.sets[index] ? setLabel(previous.sets[index], current.trackingTypeSnapshot) : "-"}</span>
+                      <span>{setLabel(set, current.trackingTypeSnapshot)}</span>
+                      <button
+                        type="button"
+                        aria-label={`Delete set ${index + 1}`}
+                        className="inline-flex size-8 items-center justify-center rounded-full border border-red-300/40 bg-red-500/15 text-red-100 transition hover:bg-red-500/25"
+                        onClick={() => onDeleteSet(set.id)}
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </button>
+                    </div>
+                  ))}
+                  {!!previous?.sets.length && (
+                    <p className="text-sm text-emerald-100">
+                      {completedSetComparison(previous.sets, completedSets, current.trackingTypeSnapshot)} / {completedSets.length} sets improved
+                    </p>
+                  )}
+                </div>
+              </div>
+            </>
           )}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <button type="button" className="text-sm text-slate-400" onClick={() => onFinishExercise("skipped")}>Skip Exercise</button>
-            <button type="button" className="inline-flex items-center gap-1 text-sm text-slate-400" onClick={() => setShowMore((current) => !current)}>
-              <Ellipsis className="size-4" /> More
-            </button>
+            <span className="text-sm text-slate-500">Exercise {active.currentExerciseIndex + 1} of {active.session.exercises.length}</span>
           </div>
-          {showMore && (
-            <div className="mt-3 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <Button className={visibleOutlineButton} variant="outline" onClick={() => onFinishExercise(completedSets.length ? "partial" : "skipped")}>Next Exercise</Button>
-              <Button className={visibleOutlineButton} variant="outline" disabled={active.currentExerciseIndex === 0} onClick={() => onSetActive({ ...active, currentExerciseIndex: active.currentExerciseIndex - 1 })}>Previous</Button>
-              <Button className={visibleOutlineButton} variant="outline" onClick={() => onFinishExercise("completed")}>Complete Exercise</Button>
-              <Button onClick={() => setShowFinishConfirm(true)}>Finish Workout</Button>
-            </div>
-          )}
         </section>
 
         <section className="rounded-3xl border border-cyan-400/25 bg-cyan-400/10 p-5">
