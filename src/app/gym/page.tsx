@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -426,6 +426,38 @@ function normalizePersistedState(state: PersistedWorkoutState | null) {
 }
 
 export default function GymPage() {
+  return (
+    <Suspense fallback={<GymPageShell />}>
+      <GymPageContent />
+    </Suspense>
+  );
+}
+
+function GymPageShell() {
+  const { theme } = useThemePreference();
+  return (
+    <main className={`gym-page min-h-screen pb-40 ${theme === "light" ? "gym-light bg-slate-50 text-slate-950" : "bg-[#070a0f] text-slate-100"}`}>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-5 sm:px-6">
+        <header className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-cyan-400">Workout Tracker</p>
+            <h1 className="text-3xl font-bold">Gym</h1>
+            <p className="text-xs text-slate-400">Loading workout data...</p>
+          </div>
+          <Link href="/gym?tab=home" aria-label="Go to Gym home" className="rounded-2xl border border-cyan-400/25 bg-cyan-400/10 p-3 transition hover:bg-cyan-400/20">
+            <Dumbbell aria-hidden className="size-6 text-cyan-300" />
+          </Link>
+        </header>
+        <section className="grid gap-3">
+          <div className="h-28 animate-pulse rounded-2xl border border-white/10 bg-white/[0.04]" />
+          <div className="h-48 animate-pulse rounded-2xl border border-white/10 bg-white/[0.04]" />
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function GymPageContent() {
   const { theme } = useThemePreference();
   const searchParams = useSearchParams();
   const [data, setData] = useState<GymData>(() => loadJson(storageKey, seedData()));

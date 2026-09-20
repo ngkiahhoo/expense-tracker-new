@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { Suspense, createContext, useContext, useEffect, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import BottomActionBar, { type BottomTool } from "./BottomActionBar";
 import useThemePreference from "../hooks/useThemePreference";
@@ -32,12 +32,14 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className={`${theme === "light" ? "light-theme" : ""} min-h-screen app-background pb-[calc(7rem+env(safe-area-inset-bottom))]`}>
       <SyncStatus />
       {children}
-      <BottomActionBar key={pathname} activeTool={pathname === "/" ? activeTool : null}
-        onToggle={tool => {
-          if (activeTool && !confirmPanelClose()) return;
-          setActiveTool(current => pathname === "/" && current === tool ? null : tool);
-          if (pathname !== "/") router.push("/");
-        }} theme={theme} themeMode={themeMode} themeTimeZone={themeTimeZone} onThemeModeChange={setThemeMode} onThemeTimeZoneChange={setThemeTimeZone} onNavigate={() => setActiveTool(null)} />
+      <Suspense fallback={null}>
+        <BottomActionBar key={pathname} activeTool={pathname === "/" ? activeTool : null}
+          onToggle={tool => {
+            if (activeTool && !confirmPanelClose()) return;
+            setActiveTool(current => pathname === "/" && current === tool ? null : tool);
+            if (pathname !== "/") router.push("/");
+          }} theme={theme} themeMode={themeMode} themeTimeZone={themeTimeZone} onThemeModeChange={setThemeMode} onThemeTimeZoneChange={setThemeTimeZone} onNavigate={() => setActiveTool(null)} />
+      </Suspense>
     </div>
   </ToolsContext.Provider>;
 }
