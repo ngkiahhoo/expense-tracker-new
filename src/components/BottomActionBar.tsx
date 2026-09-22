@@ -20,6 +20,7 @@ import {
   Plus,
   ScrollText,
   History,
+  Image as ImageIcon,
   Library,
   ListChecks,
   RotateCw,
@@ -31,6 +32,7 @@ import {
 } from "lucide-react";
 
 import BottomBarButton from "@/components/BottomBarButton";
+import AppIconEditor from "@/components/AppIconEditor";
 import { Select } from "@/components/ui/Field";
 import type { AppTheme, ThemeMode } from "@/hooks/useThemePreference";
 import { getWorkoutState, workoutStorageKey } from "@/services/workoutService";
@@ -126,6 +128,7 @@ export default function BottomActionBar({
   const gymTab = searchParams.get("tab") || "home";
   const isGym = pathname === "/gym";
   const [themeSettingsOpen, setThemeSettingsOpen] = useState(false);
+  const [appIconEditorOpen, setAppIconEditorOpen] = useState(false);
   const [backupStatus, setBackupStatus] = useState("");
   const [workoutExportStatus, setWorkoutExportStatus] = useState("");
 
@@ -203,6 +206,7 @@ export default function BottomActionBar({
   );
 
   return (
+    <>
     <nav className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bottom-glow-bar px-3 pb-[env(safe-area-inset-bottom)] lg:px-6 ${isGym ? "gym-bottom-bar gym-ui" : ""}`}>
       <div className="mx-auto max-w-md py-3 md:max-w-2xl lg:max-w-2xl">
         <div
@@ -309,6 +313,12 @@ export default function BottomActionBar({
                   onClick={() => onButtonSoundsEnabledChange(!buttonSoundsEnabled)}
                   icon={buttonSoundsEnabled ? Volume2 : VolumeX}
                   label={buttonSoundsEnabled ? "Sound on" : "Sound off"}
+                />
+                <BottomBarButton
+                  active={appIconEditorOpen}
+                  onClick={() => setAppIconEditorOpen(true)}
+                  icon={ImageIcon}
+                  label="App icon"
                 />
                 {!isGym && (
                   <>
@@ -426,5 +436,7 @@ export default function BottomActionBar({
         )}
       </div>
     </nav>
+    <AppIconEditor open={appIconEditorOpen} onClose={() => setAppIconEditorOpen(false)} />
+    </>
   );
 }
