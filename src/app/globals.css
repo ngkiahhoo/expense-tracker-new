@@ -43,7 +43,7 @@ body {
   margin: 0;
   padding: 0;
 
-  background: #070606;
+  background: #05070a;
 
   color: white;
 
@@ -57,6 +57,42 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+.app-settings-trigger {
+  position: fixed;
+  top: calc(0.875rem + env(safe-area-inset-top));
+  right: max(1rem, calc((100vw - 72rem) / 2 + 1.5rem));
+  z-index: 55;
+  display: inline-flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 0.75rem;
+  color: #f8fafc;
+  background: rgba(15, 20, 27, 0.96);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px);
+}
+
+.app-settings-trigger:hover {
+  border-color: rgba(103, 232, 249, 0.72);
+  background: #18212b;
+}
+
+.app-settings-trigger-gym {
+  color: #03150a;
+  background: #6ee7a0;
+  border-color: #bbf7d0;
+}
+
+.light-theme .app-settings-trigger {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.96);
+  border-color: #94a3b8;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14);
 }
 
 input,
@@ -84,12 +120,9 @@ html.light-theme body {
     min-height: 100vh;
     overflow-x: hidden;
     background:
-      radial-gradient(ellipse at 50% -14%, rgba(255, 214, 120, 0.34), transparent 26rem),
-      radial-gradient(ellipse at 50% 114%, rgba(255, 204, 96, 0.28), transparent 30rem),
-      radial-gradient(ellipse at -8% 50%, rgba(255, 188, 72, 0.18), transparent 26rem),
-      radial-gradient(ellipse at 108% 50%, rgba(255, 188, 72, 0.16), transparent 26rem),
-      radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.94), transparent 30rem),
-      linear-gradient(180deg, #100c08 0%, #040404 50%, #080706 100%);
+      radial-gradient(ellipse at 12% -8%, rgba(37, 99, 235, 0.09), transparent 30rem),
+      radial-gradient(ellipse at 92% 4%, rgba(13, 148, 136, 0.07), transparent 28rem),
+      linear-gradient(180deg, #0b0e13 0%, #07090d 48%, #05070a 100%);
   }
 
   .app-background::before {
@@ -99,12 +132,11 @@ html.light-theme body {
     z-index: 0;
     pointer-events: none;
     background:
-      linear-gradient(180deg, rgba(255, 218, 132, 0.13), transparent 18%, transparent 82%, rgba(255, 204, 96, 0.11)),
-      linear-gradient(90deg, rgba(255, 196, 82, 0.085), transparent 18%, transparent 82%, rgba(255, 196, 82, 0.075)),
-      radial-gradient(ellipse at 50% -10%, rgba(255, 232, 176, 0.17), transparent 26rem),
-      radial-gradient(ellipse at 50% 110%, rgba(255, 218, 142, 0.15), transparent 32rem);
-    opacity: 0.54;
-    animation: ambient-light-shift 12s ease-in-out infinite;
+      linear-gradient(90deg, rgba(148, 163, 184, 0.025) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(148, 163, 184, 0.018) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.5;
+    animation: none;
   }
 
   .app-background::after {
@@ -113,13 +145,9 @@ html.light-theme body {
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    background:
-      radial-gradient(ellipse at 50% -12%, rgba(255, 214, 120, 0.19), transparent 30rem),
-      radial-gradient(ellipse at 50% 112%, rgba(255, 204, 96, 0.18), transparent 34rem),
-      radial-gradient(ellipse at -10% 50%, rgba(255, 188, 72, 0.13), transparent 28rem),
-      radial-gradient(ellipse at 110% 50%, rgba(255, 188, 72, 0.12), transparent 28rem);
-    opacity: 0.42;
-    animation: edge-led-light-pulse 12s ease-in-out infinite;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 28%, rgba(0, 0, 0, 0.18));
+    opacity: 1;
+    animation: none;
   }
 
   .app-background > * {
@@ -130,21 +158,17 @@ html.light-theme body {
   .glass-surface {
     position: relative;
     overflow: hidden;
-    background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.032) 34%, rgba(255, 255, 255, 0.055) 100%),
-      rgba(12, 12, 14, 0.5);
-    border-color: rgba(255, 255, 255, 0.14);
+    background: linear-gradient(145deg, rgba(24, 29, 37, 0.96), rgba(13, 17, 23, 0.98));
+    border-color: rgba(148, 163, 184, 0.22);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.3),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.045),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.025),
-      0 22px 70px rgba(0, 0, 0, 0.38);
-    backdrop-filter: blur(28px) saturate(155%);
+      inset 0 1px 0 rgba(255, 255, 255, 0.055),
+      0 14px 36px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(22px) saturate(115%);
     transition:
       border-color 180ms ease,
       box-shadow 180ms ease,
       background-color 180ms ease;
-    animation: glass-sunlight-pulse 10s ease-in-out infinite;
+    animation: none;
   }
 
   .glass-surface::before {
@@ -152,19 +176,15 @@ html.light-theme body {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background:
-      radial-gradient(circle at 12% -8%, rgba(255, 244, 220, 0.13), transparent 14rem),
-      radial-gradient(circle at 96% 105%, rgba(255, 190, 84, 0.055), transparent 18rem);
-    opacity: 0.42;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.035), transparent 42%);
+    opacity: 1;
   }
 
   .glass-surface:hover {
-    border-color: rgba(255, 255, 255, 0.18);
+    border-color: rgba(148, 163, 184, 0.34);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.34),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.055),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.03),
-      0 24px 74px rgba(0, 0, 0, 0.4);
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 16px 40px rgba(0, 0, 0, 0.32);
   }
 
   .glass-surface > * {
@@ -175,16 +195,13 @@ html.light-theme body {
   .glass-surface-soft {
     position: relative;
     overflow: hidden;
-    background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02) 42%),
-      rgba(5, 5, 7, 0.52);
-    border-color: rgba(255, 255, 255, 0.11);
+    background: linear-gradient(145deg, rgba(20, 25, 32, 0.96), rgba(10, 13, 18, 0.98));
+    border-color: rgba(148, 163, 184, 0.17);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.025),
-      0 14px 44px rgba(0, 0, 0, 0.34);
-    backdrop-filter: blur(22px) saturate(138%);
-    animation: glass-soft-sunlight-pulse 10s ease-in-out infinite;
+      inset 0 1px 0 rgba(255, 255, 255, 0.045),
+      0 10px 28px rgba(0, 0, 0, 0.24);
+    backdrop-filter: blur(18px) saturate(110%);
+    animation: none;
   }
 
   .glass-surface-soft::before {
@@ -192,8 +209,8 @@ html.light-theme body {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: radial-gradient(circle at 12% -8%, rgba(255, 218, 142, 0.09), transparent 12rem);
-    opacity: 0.3;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.025), transparent 42%);
+    opacity: 1;
   }
 
   .glass-surface-soft > * {
@@ -203,20 +220,12 @@ html.light-theme body {
 
   .bottom-glow-bar {
     position: fixed;
-    background:
-      linear-gradient(180deg, rgba(255, 218, 132, 0.07), rgba(0, 0, 0, 0.7) 30%),
-      radial-gradient(ellipse at 50% 0%, rgba(255, 214, 120, 0.24), transparent 28rem),
-      radial-gradient(ellipse at 50% 100%, rgba(255, 204, 96, 0.19), transparent 22rem),
-      radial-gradient(ellipse at 0% 50%, rgba(255, 188, 72, 0.12), transparent 18rem),
-      radial-gradient(ellipse at 100% 50%, rgba(255, 188, 72, 0.12), transparent 18rem),
-      rgba(0, 0, 0, 0.76);
+    background: rgba(8, 11, 16, 0.96);
     box-shadow:
-      inset 0 1px 0 rgba(255, 228, 156, 0.2),
-      inset 0 -1px 0 rgba(255, 204, 96, 0.11),
-      0 -18px 46px rgba(255, 184, 66, 0.06),
-      0 -24px 70px rgba(0, 0, 0, 0.52);
-    backdrop-filter: blur(24px) saturate(145%);
-    animation: bottom-edge-led-pulse 12s ease-in-out infinite;
+      inset 0 1px 0 rgba(148, 163, 184, 0.16),
+      0 -16px 38px rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(22px) saturate(115%);
+    animation: none;
   }
 
   .savings-primary-action {
@@ -865,52 +874,34 @@ html.light-theme body {
   @media (max-width: 640px) {
     .app-background {
       background:
-        radial-gradient(ellipse at 50% -14%, rgba(255, 214, 120, 0.24), transparent 18rem),
-        radial-gradient(ellipse at 50% 114%, rgba(255, 204, 96, 0.2), transparent 22rem),
-        radial-gradient(ellipse at -22% 50%, rgba(255, 188, 72, 0.08), transparent 16rem),
-        radial-gradient(ellipse at 122% 50%, rgba(255, 188, 72, 0.07), transparent 16rem),
-        radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.97), transparent 24rem),
-        linear-gradient(180deg, #0f0b08 0%, #030303 50%, #070605 100%);
+        radial-gradient(ellipse at 10% -6%, rgba(37, 99, 235, 0.075), transparent 22rem),
+        radial-gradient(ellipse at 96% 2%, rgba(13, 148, 136, 0.055), transparent 20rem),
+        linear-gradient(180deg, #0b0e13 0%, #07090d 50%, #05070a 100%);
     }
 
     .app-background::before {
       background:
-        linear-gradient(180deg, rgba(255, 218, 132, 0.08), transparent 16%, transparent 84%, rgba(255, 204, 96, 0.07)),
-        linear-gradient(90deg, rgba(255, 196, 82, 0.032), transparent 20%, transparent 80%, rgba(255, 196, 82, 0.03)),
-        radial-gradient(ellipse at 50% -10%, rgba(255, 232, 176, 0.11), transparent 18rem),
-        radial-gradient(ellipse at 50% 110%, rgba(255, 218, 142, 0.1), transparent 24rem);
-      opacity: 0.42;
+        linear-gradient(90deg, rgba(148, 163, 184, 0.02) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(148, 163, 184, 0.014) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.45;
     }
 
     .app-background::after {
-      background:
-        radial-gradient(ellipse at 50% -12%, rgba(255, 214, 120, 0.11), transparent 22rem),
-        radial-gradient(ellipse at 50% 112%, rgba(255, 204, 96, 0.1), transparent 24rem),
-        radial-gradient(ellipse at -24% 50%, rgba(255, 188, 72, 0.05), transparent 16rem),
-        radial-gradient(ellipse at 124% 50%, rgba(255, 188, 72, 0.045), transparent 16rem);
-      opacity: 0.28;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 30%, rgba(0, 0, 0, 0.2));
+      opacity: 1;
     }
 
     .glass-surface {
-      background:
-        linear-gradient(145deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.02) 36%, rgba(255, 255, 255, 0.04) 100%),
-        rgba(10, 10, 12, 0.62);
+      background: linear-gradient(145deg, rgba(24, 29, 37, 0.98), rgba(13, 17, 23, 0.99));
     }
 
     .glass-surface-soft {
-      background:
-        linear-gradient(145deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.015) 42%),
-        rgba(4, 4, 6, 0.66);
+      background: linear-gradient(145deg, rgba(20, 25, 32, 0.98), rgba(10, 13, 18, 0.99));
     }
 
     .bottom-glow-bar {
-      background:
-        linear-gradient(180deg, rgba(255, 218, 132, 0.055), rgba(0, 0, 0, 0.78) 32%),
-        radial-gradient(ellipse at 50% 0%, rgba(255, 214, 120, 0.17), transparent 20rem),
-        radial-gradient(ellipse at 50% 100%, rgba(255, 204, 96, 0.14), transparent 18rem),
-        radial-gradient(ellipse at 0% 50%, rgba(255, 188, 72, 0.08), transparent 12rem),
-        radial-gradient(ellipse at 100% 50%, rgba(255, 188, 72, 0.08), transparent 12rem),
-        rgba(0, 0, 0, 0.8);
+      background: rgba(8, 11, 16, 0.98);
     }
   }
 }
@@ -1620,4 +1611,375 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
 .light-theme main.gym-athletic .gym-stat-card p:not(.gym-stat-value) {
   color: #bbf7d0 !important;
   -webkit-text-fill-color: #bbf7d0 !important;
+}
+
+/* Gym UI system: one contrast model for every app theme and every Gym screen. */
+.gym-ui {
+  --gym-canvas: #030806;
+  --gym-surface: #0b1b17;
+  --gym-surface-raised: #10241f;
+  --gym-surface-soft: #172b26;
+  --gym-border: #315b4c;
+  --gym-border-strong: #78a993;
+  --gym-text: #f4fff8;
+  --gym-text-muted: #b9d5c9;
+  --gym-text-faint: #8fb2a3;
+  --gym-accent: #48df83;
+  --gym-accent-soft: #8aefad;
+  --gym-on-accent: #03150a;
+  --gym-danger: #fecaca;
+  --gym-danger-bg: #7f1d1d;
+  color: var(--gym-text) !important;
+  color-scheme: dark;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  letter-spacing: 0;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.light-theme .gym-ui,
+.dark-theme .gym-ui {
+  color: var(--gym-text) !important;
+}
+
+.gym-ui :where(h1, h2, h3, h4, h5, h6, strong, b) {
+  color: var(--gym-text) !important;
+  letter-spacing: 0;
+}
+
+.gym-ui :where(p, span, label, li, dt, dd) {
+  letter-spacing: 0;
+}
+
+.gym-ui :where(.text-slate-300, .text-slate-400, .text-zinc-300, .text-zinc-400) {
+  color: var(--gym-text-muted) !important;
+  -webkit-text-fill-color: var(--gym-text-muted) !important;
+}
+
+.gym-ui :where(.text-slate-500, .text-zinc-500) {
+  color: var(--gym-text-faint) !important;
+  -webkit-text-fill-color: var(--gym-text-faint) !important;
+}
+
+.gym-ui :where(.text-cyan-200, .text-cyan-300, .text-cyan-400, .text-emerald-200, .text-emerald-300, .text-emerald-400) {
+  color: var(--gym-accent-soft) !important;
+  -webkit-text-fill-color: var(--gym-accent-soft) !important;
+}
+
+.gym-ui .gym-topbar,
+.gym-ui .gym-card,
+.gym-ui .gym-stat-card,
+.gym-ui article,
+.gym-ui aside {
+  color: var(--gym-text) !important;
+  background: var(--gym-surface) !important;
+  border-color: var(--gym-border) !important;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.26), inset 0 1px 0 rgb(255 255 255 / 0.05) !important;
+}
+
+.gym-ui .gym-stat-card,
+.gym-ui .gym-signal,
+.gym-ui .gym-inset-panel,
+.gym-ui .gym-plan-exercise,
+.gym-ui article :where(.bg-white\/\[0\.03\], .bg-white\/\[0\.04\], .bg-white\/\[0\.05\], .bg-white\/\[0\.06\]) {
+  color: var(--gym-text) !important;
+  background: var(--gym-surface-soft) !important;
+  border-color: var(--gym-border) !important;
+}
+
+.gym-ui input:not([type="checkbox"]),
+.gym-ui select,
+.gym-ui textarea {
+  min-height: 3rem;
+  color: var(--gym-text) !important;
+  -webkit-text-fill-color: var(--gym-text) !important;
+  background: #04100c !important;
+  border-color: var(--gym-border-strong) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04) !important;
+}
+
+.gym-ui input::placeholder,
+.gym-ui textarea::placeholder {
+  color: var(--gym-text-faint) !important;
+  -webkit-text-fill-color: var(--gym-text-faint) !important;
+  opacity: 1;
+}
+
+.gym-ui :where(input, select, textarea, button, a):focus-visible {
+  outline: 3px solid #67e8f9 !important;
+  outline-offset: 2px !important;
+}
+
+.gym-ui button,
+.gym-ui a[role="button"] {
+  min-height: 2.75rem;
+  color: var(--gym-text) !important;
+  font-weight: 700;
+  opacity: 1;
+}
+
+.gym-ui button.inline-flex:not(.gym-button-contrast):not(.gym-button-danger):not(.gym-button-warning):not(.gym-stepper-minus):not(.gym-stepper-plus) {
+  color: var(--gym-on-accent) !important;
+  background: linear-gradient(135deg, #7ae6a1, #24c866) !important;
+  border-color: #8aefad !important;
+  text-shadow: none !important;
+}
+
+.gym-ui .gym-button-contrast,
+.gym-ui button.border-zinc-700 {
+  color: var(--gym-text) !important;
+  background: #132721 !important;
+  border-color: var(--gym-border-strong) !important;
+  text-shadow: none !important;
+}
+
+.gym-ui .gym-button-danger,
+.gym-ui .gym-inline-danger,
+.gym-ui button[class*="text-red"] {
+  color: #fff7f7 !important;
+  -webkit-text-fill-color: #fff7f7 !important;
+  background: var(--gym-danger-bg) !important;
+  border-color: #fca5a5 !important;
+  text-shadow: none !important;
+}
+
+.gym-ui button:disabled {
+  color: #93a79e !important;
+  background: #17221e !important;
+  border-color: #40554c !important;
+  opacity: 0.72 !important;
+}
+
+.gym-ui .gym-plan-card {
+  padding: 1.125rem;
+}
+
+.gym-ui .gym-plan-exercise {
+  padding: 1rem;
+}
+
+.gym-ui .gym-plan-exercise > div:first-child {
+  row-gap: 0.75rem;
+}
+
+.gym-ui .gym-plan-exercise label {
+  color: var(--gym-text-muted) !important;
+  font-weight: 700;
+}
+
+.gym-ui .gym-plan-exercise label input {
+  margin-top: 0.375rem;
+  font-size: 1rem;
+}
+
+.gym-ui .gym-set-mode-toggle {
+  color: var(--gym-text-muted) !important;
+  background: #10241f;
+  border-color: var(--gym-border);
+}
+
+.gym-ui .gym-set-mode-toggle:has(input:checked) {
+  color: var(--gym-on-accent) !important;
+  background: var(--gym-accent-soft);
+  border-color: #d1fae5;
+}
+
+.gym-ui .gym-set-mode-toggle input {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: 0 0 auto;
+  accent-color: #16a34a;
+}
+
+.gym-ui .gym-exercise-picker {
+  background: #06130f !important;
+  border-color: var(--gym-border-strong) !important;
+}
+
+.gym-ui .gym-exercise-option {
+  color: var(--gym-text) !important;
+  background: var(--gym-surface-soft) !important;
+  border: 1px solid transparent;
+}
+
+.gym-ui .gym-exercise-option:hover {
+  border-color: var(--gym-border-strong);
+  background: #1d362e !important;
+}
+
+.gym-ui .gym-exercise-option-selected,
+.gym-ui .gym-exercise-option-selected:hover {
+  color: var(--gym-on-accent) !important;
+  background: var(--gym-accent-soft) !important;
+  border-color: #d1fae5 !important;
+}
+
+.gym-ui .gym-exercise-option-selected span {
+  color: var(--gym-on-accent) !important;
+  -webkit-text-fill-color: var(--gym-on-accent) !important;
+}
+
+.gym-bottom-bar.gym-ui {
+  color: var(--gym-text) !important;
+  background: rgb(3 12 9 / 0.97) !important;
+  border-color: var(--gym-border-strong) !important;
+  box-shadow: 0 -10px 32px rgb(0 0 0 / 0.45) !important;
+}
+
+.gym-bottom-bar.gym-ui .bottom-bar-button {
+  min-height: 4rem;
+  border-radius: 0.75rem;
+}
+
+.gym-bottom-bar.gym-ui .bottom-bar-button-active,
+.gym-bottom-bar.gym-ui .bottom-bar-button-active * {
+  color: var(--gym-on-accent) !important;
+  -webkit-text-fill-color: var(--gym-on-accent) !important;
+  background-color: transparent;
+}
+
+.gym-bottom-bar.gym-ui .bottom-bar-button-active {
+  background: #27c96a !important;
+  border-color: #86efac !important;
+}
+
+.gym-bottom-bar.gym-ui .bottom-bar-button-idle,
+.gym-bottom-bar.gym-ui .bottom-bar-button-idle * {
+  color: var(--gym-text) !important;
+  -webkit-text-fill-color: var(--gym-text) !important;
+}
+
+.gym-bottom-bar.gym-ui .bottom-bar-button-idle {
+  background: #10241f !important;
+  border-color: var(--gym-border) !important;
+}
+
+@media (max-width: 640px) {
+  .gym-ui {
+    font-size: 16px;
+  }
+
+  .gym-ui .gym-plan-card,
+  .gym-ui .gym-plan-exercise {
+    padding: 0.875rem;
+  }
+
+  .gym-ui .gym-plan-exercise > div:first-child {
+    flex-direction: column;
+  }
+
+  .gym-ui .gym-plan-exercise > div:first-child > div:last-child {
+    justify-content: flex-start;
+  }
+
+  .gym-ui button,
+  .gym-ui a[role="button"] {
+    min-height: 2.875rem;
+  }
+}
+
+/* Button contrast guardrails: keep labels and icons readable on every theme. */
+.expense-app:not(.light-theme) [data-card-variant] {
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 12px 30px rgba(0, 0, 0, 0.24) !important;
+}
+
+.expense-app:not(.light-theme) [data-card-variant="default"],
+.expense-app:not(.light-theme) [data-card-variant="panel"],
+.expense-app:not(.light-theme) [data-card-variant="raised"] {
+  background: linear-gradient(145deg, #171c24, #0e1218) !important;
+}
+
+.expense-app:not(.light-theme) [data-card-variant="item"],
+.expense-app:not(.light-theme) [data-card-variant="inset"] {
+  background: linear-gradient(145deg, #141a21, #0c1016) !important;
+}
+
+.expense-app:not(.light-theme) [data-card-variant="success"] {
+  background: linear-gradient(145deg, #10251d, #0a1713) !important;
+  border-color: rgba(52, 211, 153, 0.34) !important;
+}
+
+.expense-app:not(.light-theme) [data-card-variant="danger"] {
+  background: linear-gradient(145deg, #2a151b, #180d12) !important;
+  border-color: rgba(251, 113, 133, 0.34) !important;
+}
+
+.expense-app:not(.light-theme) [data-card-variant="info"],
+.expense-app:not(.light-theme) [data-card-variant="balance"] {
+  background: linear-gradient(145deg, #102131, #0a141e) !important;
+  border-color: rgba(56, 189, 248, 0.34) !important;
+}
+
+.expense-app:not(.light-theme) [data-card-variant="accent"] {
+  background: linear-gradient(145deg, #201a31, #120f1d) !important;
+  border-color: rgba(167, 139, 250, 0.32) !important;
+}
+
+.expense-app:not(.light-theme) [data-card-variant="warning"] {
+  background: linear-gradient(145deg, #282116, #17130d) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+.expense-app:not(.light-theme) input,
+.expense-app:not(.light-theme) select,
+.expense-app:not(.light-theme) textarea {
+  background-color: #0a0e13 !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035) !important;
+}
+
+:where(button, a)[class~="bg-white"],
+:where(button, a)[class~="bg-emerald-500"],
+:where(button, a)[class~="bg-emerald-400"],
+:where(button, a)[class~="bg-green-500"],
+:where(button, a)[class~="bg-green-400"],
+:where(button, a)[class~="bg-cyan-300"],
+:where(button, a)[class~="bg-yellow-400"],
+:where(button, a)[class~="bg-amber-300"] {
+  color: #04130a !important;
+  -webkit-text-fill-color: #04130a !important;
+}
+
+:where(button, a)[class~="bg-white"] *,
+:where(button, a)[class~="bg-emerald-500"] *,
+:where(button, a)[class~="bg-emerald-400"] *,
+:where(button, a)[class~="bg-green-500"] *,
+:where(button, a)[class~="bg-green-400"] *,
+:where(button, a)[class~="bg-cyan-300"] *,
+:where(button, a)[class~="bg-yellow-400"] *,
+:where(button, a)[class~="bg-amber-300"] * {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+html body .gym-ui button.inline-flex:not(.gym-button-contrast):not(.gym-button-danger):not(.gym-button-warning):not(.gym-stepper-minus):not(.gym-stepper-plus),
+html body .gym-ui button.inline-flex:not(.gym-button-contrast):not(.gym-button-danger):not(.gym-button-warning):not(.gym-stepper-minus):not(.gym-stepper-plus) * {
+  color: var(--gym-on-accent) !important;
+  -webkit-text-fill-color: var(--gym-on-accent) !important;
+  text-shadow: none !important;
+}
+
+html body .gym-ui button.gym-button-contrast,
+html body .gym-ui button.gym-button-contrast * {
+  color: var(--gym-text) !important;
+  -webkit-text-fill-color: var(--gym-text) !important;
+  background-color: transparent;
+  text-shadow: none !important;
+}
+
+html body .gym-ui button.gym-button-contrast {
+  background: #132721 !important;
+  border-color: var(--gym-border-strong) !important;
+}
+
+html body .gym-ui button.gym-button-danger,
+html body .gym-ui button.gym-button-danger * {
+  color: #fff7f7 !important;
+  -webkit-text-fill-color: #fff7f7 !important;
+  text-shadow: none !important;
 }

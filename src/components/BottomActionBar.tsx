@@ -4,7 +4,6 @@ import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import {
-  Home,
   CalendarSync,
   CalendarClock,
   CalendarRange,
@@ -29,7 +28,6 @@ import {
   Sun,
   Target,
   TrendingUp,
-  WalletCards,
 } from "lucide-react";
 
 import BottomBarButton from "@/components/BottomBarButton";
@@ -205,7 +203,7 @@ export default function BottomActionBar({
   );
 
   return (
-    <nav className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bottom-glow-bar px-3 pb-[env(safe-area-inset-bottom)] lg:px-6 ${isGym ? "gym-bottom-bar" : ""}`}>
+    <nav className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bottom-glow-bar px-3 pb-[env(safe-area-inset-bottom)] lg:px-6 ${isGym ? "gym-bottom-bar gym-ui" : ""}`}>
       <div className="mx-auto max-w-md py-3 md:max-w-2xl lg:max-w-2xl">
         <div
           className={`
@@ -298,30 +296,6 @@ export default function BottomActionBar({
             {isSettingsOpen && (
               <div className="grid grid-cols-3 gap-2">
                 {themePanel}
-                {!isGym && (
-                  <>
-                    <BottomBarButton
-                      active={false}
-                      href="/"
-                      icon={Home}
-                      label="Dashboard"
-                      onClick={() => {
-                        setActiveMenu(null);
-                        onNavigate();
-                      }}
-                    />
-                    <BottomBarButton
-                      active={false}
-                      href="/gym"
-                      icon={Dumbbell}
-                      label="Gym"
-                      onClick={() => {
-                        setActiveMenu(null);
-                        onNavigate();
-                      }}
-                    />
-                  </>
-                )}
                 <BottomBarButton
                   active={themeSettingsOpen || themeMode === "auto" || theme === "light"}
                   onClick={() => {
@@ -370,18 +344,6 @@ export default function BottomActionBar({
                     onClick={() => void copyWorkoutAIExport()}
                     icon={ClipboardCopy}
                     label={workoutExportStatus === COPYING_STATUS ? COPYING_STATUS : "Export for AI"}
-                  />
-                )}
-                {isGym && (
-                  <BottomBarButton
-                    active={activeTool === "income"}
-                    href="/"
-                    onClick={() => {
-                      setActiveMenu(null);
-                      onNavigate();
-                    }}
-                    icon={WalletCards}
-                    label="Money"
                   />
                 )}
                 {backupStatus && backupStatus !== EXPORTING_STATUS && <p role="status" className="col-span-3 rounded-xl bg-black/40 px-3 py-2 text-xs text-zinc-300">{backupStatus}</p>}

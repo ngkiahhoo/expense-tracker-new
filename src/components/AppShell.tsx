@@ -2,6 +2,7 @@
 
 import { Suspense, createContext, useContext, useEffect, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { Dumbbell, WalletCards } from "lucide-react";
 import BottomActionBar, { type BottomTool } from "./BottomActionBar";
 import useButtonClickSounds from "@/hooks/useButtonClickSounds";
 import useSoundPreference from "@/hooks/useSoundPreference";
@@ -38,6 +39,21 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return <ToolsContext.Provider value={{ activeTool, setActiveTool }}>
     <div className={`${theme === "light" ? "light-theme" : ""} min-h-screen app-background pb-[calc(7rem+env(safe-area-inset-bottom))]`}>
       <SyncStatus />
+      <button
+        type="button"
+        className={`app-settings-trigger ${pathname === "/gym" ? "app-settings-trigger-gym" : ""}`}
+        aria-label={pathname === "/gym" ? "Go to Money" : "Go to Gym"}
+        title={pathname === "/gym" ? "Money" : "Gym"}
+        onClick={() => {
+          if (!confirmPanelClose()) return;
+          setActiveTool(null);
+          router.push(pathname === "/gym" ? "/" : "/gym");
+        }}
+      >
+        {pathname === "/gym"
+          ? <WalletCards className="size-5" aria-hidden="true" />
+          : <Dumbbell className="size-5" aria-hidden="true" />}
+      </button>
       {children}
       <Suspense fallback={null}>
         <BottomActionBar key={pathname} activeTool={pathname === "/" ? activeTool : null}

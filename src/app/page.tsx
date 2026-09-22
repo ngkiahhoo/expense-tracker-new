@@ -613,7 +613,7 @@ export default function Home() {
 
       <div
         className={cn(
-          "min-h-screen app-background text-white",
+          "expense-app min-h-screen app-background text-white",
           theme === "light" && "light-theme"
         )}
       >
@@ -622,10 +622,10 @@ export default function Home() {
           className="
             min-h-screen
             px-4
-            pt-4
+            pt-20
             pb-40
             sm:px-6
-            sm:pt-6
+            sm:pt-20
             md:px-8
             lg:pb-28
           "
