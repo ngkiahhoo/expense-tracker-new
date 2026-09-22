@@ -519,6 +519,7 @@ function GymPageContent() {
   const [draggedRoutinePlan, setDraggedRoutinePlan] = useState<{ routineId: string; planId: string } | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [completeAllSetsMode, setCompleteAllSetsMode] = useState(false);
+  const [showPlanPreview, setShowPlanPreview] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -1085,7 +1086,18 @@ function GymPageContent() {
             <div className="grid gap-3 lg:grid-cols-[1.1fr_1fr]">
               <div className="gym-card rounded-2xl border p-4">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-300">Next Workout</p>
-                <h2 className="mt-2 text-3xl font-black">{recommendedPlan?.name || "Create a plan"}</h2>
+                {recommendedPlan ? (
+                  <button
+                    type="button"
+                    className="gym-plan-preview-trigger mt-2 block text-left"
+                    aria-label={`View exercises in ${recommendedPlan.name}`}
+                    onClick={() => setShowPlanPreview(true)}
+                  >
+                    <span className="block text-3xl font-black">{recommendedPlan.name}</span>
+                  </button>
+                ) : (
+                  <h2 className="mt-2 text-3xl font-black">Create a plan</h2>
+                )}
                 <p className="mt-1 flex items-center gap-2 text-sm text-slate-300">
                   <CalendarDays className="size-4 text-emerald-300" aria-hidden />
                   {recommendedRoutine ? nextScheduledText(recommendedRoutine) : "No routine yet"}
@@ -1179,6 +1191,46 @@ function GymPageContent() {
               {!filteredExercises.length && <p className="text-sm text-slate-400">No exercises match that search.</p>}
             </div>
           </section>
+        )}
+
+        {showPlanPreview && recommendedPlan && typeof document !== "undefined" && createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="plan-preview-title"
+            onClick={() => setShowPlanPreview(false)}
+          >
+            <div
+              className="gym-ui gym-plan-preview-modal flex max-h-[calc(100dvh-3rem)] w-full max-w-3xl flex-col rounded-2xl border p-4"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
+                <h2 id="plan-preview-title" className="text-lg font-bold">{recommendedPlan.name}</h2>
+                <button type="button" className="gym-plan-preview-close px-3 text-sm" onClick={() => setShowPlanPreview(false)}>Close</button>
+              </div>
+              <div className="grid min-h-0 gap-2 overflow-y-auto pr-1">
+                {recommendedPlan.exerciseIds.map((item, index) => {
+                  const exercise = data.exercises.find((candidate) => candidate.id === item.exerciseId);
+                  return (
+                    <div key={item.id} className="gym-plan-preview-item flex items-center justify-between gap-3 rounded-xl border p-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{index + 1}. {exercise?.name || "Unknown exercise"}</p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {exercise ? `${exerciseCategoryLabels[exercise.category]} - ${trackingLabels[exercise.trackingType]}` : "Exercise unavailable"}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs font-semibold text-slate-300">0/{item.targetSets} sets</span>
+                    </div>
+                  );
+                })}
+                {!recommendedPlan.exerciseIds.length && (
+                  <p className="gym-plan-preview-item rounded-xl border p-4 text-sm text-slate-400">No exercises in this plan.</p>
+                )}
+              </div>
+            </div>
+          </div>,
+          document.body
         )}
 
         {activeTab === "plans" && (
@@ -1802,8 +1854,11 @@ function WorkoutMode({
             <Button className={visibleOutlineButton} variant="outline" onClick={() => setShowNavigator((current) => !current)}>Exercises</Button>
             <Button className={visibleDangerButton} variant="outline" onClick={() => setShowFinishConfirm(true)}><X className="size-4" /> Finish</Button>
           </div>
-          <div className={`flex items-center justify-between gap-3 rounded-2xl transition ${setFeedback ? "bg-cyan-300/10 px-3 py-2 ring-1 ring-cyan-300/40" : ""}`}>
-            <h3 className="font-semibold">{current.nameSnapshot} Set {completedSets.length + 1}</h3>
+          <div className={`flex items-start justify-between gap-3 rounded-2xl transition ${setFeedback ? "bg-cyan-300/10 px-3 py-2 ring-1 ring-cyan-300/40" : ""}`}>
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold leading-tight">{current.nameSnapshot}</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-400">Set {completedSets.length + 1}</p>
+            </div>
             <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">{completedSets.length} done</span>
           </div>
           <div aria-live="polite" className={`mt-3 overflow-hidden rounded-2xl border text-sm font-semibold transition-all ${setFeedback ? "border-cyan-300/40 bg-cyan-300/15 px-3 py-2 text-cyan-50 opacity-100" : "max-h-0 border-transparent px-3 py-0 opacity-0"}`}>
