@@ -1,15 +1,20 @@
 ﻿"use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  Activity,
+  CalendarDays,
   Check,
   Dumbbell,
+  Layers,
   Play,
   Plus,
   Trash2,
   Timer,
+  Trophy,
   X,
 } from "lucide-react";
 
@@ -19,6 +24,7 @@ import useThemePreference from "@/hooks/useThemePreference";
 import { getWorkoutState, saveWorkoutState } from "@/services/workoutService";
 
 type TrackingType = "weight_reps" | "reps" | "time" | "weight_time";
+type ExerciseCategory = "upper" | "core" | "lower" | "full_body" | "cardio" | "mobility";
 type ScheduleType = "interval" | "weekdays" | "none";
 type SessionStatus = "completed" | "partial";
 type ExerciseStatus = "pending" | "completed" | "skipped" | "partial";
@@ -27,6 +33,7 @@ type Exercise = {
   id: string;
   name: string;
   trackingType: TrackingType;
+  category: ExerciseCategory;
   createdAt: string;
   updatedAt: string;
 };
@@ -131,6 +138,17 @@ const trackingLabels: Record<TrackingType, string> = {
   weight_time: "Weight + Time",
 };
 
+const exerciseCategoryLabels: Record<ExerciseCategory, string> = {
+  upper: "Upper",
+  core: "Core",
+  lower: "Lower",
+  full_body: "Full Body",
+  cardio: "Cardio",
+  mobility: "Mobility",
+};
+
+const exerciseCategoryOrder: ExerciseCategory[] = ["upper", "core", "lower", "full_body", "cardio", "mobility"];
+
 function id(prefix: string) {
   return `${prefix}_${crypto.randomUUID()}`;
 }
@@ -160,6 +178,16 @@ function trackingDefault(trackingType: TrackingType): Partial<PlanExercise> {
   return { targetRepMin: 8, targetRepMax: 12 };
 }
 
+function inferExerciseCategory(name: string): ExerciseCategory {
+  const normalized = name.toLowerCase();
+  if (normalized.includes("plank") || normalized.includes("crunch") || normalized.includes("core")) return "core";
+  if (normalized.includes("squat") || normalized.includes("deadlift") || normalized.includes("calf") || normalized.includes("glute") || normalized.includes("lunge")) return "lower";
+  if (normalized.includes("run") || normalized.includes("bike") || normalized.includes("cardio")) return "cardio";
+  if (normalized.includes("stretch") || normalized.includes("mobility")) return "mobility";
+  if (normalized.includes("burpee") || normalized.includes("clean") || normalized.includes("thruster")) return "full_body";
+  return "upper";
+}
+
 function seedData(): GymData {
   const now = new Date().toISOString();
   const exerciseNames: Array<[string, TrackingType]> = [
@@ -179,6 +207,7 @@ function seedData(): GymData {
     id: id("ex"),
     name,
     trackingType,
+    category: inferExerciseCategory(name),
     createdAt: now,
     updatedAt: now,
   }));
@@ -323,8 +352,7 @@ function nextScheduledText(routine: Routine) {
 
 function getSessionStatus(session: WorkoutSession): SessionStatus {
   return session.exercises.length > 0 &&
-    session.exercises.every((item) => item.status === "completed" || item.status === "skipped") &&
-    session.exercises.some((item) => item.status === "completed")
+    session.exercises.every((item) => item.status === "completed" || item.status === "skipped")
     ? "completed"
     : "partial";
 }
@@ -415,10 +443,20 @@ function reorderById<T extends { id: string }>(items: T[], sourceId: string, tar
   return nextItems;
 }
 
+function normalizeGymData(data: GymData): GymData {
+  return {
+    ...data,
+    exercises: data.exercises.map((exercise) => ({
+      ...exercise,
+      category: exercise.category || inferExerciseCategory(exercise.name),
+    })),
+  };
+}
+
 function normalizePersistedState(state: PersistedWorkoutState | null) {
   if (!state) return null;
-  if ("data" in state) return state;
-  return { data: state, active: null, paused: null };
+  if ("data" in state) return { ...state, data: normalizeGymData(state.data) };
+  return { data: normalizeGymData(state), active: null, paused: null };
 }
 
 export default function GymPage() {
@@ -430,23 +468,22 @@ export default function GymPage() {
 }
 
 function GymPageShell() {
-  const { theme } = useThemePreference();
   return (
-    <main className={`gym-page min-h-screen pb-40 ${theme === "light" ? "gym-light bg-slate-50 text-slate-950" : "bg-[#070a0f] text-slate-100"}`}>
+    <main className="gym-page gym-athletic min-h-screen pb-40 text-slate-100">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-5 sm:px-6">
-        <header className="flex items-center justify-between gap-3">
+        <header className="gym-topbar flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-cyan-400">Workout Tracker</p>
+            <p className="text-sm font-semibold text-emerald-300">Workout Tracker</p>
             <h1 className="text-3xl font-bold">Gym</h1>
             <p className="text-xs text-slate-400">Loading workout data...</p>
           </div>
-          <Link href="/gym?tab=home" aria-label="Go to Gym home" className="rounded-2xl border border-cyan-400/25 bg-cyan-400/10 p-3 transition hover:bg-cyan-400/20">
-            <Dumbbell aria-hidden className="size-6 text-cyan-300" />
+          <Link href="/gym?tab=home" aria-label="Go to Gym home" className="gym-brand-mark">
+            <Dumbbell aria-hidden className="size-5" />
           </Link>
         </header>
         <section className="grid gap-3">
-          <div className="h-28 animate-pulse rounded-2xl border border-white/10 bg-white/[0.04]" />
-          <div className="h-48 animate-pulse rounded-2xl border border-white/10 bg-white/[0.04]" />
+          <div className="gym-card h-28 animate-pulse rounded-2xl border" />
+          <div className="gym-card h-48 animate-pulse rounded-2xl border" />
         </section>
       </div>
     </main>
@@ -457,17 +494,20 @@ function GymPageContent() {
   const { theme } = useThemePreference();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [data, setData] = useState<GymData>(() => loadJson(storageKey, seedData()));
+  const [data, setData] = useState<GymData>(() => normalizeGymData(loadJson(storageKey, seedData())));
   const [active, setActive] = useState<ActiveWorkout | null>(() => loadJson<ActiveWorkout | null>(activeWorkoutKey, null));
   const [pausedWorkout, setPausedWorkout] = useState<ActiveWorkout | null>(() => loadJson<ActiveWorkout | null>(pausedWorkoutKey, null));
   const [tab, setTab] = useState<GymTab>("home");
   const [lastFinishedSession, setLastFinishedSession] = useState<WorkoutSession | null>(null);
   const [newExerciseName, setNewExerciseName] = useState("");
   const [newExerciseType, setNewExerciseType] = useState<TrackingType>("weight_reps");
+  const [newExerciseCategory, setNewExerciseCategory] = useState<ExerciseCategory>("upper");
   const [exerciseQuery, setExerciseQuery] = useState("");
   const [editingExerciseId, setEditingExerciseId] = useState("");
   const [editingExerciseName, setEditingExerciseName] = useState("");
   const [editingExerciseType, setEditingExerciseType] = useState<TrackingType>("weight_reps");
+  const [editingExerciseCategory, setEditingExerciseCategory] = useState<ExerciseCategory>("upper");
+  const [planExerciseQuery, setPlanExerciseQuery] = useState("");
   const [newPlanName, setNewPlanName] = useState("");
   const [planExerciseId, setPlanExerciseId] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
@@ -532,9 +572,15 @@ function GymPageContent() {
   const selectedPlan = data.plans.find((plan) => plan.id === selectedPlanId) || data.plans[0];
   const requestedTab = searchParams.get("tab") as GymTab | null;
   const activeTab = requestedTab && gymTabs.includes(requestedTab) ? requestedTab : tab;
-  const filteredExercises = data.exercises.filter((exercise) =>
-    exercise.name.toLowerCase().includes(exerciseQuery.trim().toLowerCase())
-  );
+  const filteredExercises = data.exercises.filter((exercise) => {
+    const query = exerciseQuery.trim().toLowerCase();
+    if (!query) return true;
+    return [
+      exercise.name,
+      trackingLabels[exercise.trackingType],
+      exerciseCategoryLabels[exercise.category],
+    ].some((value) => value.toLowerCase().includes(query));
+  });
   const recommendedRoutine = data.routines[0];
   const recommendedPlan = recommendedRoutine
     ? data.plans.find((plan) => plan.id === recommendedRoutine.planIds[recommendedRoutine.rotationIndex % Math.max(1, recommendedRoutine.planIds.length)])
@@ -583,7 +629,7 @@ function GymPageContent() {
     const now = new Date().toISOString();
     setData((current) => ({
       ...current,
-      exercises: [...current.exercises, { id: id("ex"), name, trackingType: newExerciseType, createdAt: now, updatedAt: now }],
+      exercises: [...current.exercises, { id: id("ex"), name, trackingType: newExerciseType, category: newExerciseCategory, createdAt: now, updatedAt: now }],
     }));
     setNewExerciseName("");
   }
@@ -592,6 +638,7 @@ function GymPageContent() {
     setEditingExerciseId(exercise.id);
     setEditingExerciseName(exercise.name);
     setEditingExerciseType(exercise.trackingType);
+    setEditingExerciseCategory(exercise.category);
   }
 
   function saveExerciseEdit() {
@@ -601,7 +648,7 @@ function GymPageContent() {
       ...current,
       exercises: current.exercises.map((exercise) =>
         exercise.id === editingExerciseId
-          ? { ...exercise, name, trackingType: editingExerciseType, updatedAt: new Date().toISOString() }
+          ? { ...exercise, name, trackingType: editingExerciseType, category: editingExerciseCategory, updatedAt: new Date().toISOString() }
           : exercise
       ),
     }));
@@ -981,25 +1028,45 @@ function GymPageContent() {
   }
 
   return (
-    <main className={`gym-page min-h-screen pb-40 ${theme === "light" ? "gym-light bg-slate-50 text-slate-950" : "bg-[#070a0f] text-slate-100"}`}>
+    <main className="gym-page gym-athletic min-h-screen pb-40 text-slate-100">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-5 sm:px-6">
-        <header className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-cyan-400">Workout Tracker</p>
-            <h1 className="text-3xl font-bold">Gym</h1>
-            <p className="text-xs text-slate-400">
-              {syncState === "supabase" ? "Synced with Supabase" : syncState === "syncing" ? "Syncing..." : syncState === "fallback" ? "Local fallback active" : "Local first"}
-            </p>
-          </div>
-          <Link href="/gym?tab=home" aria-label="Go to Gym home" className="rounded-2xl border border-cyan-400/25 bg-cyan-400/10 p-3 transition hover:bg-cyan-400/20">
-            <Dumbbell aria-hidden className="size-6 text-cyan-300" />
+        <header className="gym-topbar flex items-center justify-between gap-3">
+          <Link href="/gym?tab=home" className="flex min-w-0 items-center gap-3" aria-label="Go to Gym home">
+            <span className="gym-brand-mark"><Dumbbell aria-hidden className="size-5" /></span>
+            <span className="min-w-0">
+              <span className="block text-lg font-black uppercase leading-none tracking-wide">Gym</span>
+              <span className="block truncate text-xs text-emerald-200/70">
+                {syncState === "supabase" ? "Synced with Supabase" : syncState === "syncing" ? "Syncing..." : syncState === "fallback" ? "Local fallback active" : "Local first"}
+              </span>
+            </span>
           </Link>
+          <div className="flex items-center gap-2" aria-hidden>
+            <span className="size-4 rounded-full bg-emerald-300 shadow-[0_0_18px_rgba(74,222,128,0.75)]" />
+            <span className="size-4 rounded-full bg-green-500 shadow-[0_0_16px_rgba(34,197,94,0.55)]" />
+            <span className="size-4 rounded-full bg-emerald-700" />
+          </div>
         </header>
 
         {activeTab === "home" && (
-          <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <section className="grid gap-4">
+            <div className="gym-hero overflow-hidden rounded-3xl border border-emerald-400/15">
+              <div className="relative z-10 grid gap-4 p-5 sm:p-6 lg:grid-cols-[1.1fr_1fr] lg:items-end">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.28em] text-emerald-300">Workout Tracker</p>
+                  <h1 className="gym-hero-title mt-2 max-w-xl text-4xl font-black uppercase leading-[0.9] sm:text-5xl">
+                    Train today<br />for a better tomorrow
+                  </h1>
+                  <div className="mt-3 h-1 w-48 rounded-full bg-emerald-300 shadow-[0_0_18px_rgba(74,222,128,0.6)]" />
+                </div>
+                <div className="hidden justify-self-end text-right text-sm font-black uppercase tracking-[0.22em] text-emerald-100/85 sm:block">
+                  <p>Stronger</p>
+                  <p>Leaner</p>
+                  <p>Happier</p>
+                </div>
+              </div>
+            </div>
             {pausedWorkout && (
-              <div className="rounded-2xl border border-amber-400/35 bg-amber-400/10 p-4 lg:col-span-2">
+              <div className="gym-card rounded-2xl border p-4">
                 <p className="text-sm font-semibold uppercase tracking-wide text-amber-300">Workout in progress</p>
                 <h2 className="mt-2 text-2xl font-bold">{pausedWorkout.session.planNameSnapshot}</h2>
                 <p className="mt-1 text-sm text-slate-400">
@@ -1007,29 +1074,34 @@ function GymPageContent() {
                 </p>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   <Button size="lg" onClick={continuePausedWorkout}>Continue this workout</Button>
-                  <Button className="border-red-300/70 bg-red-100 text-red-800 hover:bg-red-50 dark:border-red-300/50 dark:bg-red-500/20 dark:text-red-50 dark:hover:bg-red-500/30" variant="outline" size="lg" onClick={discardPausedWorkout}>Discard</Button>
+                  <Button className="gym-button-danger" variant="outline" size="lg" onClick={discardPausedWorkout}>Discard</Button>
                 </div>
               </div>
             )}
-            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
-              <p className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Next Workout</p>
-              <h2 className="mt-2 text-2xl font-bold">{recommendedPlan?.name || "Create a plan"}</h2>
-              <p className="mt-1 text-sm text-slate-400">{recommendedRoutine ? nextScheduledText(recommendedRoutine) : "No routine yet"}</p>
-              <Button className="mt-4 w-full" size="lg" disabled={!recommendedPlan} onClick={() => recommendedPlan && startWorkout(recommendedPlan, recommendedRoutine?.id)}>
-                <Play className="size-5" aria-hidden /> Start Workout
-              </Button>
+            <div className="grid gap-3 lg:grid-cols-[1.1fr_1fr]">
+              <div className="gym-card rounded-2xl border p-4">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-300">Next Workout</p>
+                <h2 className="mt-2 text-3xl font-black">{recommendedPlan?.name || "Create a plan"}</h2>
+                <p className="mt-1 flex items-center gap-2 text-sm text-slate-300">
+                  <CalendarDays className="size-4 text-emerald-300" aria-hidden />
+                  {recommendedRoutine ? nextScheduledText(recommendedRoutine) : "No routine yet"}
+                </p>
+                <Button className="gym-start-action mt-4 w-full" size="lg" disabled={!recommendedPlan} onClick={() => recommendedPlan && startWorkout(recommendedPlan, recommendedRoutine?.id)}>
+                  <Play className="size-5 fill-current" aria-hidden /> Start Workout
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Stat icon={CalendarDays} label="Total workouts" value={String(data.sessions.length)} />
+                <Stat icon={Activity} label="This month" value={String(data.sessions.filter((session) => session.startedAt.startsWith(thisMonth)).length)} />
+                <Stat icon={Timer} label="Training time" value={`${Math.round(totalTime / 60_000)}m`} />
+                <Stat icon={Layers} label="Total sets" value={String(allSets.length)} />
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Stat label="Total workouts" value={String(data.sessions.length)} />
-              <Stat label="This month" value={String(data.sessions.filter((session) => session.startedAt.startsWith(thisMonth)).length)} />
-              <Stat label="Training time" value={`${Math.round(totalTime / 60_000)}m`} />
-              <Stat label="Total sets" value={String(allSets.length)} />
-            </div>
-            <div className="rounded-2xl border border-white/10 p-4 lg:col-span-2">
+            <div className="gym-card rounded-2xl border p-4">
               <h3 className="font-semibold">Recent signals</h3>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <p className="rounded-xl bg-white/[0.05] p-3 text-sm">Recent PR<br /><span className="font-semibold">{recentPr}</span></p>
-                <p className="rounded-xl bg-white/[0.05] p-3 text-sm">Recent workout<br /><span className="font-semibold">{recentSession ? `${recentSession.planNameSnapshot} - ${niceDate(recentSession.startedAt)}` : "No sessions yet"}</span></p>
+                <p className="gym-signal rounded-xl p-3 text-sm"><Trophy className="mb-2 size-5 text-emerald-300" aria-hidden />Recent PR<br /><span className="font-semibold">{recentPr}</span></p>
+                <p className="gym-signal rounded-xl p-3 text-sm"><Dumbbell className="mb-2 size-5 text-emerald-300" aria-hidden />Recent workout<br /><span className="font-semibold">{recentSession ? `${recentSession.planNameSnapshot} - ${niceDate(recentSession.startedAt)}` : "No sessions yet"}</span></p>
               </div>
             </div>
           </section>
@@ -1039,6 +1111,9 @@ function GymPageContent() {
           <section className="grid gap-4 lg:grid-cols-[22rem_1fr]">
             <Panel title="Create Exercise">
               <Input placeholder="Exercise name" value={newExerciseName} onChange={(event) => setNewExerciseName(event.target.value)} />
+              <Select value={newExerciseCategory} onChange={(event) => setNewExerciseCategory(event.target.value as ExerciseCategory)}>
+                {exerciseCategoryOrder.map((category) => <option key={category} value={category}>{exerciseCategoryLabels[category]}</option>)}
+              </Select>
               <Select value={newExerciseType} onChange={(event) => setNewExerciseType(event.target.value as TrackingType)}>
                 {Object.entries(trackingLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </Select>
@@ -1058,6 +1133,9 @@ function GymPageContent() {
                     {isEditing ? (
                       <div className="grid gap-2">
                         <Input value={editingExerciseName} onChange={(event) => setEditingExerciseName(event.target.value)} />
+                        <Select value={editingExerciseCategory} onChange={(event) => setEditingExerciseCategory(event.target.value as ExerciseCategory)}>
+                          {exerciseCategoryOrder.map((category) => <option key={category} value={category}>{exerciseCategoryLabels[category]}</option>)}
+                        </Select>
                         <Select value={editingExerciseType} onChange={(event) => setEditingExerciseType(event.target.value as TrackingType)}>
                           {Object.entries(trackingLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                         </Select>
@@ -1071,7 +1149,7 @@ function GymPageContent() {
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <h3 className="font-semibold">{exercise.name}</h3>
-                            <p className="text-sm text-cyan-400">{trackingLabels[exercise.trackingType]}</p>
+                            <p className="text-sm text-cyan-400">{exerciseCategoryLabels[exercise.category]} - {trackingLabels[exercise.trackingType]}</p>
                           </div>
                           <span className="rounded-full bg-white/[0.06] px-2 py-1 text-xs text-slate-300">{history.length} logged</span>
                         </div>
@@ -1107,10 +1185,16 @@ function GymPageContent() {
               <Select value={selectedPlan?.id || ""} onChange={(event) => setSelectedPlanId(event.target.value)}>
                 {data.plans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
               </Select>
-              <Select value={planExerciseId} onChange={(event) => setPlanExerciseId(event.target.value)}>
-                <option value="">Choose exercise</option>
-                {data.exercises.map((exercise) => <option key={exercise.id} value={exercise.id}>{exercise.name}</option>)}
-              </Select>
+              <ExercisePicker
+                exercises={data.exercises}
+                query={planExerciseQuery}
+                selectedExerciseId={planExerciseId}
+                onQueryChange={setPlanExerciseQuery}
+                onSelect={(exerciseId) => {
+                  setPlanExerciseId(exerciseId);
+                  setPlanExerciseQuery("");
+                }}
+              />
               <Button onClick={addExerciseToPlan}>Add to selected plan</Button>
             </Panel>
             <div className="grid gap-3">
@@ -1146,7 +1230,9 @@ function GymPageContent() {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="font-semibold">{index + 1}. {exercise?.name}</p>
-                              <p className="text-xs text-slate-400">{exercise ? trackingLabels[exercise.trackingType] : "Unknown"}</p>
+                              <p className="text-xs text-slate-400">
+                                {exercise ? `${exerciseCategoryLabels[exercise.category]} - ${trackingLabels[exercise.trackingType]}` : "Unknown"}
+                              </p>
                             </div>
                             <div className="flex shrink-0 flex-wrap justify-end gap-1">
                               <span className="rounded-lg border border-white/10 px-2 py-1 text-xs text-slate-400">Drag</span>
@@ -1477,18 +1563,89 @@ function GymPageContent() {
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <aside className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <h2 className="font-semibold">{title}</h2>
+    <aside className="gym-card flex flex-col gap-3 rounded-2xl border p-4">
+      <h2 className="text-sm font-black uppercase tracking-[0.18em] text-emerald-300">{title}</h2>
       {children}
     </aside>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, icon: Icon = Activity }: { label: string; value: string; icon?: typeof Activity }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+    <div className="gym-stat-card rounded-2xl border p-4">
+      <div className="flex items-start justify-between gap-3">
+        <Icon className="size-5 text-emerald-300" aria-hidden />
+        <p className="text-right text-xs text-slate-400">{label}</p>
+      </div>
+      <p className="gym-stat-value mt-3 text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function ExercisePicker({
+  exercises,
+  query,
+  selectedExerciseId,
+  onQueryChange,
+  onSelect,
+}: {
+  exercises: Exercise[];
+  query: string;
+  selectedExerciseId: string;
+  onQueryChange: (query: string) => void;
+  onSelect: (exerciseId: string) => void;
+}) {
+  const normalizedQuery = query.trim().toLowerCase();
+  const selectedExercise = exercises.find((exercise) => exercise.id === selectedExerciseId);
+  const filteredExercises = exercises.filter((exercise) => {
+    if (!normalizedQuery) return true;
+    return [
+      exercise.name,
+      trackingLabels[exercise.trackingType],
+      exerciseCategoryLabels[exercise.category],
+    ].some((value) => value.toLowerCase().includes(normalizedQuery));
+  });
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/25 p-2">
+      {selectedExercise && (
+        <div className="mb-2 rounded-xl bg-cyan-300/15 px-3 py-2 text-sm">
+          <p className="font-semibold">{selectedExercise.name}</p>
+          <p className="text-xs text-slate-400">{exerciseCategoryLabels[selectedExercise.category]} - {trackingLabels[selectedExercise.trackingType]}</p>
+        </div>
+      )}
+      <Input
+        fieldSize="md"
+        placeholder="Search exercise"
+        type="search"
+        value={query}
+        onChange={(event) => onQueryChange(event.target.value)}
+      />
+      <div className="mt-2 max-h-72 overflow-y-auto pr-1">
+        {exerciseCategoryOrder.map((category) => {
+          const group = filteredExercises.filter((exercise) => exercise.category === category);
+          if (!group.length) return null;
+          return (
+            <div key={category} className="py-1">
+              <p className="px-2 py-1 text-xs font-bold uppercase text-cyan-300">{exerciseCategoryLabels[category]}</p>
+              <div className="grid gap-1">
+                {group.map((exercise) => (
+                  <button
+                    key={exercise.id}
+                    type="button"
+                    className={`rounded-xl px-3 py-2 text-left text-sm transition ${exercise.id === selectedExerciseId ? "bg-cyan-300 text-black" : "bg-white/[0.04] hover:bg-white/[0.08]"}`}
+                    onClick={() => onSelect(exercise.id)}
+                  >
+                    <span className="block font-semibold">{exercise.name}</span>
+                    <span className={`text-xs ${exercise.id === selectedExerciseId ? "text-black/70" : "text-slate-400"}`}>{trackingLabels[exercise.trackingType]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+        {!filteredExercises.length && <p className="px-2 py-3 text-sm text-slate-400">No exercises match that search.</p>}
+      </div>
     </div>
   );
 }
@@ -1524,19 +1681,34 @@ function WorkoutMode({
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [showNavigator, setShowNavigator] = useState(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
+  const [setFeedback, setSetFeedback] = useState("");
 
   const elapsed = Math.floor((nowMs - new Date(active.session.startedAt).getTime()) / 1000);
   const timerValue = timerStartedAt ? Math.max(0, Math.floor((nowMs - timerStartedAt) / 1000)) : duration;
   const sessionStatus = getSessionStatus(active.session);
-  const visibleOutlineButton = "border-slate-500/80 bg-slate-100 text-slate-950 hover:bg-white dark:border-white/35 dark:bg-white/[0.12] dark:text-white dark:hover:bg-white/[0.18]";
-  const visibleDangerButton = "border-red-300/70 bg-red-100 text-red-800 hover:bg-red-50 dark:border-red-300/50 dark:bg-red-500/20 dark:text-red-50 dark:hover:bg-red-500/30";
+  const readyToFinish = sessionStatus === "completed";
+  const visibleOutlineButton = "gym-button-contrast";
+  const visibleDangerButton = "gym-button-danger";
+
+  useEffect(() => {
+    if (!setFeedback) return;
+    const timer = window.setTimeout(() => setSetFeedback(""), 1800);
+    return () => window.clearTimeout(timer);
+  }, [setFeedback]);
 
   function completeCurrentSet() {
+    const savedSetNumber = completedSets.length + 1;
+    const nextSetNumber = savedSetNumber + 1;
     if (current.trackingTypeSnapshot === "weight_reps") onCompleteSet({ weight, reps });
     if (current.trackingTypeSnapshot === "reps") onCompleteSet({ reps });
     if (current.trackingTypeSnapshot === "time") onCompleteSet({ durationSeconds: timerValue });
     if (current.trackingTypeSnapshot === "weight_time") onCompleteSet({ weight, durationSeconds: timerValue });
     setTimerStartedAt(null);
+    setSetFeedback(
+      savedSetNumber >= current.plannedSetsSnapshot
+        ? `Set ${savedSetNumber} saved. Target reached.`
+        : `Set ${savedSetNumber} saved. Ready for set ${nextSetNumber}.`
+    );
   }
 
   function stopTimerAndSave() {
@@ -1547,25 +1719,25 @@ function WorkoutMode({
   }
 
   return (
-    <main className="min-h-screen bg-[#05070b] px-4 py-5 pb-32 text-slate-100">
+    <main className="gym-page gym-athletic min-h-screen px-4 py-5 pb-32 text-slate-100">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
         {showNavigator && (
           <div
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 px-4 py-5 backdrop-blur-sm sm:items-center"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 px-4 pb-28 pt-5 backdrop-blur-sm sm:items-center sm:py-5"
             role="dialog"
             aria-modal="true"
             aria-labelledby="exercise-navigator-title"
             onClick={() => setShowNavigator(false)}
           >
             <div
-              className="max-h-[82vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-cyan-300/30 bg-[#0a1d20] p-4 shadow-2xl shadow-black/50"
+              className="flex max-h-[calc(100dvh-10rem)] w-full max-w-3xl flex-col rounded-2xl border border-cyan-300/30 bg-[#0a1d20] p-4 shadow-2xl shadow-black/50 sm:max-h-[82vh]"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
                 <h2 id="exercise-navigator-title" className="font-semibold">{active.session.planNameSnapshot}</h2>
                 <button type="button" className="text-sm text-cyan-100" onClick={() => setShowNavigator(false)}>Close</button>
               </div>
-              <div className="grid gap-2">
+              <div className="grid min-h-0 gap-2 overflow-y-auto pr-1">
                 {active.session.exercises.map((exercise, index) => {
                   const statusLabel = exercise.status === "completed"
                     ? "Completed"
@@ -1596,14 +1768,17 @@ function WorkoutMode({
         )}
 
         <div className="mx-auto grid w-full max-w-3xl gap-4">
-        <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 shadow-2xl shadow-black/20">
+        <section className="gym-card rounded-3xl border p-4 shadow-2xl shadow-black/20">
           <div className="mb-4 grid grid-cols-2 gap-2">
             <Button className={visibleOutlineButton} variant="outline" onClick={() => setShowNavigator((current) => !current)}>Exercises</Button>
             <Button className={visibleDangerButton} variant="outline" onClick={() => setShowFinishConfirm(true)}><X className="size-4" /> Finish</Button>
           </div>
-          <div className="flex items-center justify-between gap-3">
+          <div className={`flex items-center justify-between gap-3 rounded-2xl transition ${setFeedback ? "bg-cyan-300/10 px-3 py-2 ring-1 ring-cyan-300/40" : ""}`}>
             <h3 className="font-semibold">{current.nameSnapshot} Set {completedSets.length + 1}</h3>
             <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">{completedSets.length} done</span>
+          </div>
+          <div aria-live="polite" className={`mt-3 overflow-hidden rounded-2xl border text-sm font-semibold transition-all ${setFeedback ? "border-cyan-300/40 bg-cyan-300/15 px-3 py-2 text-cyan-50 opacity-100" : "max-h-0 border-transparent px-3 py-0 opacity-0"}`}>
+            {setFeedback || "Set saved"}
           </div>
           <div className="mt-4 grid gap-3">
             {(current.trackingTypeSnapshot === "weight_reps" || current.trackingTypeSnapshot === "weight_time") && (
@@ -1636,7 +1811,7 @@ function WorkoutMode({
                 <Button onClick={() => onFinishExercise("completed")}>Finish Exercise</Button>
                 <Button className={visibleOutlineButton} variant="outline" onClick={completeCurrentSet}>+ Add Set</Button>
               </div>
-              <div className="mt-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-3">
+              <div className="gym-success-panel mt-3 rounded-2xl border p-3">
                 <p className="text-sm font-semibold text-emerald-200">Target sets reached</p>
                 <div className="mt-3 grid gap-2">
                   <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-2 text-xs font-semibold uppercase text-emerald-100/70">
@@ -1669,13 +1844,21 @@ function WorkoutMode({
               </div>
             </>
           )}
+          {readyToFinish && (
+            <div className="gym-success-panel mt-4 rounded-2xl border p-3">
+              <p className="text-sm font-semibold text-emerald-100">All exercises are done.</p>
+              <Button className="gym-button-primary mt-3 w-full text-base uppercase" size="lg" onClick={() => setShowFinishConfirm(true)}>
+                <Check className="size-5" /> Finish Workout
+              </Button>
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <button type="button" className="text-sm text-slate-400" onClick={() => onFinishExercise("skipped")}>Skip Exercise</button>
             <span className="text-sm text-slate-500">Exercise {active.currentExerciseIndex + 1} of {active.session.exercises.length}</span>
           </div>
         </section>
 
-        <section className="rounded-3xl border border-cyan-400/25 bg-cyan-400/10 p-5">
+        <section className="gym-card rounded-3xl border p-5">
           <div>
             <p className="text-sm font-semibold text-cyan-200">{active.session.planNameSnapshot}</p>
             <h1 className="mt-1 text-3xl font-bold">{secondsLabel(elapsed)} elapsed</h1>
@@ -1685,8 +1868,8 @@ function WorkoutMode({
             <p className="text-sm">Exercise {active.currentExerciseIndex + 1} of {active.session.exercises.length}</p>
             <span className="rounded-full bg-black/20 px-3 py-1 text-sm text-slate-200">{completedSets.length}/{current.plannedSetsSnapshot} sets</span>
           </div>
-          <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-cyan-300" style={{ width: `${((active.currentExerciseIndex + 1) / active.session.exercises.length) * 100}%` }} />
+          <div className="mt-3 h-3 overflow-hidden rounded-full bg-emerald-950/80">
+            <div className="h-full rounded-full bg-emerald-300 shadow-[0_0_16px_rgba(74,222,128,0.75)]" style={{ width: `${((active.currentExerciseIndex + 1) / active.session.exercises.length) * 100}%` }} />
           </div>
           <h2 className="mt-6 text-3xl font-bold uppercase leading-tight">{current.nameSnapshot}</h2>
           <p className="mt-3 text-sm text-cyan-200">
@@ -1695,9 +1878,11 @@ function WorkoutMode({
             {current.targetDurationMax != null ? ` - ${current.targetDurationMax}s` : ""}
           </p>
           {previous && (
-            <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-3">
+            <div className="gym-inset-panel mt-4 rounded-2xl border p-3">
               <h3 className="font-semibold">Last performed</h3>
-              <p className="mt-1 text-sm text-slate-400">{niceDate(previous.session.startedAt)}</p>
+              <p className="mt-1 text-sm text-slate-400">
+                {niceDate(previous.session.startedAt)} - {previous.session.planNameSnapshot}
+              </p>
               <div className="mt-2 grid gap-2">
                 {previous.sets.map((set) => <p key={set.id} className="rounded-xl bg-white/[0.05] p-3 text-sm">{set.setNumber}. {setLabel(set, current.trackingTypeSnapshot)}</p>)}
               </div>
@@ -1706,16 +1891,16 @@ function WorkoutMode({
         </section>
         </div>
       </div>
-      {showFinishConfirm && (
+      {showFinishConfirm && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 px-4 py-5 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-md"
           role="dialog"
           aria-modal="true"
           aria-labelledby="finish-workout-title"
           onClick={() => setShowFinishConfirm(false)}
         >
           <div
-            className="w-full max-w-xl rounded-2xl border border-amber-400/35 bg-[#17140b] p-4 shadow-2xl shadow-black/50"
+            className="gym-finish-modal max-h-[calc(100dvh-8rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-amber-400/35 bg-[#17140b] p-4 shadow-2xl shadow-black/50"
             onClick={(event) => event.stopPropagation()}
           >
             <p id="finish-workout-title" className="text-lg font-bold text-amber-100">End workout?</p>
@@ -1728,12 +1913,13 @@ function WorkoutMode({
               </p>
             )}
             <div className="mt-4 grid gap-2 sm:grid-cols-3">
-              <Button className="bg-white text-black hover:bg-zinc-100" onClick={() => onFinishWorkout(sessionStatus)}>Save & End</Button>
-              <Button className="border-red-300/70 bg-red-100 text-red-800 hover:bg-red-50 dark:border-red-300/50 dark:bg-red-500/25 dark:text-red-50 dark:hover:bg-red-500/35" variant="outline" onClick={onDiscardWorkout}>Discard</Button>
-              <Button className="border-amber-200/80 bg-amber-50 text-amber-950 hover:bg-white dark:border-white/40 dark:bg-white/[0.14] dark:text-amber-50 dark:hover:bg-white/[0.2]" variant="outline" onClick={() => setShowFinishConfirm(false)}>Keep Training</Button>
+              <Button className="gym-button-primary" onClick={() => onFinishWorkout(sessionStatus)}>Save & End</Button>
+              <Button className="gym-button-danger" variant="outline" onClick={onDiscardWorkout}>Discard</Button>
+              <Button className="gym-button-warning" variant="outline" onClick={() => setShowFinishConfirm(false)}>Keep Training</Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </main>
   );
@@ -1750,7 +1936,7 @@ function Stepper({ label, value, suffix = "", onChange, onMinus, onPlus }: { lab
         <button
           type="button"
           onClick={onMinus}
-          className="min-h-16 border-r border-white/10 text-3xl font-bold text-slate-100 transition hover:bg-white/10 active:bg-cyan-400/20"
+          className="gym-stepper-minus min-h-16 border-r border-white/10 text-3xl font-bold transition hover:bg-white/10 active:bg-cyan-400/20"
           aria-label={`Decrease ${label}`}
         >
           -
@@ -1769,7 +1955,7 @@ function Stepper({ label, value, suffix = "", onChange, onMinus, onPlus }: { lab
         <button
           type="button"
           onClick={onPlus}
-          className="min-h-16 border-l border-white/10 bg-cyan-300 text-3xl font-black text-black transition hover:bg-cyan-200 active:bg-cyan-100"
+          className="gym-stepper-plus min-h-16 border-l border-white/10 bg-cyan-300 text-3xl font-black transition hover:bg-cyan-200 active:bg-cyan-100"
           aria-label={`Increase ${label}`}
         >
           +

@@ -14,6 +14,8 @@ import {
   Dumbbell,
   FolderTree,
   Bell,
+  Volume2,
+  VolumeX,
   MonitorCog,
   Moon,
   Plus,
@@ -96,6 +98,8 @@ interface BottomActionBarProps {
   themeTimeZone: string;
   onThemeModeChange: (mode: ThemeMode) => void;
   onThemeTimeZoneChange: (timeZone: string) => void;
+  buttonSoundsEnabled: boolean;
+  onButtonSoundsEnabledChange: (enabled: boolean) => void;
   onNavigate: () => void;
 }
 
@@ -107,6 +111,8 @@ export default function BottomActionBar({
   themeTimeZone,
   onThemeModeChange,
   onThemeTimeZoneChange,
+  buttonSoundsEnabled,
+  onButtonSoundsEnabledChange,
   onNavigate,
 }: BottomActionBarProps) {
   const pathname = usePathname();
@@ -199,7 +205,7 @@ export default function BottomActionBar({
   );
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bottom-glow-bar px-3 pb-[env(safe-area-inset-bottom)] lg:px-6">
+    <nav className={`fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bottom-glow-bar px-3 pb-[env(safe-area-inset-bottom)] lg:px-6 ${isGym ? "gym-bottom-bar" : ""}`}>
       <div className="mx-auto max-w-md py-3 md:max-w-2xl lg:max-w-2xl">
         <div
           className={`
@@ -323,6 +329,12 @@ export default function BottomActionBar({
                   }}
                   icon={theme === "dark" ? Moon : Sun}
                   label={themeMode === "auto" ? "Auto theme" : "Theme"}
+                />
+                <BottomBarButton
+                  active={buttonSoundsEnabled}
+                  onClick={() => onButtonSoundsEnabledChange(!buttonSoundsEnabled)}
+                  icon={buttonSoundsEnabled ? Volume2 : VolumeX}
+                  label={buttonSoundsEnabled ? "Sound on" : "Sound off"}
                 />
                 {!isGym && (
                   <>

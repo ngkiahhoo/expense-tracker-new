@@ -3,6 +3,8 @@
 import { Suspense, createContext, useContext, useEffect, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import BottomActionBar, { type BottomTool } from "./BottomActionBar";
+import useButtonClickSounds from "@/hooks/useButtonClickSounds";
+import useSoundPreference from "@/hooks/useSoundPreference";
 import useThemePreference from "../hooks/useThemePreference";
 import SyncStatus from "./SyncStatus";
 import { confirmPanelClose } from "@/hooks/useUnsavedChanges";
@@ -25,6 +27,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
     setThemeMode,
     setThemeTimeZone,
   } = useThemePreference();
+  const {
+    buttonSoundsEnabled,
+    setButtonSoundsEnabled,
+  } = useSoundPreference();
+  useButtonClickSounds(buttonSoundsEnabled);
   useEffect(() => {
     document.documentElement.classList.toggle("light-theme", theme === "light");
   }, [theme]);
@@ -38,7 +45,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             if (activeTool && !confirmPanelClose()) return;
             setActiveTool(current => pathname === "/" && current === tool ? null : tool);
             if (pathname !== "/") router.push("/");
-          }} theme={theme} themeMode={themeMode} themeTimeZone={themeTimeZone} onThemeModeChange={setThemeMode} onThemeTimeZoneChange={setThemeTimeZone} onNavigate={() => setActiveTool(null)} />
+          }} theme={theme} themeMode={themeMode} themeTimeZone={themeTimeZone} onThemeModeChange={setThemeMode} onThemeTimeZoneChange={setThemeTimeZone} buttonSoundsEnabled={buttonSoundsEnabled} onButtonSoundsEnabledChange={setButtonSoundsEnabled} onNavigate={() => setActiveTool(null)} />
       </Suspense>
     </div>
   </ToolsContext.Provider>;

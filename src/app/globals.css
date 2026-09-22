@@ -1066,7 +1066,383 @@ input, select, textarea { min-width: 0; max-width: 100%; scroll-margin-block: 5r
 button { max-width: 100%; }
 [role="dialog"] { overflow-wrap: anywhere; }
 
+button,
+a,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+label,
+p,
+span,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+dt,
+dd,
+li {
+  text-wrap: pretty;
+}
+
 /* Gym uses translucent dark-mode utility classes; strengthen them in light mode. */
+.gym-athletic {
+  color: #eefdf3;
+  background:
+    radial-gradient(circle at 84% 0%, rgb(34 197 94 / 0.22), transparent 24rem),
+    radial-gradient(circle at 12% 18%, rgb(16 185 129 / 0.12), transparent 20rem),
+    linear-gradient(180deg, #06110f 0%, #050908 48%, #030504 100%);
+}
+
+.gym-athletic::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgb(74 222 128 / 0.045) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(74 222 128 / 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(180deg, black, transparent 72%);
+}
+
+.gym-athletic > * {
+  position: relative;
+  z-index: 1;
+}
+
+.gym-topbar,
+.gym-card,
+.gym-stat-card,
+.gym-athletic article,
+.gym-athletic aside,
+.gym-athletic [role="dialog"] > div:not(.gym-finish-modal) {
+  background:
+    linear-gradient(145deg, rgb(17 36 34 / 0.92), rgb(7 18 17 / 0.96)),
+    #081312;
+  border-color: rgb(74 222 128 / 0.14) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.055),
+    0 18px 48px rgb(0 0 0 / 0.34);
+}
+
+.gym-topbar {
+  border: 1px solid rgb(74 222 128 / 0.12);
+  border-radius: 1.5rem;
+  padding: 0.75rem;
+}
+
+.gym-brand-mark {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  color: #07110d;
+  background: linear-gradient(135deg, #86efac, #22c55e);
+  box-shadow: 0 0 22px rgb(34 197 94 / 0.32);
+}
+
+.gym-hero {
+  position: relative;
+  min-height: 12rem;
+  background:
+    linear-gradient(90deg, rgb(4 12 10 / 0.98) 0%, rgb(5 20 14 / 0.76) 42%, rgb(3 9 8 / 0.88) 100%),
+    radial-gradient(circle at 72% 22%, rgb(34 197 94 / 0.34), transparent 17rem),
+    linear-gradient(135deg, #07110f, #0d2d1c 56%, #06100d);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 24px 70px rgb(0 0 0 / 0.36);
+}
+
+.gym-athletic .gym-hero h1,
+.light-theme .gym-athletic .gym-hero h1 {
+  color: #f8fff9 !important;
+  text-shadow:
+    0 2px 0 rgb(0 0 0 / 0.32),
+    0 0 26px rgb(0 0 0 / 0.45);
+}
+
+.gym-athletic .gym-hero p,
+.light-theme .gym-athletic .gym-hero p {
+  color: #dfffea !important;
+}
+
+.gym-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 78% 22%, rgb(134 239 172 / 0.16), transparent 18rem),
+    repeating-linear-gradient(112deg, transparent 0 18px, rgb(74 222 128 / 0.055) 19px 20px);
+  opacity: 0.8;
+}
+
+.gym-hero::after {
+  content: "";
+  position: absolute;
+  right: 5%;
+  bottom: -18%;
+  width: min(34rem, 70%);
+  aspect-ratio: 1.8;
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at center, rgb(34 197 94 / 0.28), rgb(34 197 94 / 0.08) 38%, transparent 70%);
+  filter: blur(14px);
+  transform: rotate(-10deg);
+}
+
+.gym-stat-card {
+  border-color: rgb(74 222 128 / 0.12) !important;
+}
+
+.gym-athletic .gym-stat-card p,
+.light-theme .gym-athletic .gym-stat-card p {
+  color: #a7f3d0 !important;
+}
+
+.gym-athletic .gym-stat-card p:last-child,
+.light-theme .gym-athletic .gym-stat-card p:last-child {
+  color: #f0fdf4 !important;
+}
+
+.gym-signal,
+.gym-inset-panel,
+.gym-athletic li,
+.gym-athletic article p.rounded-xl,
+.gym-athletic article div.rounded-2xl,
+.gym-athletic .bg-white\/\[0\.03\],
+.gym-athletic .bg-white\/\[0\.04\],
+.gym-athletic .bg-white\/\[0\.05\],
+.gym-athletic .bg-white\/\[0\.06\] {
+  background-color: rgb(255 255 255 / 0.055) !important;
+  border-color: rgb(74 222 128 / 0.12) !important;
+}
+
+.gym-success-panel {
+  background: rgb(34 197 94 / 0.11);
+  border-color: rgb(74 222 128 / 0.36) !important;
+}
+
+.gym-athletic input:not([type="checkbox"]),
+.gym-athletic select,
+.gym-athletic textarea {
+  color-scheme: dark;
+  color: #ecfdf5 !important;
+  background-color: rgb(3 10 8 / 0.78) !important;
+  border-color: rgb(74 222 128 / 0.16) !important;
+}
+
+.gym-athletic option {
+  background: #07110f;
+  color: #ecfdf5;
+}
+
+.gym-athletic {
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.18);
+}
+
+.gym-athletic .text-black,
+.gym-athletic .text-black\/70 {
+  color: #03130a !important;
+  text-shadow: none;
+}
+
+.gym-athletic input[type="number"],
+.gym-athletic input[type="text"],
+.gym-athletic input[type="search"] {
+  color: #ecfdf5 !important;
+  -webkit-text-fill-color: #ecfdf5;
+}
+
+.gym-athletic .gym-stepper-plus,
+.gym-athletic .gym-stepper-plus *,
+.gym-athletic button.bg-cyan-300,
+.gym-athletic button.bg-cyan-300 * {
+  color: #03130a !important;
+  text-shadow: none;
+}
+
+.gym-athletic button:not(.gym-stepper-plus):not(.gym-button-primary):not(.gym-start-action):not(.bg-cyan-300):not(.bottom-bar-button),
+.gym-athletic a[role="button"]:not(.bottom-bar-button) {
+  color: #ecfdf5;
+}
+
+.gym-athletic button:not(.gym-stepper-plus):not(.gym-button-primary):not(.gym-start-action):not(.bg-cyan-300):not(.bottom-bar-button) *,
+.gym-athletic a[role="button"]:not(.bottom-bar-button) * {
+  color: inherit;
+}
+
+.gym-start-action,
+.gym-athletic button.inline-flex:not([class*="red"]):not(.gym-button-danger):not(.gym-button-warning):not(.gym-stepper-minus):not(.gym-stepper-plus):not(.bottom-bar-button) {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #86efac, #22c55e) !important;
+  color: #03130a !important;
+  box-shadow:
+    0 14px 30px rgb(34 197 94 / 0.22),
+    inset 0 1px 0 rgb(255 255 255 / 0.24);
+}
+
+.gym-athletic button.inline-flex:not([class*="red"]):not(.gym-button-danger):not(.gym-button-warning):not(.gym-stepper-minus):not(.gym-stepper-plus):not(.bottom-bar-button):hover {
+  filter: brightness(1.05);
+}
+
+.gym-button-primary {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #86efac, #22c55e) !important;
+  color: #03130a !important;
+}
+
+.gym-bottom-bar {
+  background:
+    linear-gradient(180deg, rgb(5 13 12 / 0.74), rgb(3 8 7 / 0.94)),
+    radial-gradient(ellipse at 50% 0%, rgb(34 197 94 / 0.18), transparent 24rem) !important;
+  border-color: rgb(74 222 128 / 0.16) !important;
+}
+
+.gym-bottom-bar .bottom-bar-button-active {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  color: #03130a !important;
+}
+
+.gym-bottom-bar .bottom-bar-button-active *,
+.light-theme .gym-bottom-bar .bottom-bar-button-active *,
+.gym-bottom-bar .bottom-bar-button-active .bottom-bar-button-label {
+  color: #03130a !important;
+  text-shadow: none;
+}
+
+.gym-bottom-bar .bottom-bar-button:not(.bottom-bar-button-active) {
+  background: rgb(11 24 22 / 0.9) !important;
+  color: #ecfdf5 !important;
+  border-color: rgb(74 222 128 / 0.18) !important;
+}
+
+.gym-bottom-bar .bottom-bar-button:not(.bottom-bar-button-active) *,
+.light-theme .gym-bottom-bar .bottom-bar-button:not(.bottom-bar-button-active) *,
+.gym-bottom-bar .bottom-bar-button:not(.bottom-bar-button-active) .bottom-bar-button-label {
+  color: #ecfdf5 !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 1px rgb(0 0 0 / 0.35);
+}
+
+.gym-bottom-bar .bottom-bar-button {
+  outline-color: rgb(134 239 172 / 0.95);
+}
+
+.gym-button-primary,
+.gym-button-contrast,
+.gym-button-danger,
+.gym-button-warning {
+  border-width: 1px !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 8px 18px rgb(0 0 0 / 0.22);
+}
+
+.gym-button-primary {
+  border-color: rgb(255 255 255 / 0.9) !important;
+  background: rgb(255 255 255) !important;
+  color: rgb(0 0 0) !important;
+}
+
+.gym-button-primary:hover {
+  background: rgb(244 244 245) !important;
+}
+
+.gym-button-contrast {
+  border-color: rgb(203 213 225 / 0.75) !important;
+  background: rgb(15 23 42 / 0.96) !important;
+  color: rgb(248 250 252) !important;
+}
+
+.gym-button-contrast:hover {
+  border-color: rgb(255 255 255 / 0.9) !important;
+  background: rgb(30 41 59 / 0.98) !important;
+}
+
+.gym-button-danger {
+  border-color: rgb(252 165 165 / 0.85) !important;
+  background: rgb(127 29 29 / 0.96) !important;
+  color: rgb(254 242 242) !important;
+}
+
+.gym-button-danger:hover {
+  background: rgb(153 27 27) !important;
+}
+
+.gym-button-warning {
+  border-color: rgb(253 230 138 / 0.8) !important;
+  background: rgb(69 26 3 / 0.96) !important;
+  color: rgb(255 251 235) !important;
+}
+
+.gym-button-warning:hover {
+  background: rgb(92 39 7) !important;
+}
+
+.gym-stepper-minus {
+  background: rgb(15 23 42 / 0.92);
+  color: rgb(248 250 252);
+}
+
+.gym-stepper-plus {
+  background: rgb(103 232 249);
+  color: rgb(8 15 24);
+}
+
+.gym-athletic .gym-button-primary,
+.gym-athletic .gym-start-action {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #86efac, #22c55e) !important;
+  color: #03130a !important;
+}
+
+.gym-finish-modal {
+  color: #fffbeb;
+  background:
+    linear-gradient(145deg, rgb(23 20 11 / 0.98), rgb(11 16 13 / 0.98)),
+    #17140b !important;
+  border-color: rgb(251 191 36 / 0.42) !important;
+  box-shadow:
+    0 28px 80px rgb(0 0 0 / 0.64),
+    inset 0 1px 0 rgb(255 255 255 / 0.08) !important;
+}
+
+.gym-finish-modal .gym-button-primary {
+  background: linear-gradient(135deg, #86efac, #22c55e) !important;
+  color: #03130a !important;
+}
+
+.gym-finish-modal .gym-button-danger {
+  border-color: rgb(254 202 202 / 0.95) !important;
+  background: #fee2e2 !important;
+  color: #7f1d1d !important;
+}
+
+.gym-finish-modal .gym-button-warning {
+  border-color: rgb(254 240 138 / 0.95) !important;
+  background: #fef3c7 !important;
+  color: #451a03 !important;
+}
+
+.gym-button-primary:disabled,
+.gym-button-contrast:disabled,
+.gym-button-danger:disabled,
+.gym-button-warning:disabled,
+.gym-stepper-minus:disabled,
+.gym-stepper-plus:disabled {
+  opacity: 0.62;
+}
+
 .light-theme .gym-light .border-white\/10 {
   border-color: rgb(148 163 184 / 0.55);
 }
@@ -1105,6 +1481,97 @@ button { max-width: 100%; }
   color: rgb(185 28 28);
 }
 
+.light-theme .gym-button-primary {
+  border-color: rgb(15 23 42 / 0.12) !important;
+  background: rgb(15 23 42) !important;
+  color: rgb(255 255 255) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 10px 22px rgb(15 23 42 / 0.18);
+}
+
+.light-theme .gym-button-primary:hover {
+  background: rgb(30 41 59) !important;
+}
+
+.light-theme .gym-button-contrast {
+  border-color: rgb(71 85 105 / 0.55) !important;
+  background: rgb(255 255 255) !important;
+  color: rgb(15 23 42) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 8px 18px rgb(15 23 42 / 0.12);
+}
+
+.light-theme .gym-button-contrast:hover {
+  border-color: rgb(8 145 178 / 0.8) !important;
+  background: rgb(236 254 255) !important;
+}
+
+.light-theme .gym-button-danger {
+  border-color: rgb(185 28 28 / 0.38) !important;
+  background: rgb(254 226 226) !important;
+  color: rgb(127 29 29) !important;
+}
+
+.light-theme .gym-button-danger:hover {
+  background: rgb(254 202 202) !important;
+}
+
+.light-theme .gym-button-warning {
+  border-color: rgb(180 83 9 / 0.42) !important;
+  background: rgb(254 243 199) !important;
+  color: rgb(69 26 3) !important;
+}
+
+.light-theme .gym-button-warning:hover {
+  background: rgb(253 230 138) !important;
+}
+
+.light-theme .gym-stepper-minus {
+  background: rgb(255 255 255);
+  color: rgb(15 23 42);
+}
+
+.light-theme .gym-stepper-plus {
+  background: rgb(8 145 178);
+  color: rgb(255 255 255);
+}
+
+.light-theme .gym-athletic {
+  color: #eefdf3;
+}
+
+.light-theme .gym-athletic .text-white,
+.light-theme .gym-athletic .text-slate-100,
+.light-theme .gym-athletic .text-slate-200,
+.light-theme .gym-athletic .text-slate-300 {
+  color: #ecfdf5 !important;
+}
+
+.light-theme .gym-athletic .text-slate-400,
+.light-theme .gym-athletic .text-slate-500 {
+  color: rgb(167 243 208 / 0.7) !important;
+}
+
+.light-theme .gym-athletic .text-cyan-200,
+.light-theme .gym-athletic .text-cyan-300,
+.light-theme .gym-athletic .text-cyan-400 {
+  color: #86efac !important;
+}
+
+.light-theme .gym-athletic :where(h1, h2, h3, h4, p, span, label, li):not(.text-black):not(.text-black\/70) {
+  color: #ecfdf5;
+}
+
+.light-theme .gym-athletic .gym-button-primary,
+.light-theme .gym-athletic .gym-start-action,
+.light-theme .gym-athletic button.inline-flex:not([class*="red"]):not(.gym-button-danger):not(.gym-button-warning):not(.gym-stepper-minus):not(.gym-stepper-plus):not(.bottom-bar-button) {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #86efac, #22c55e) !important;
+  color: #03130a !important;
+}
+
 .light-theme .gym-light .gym-status-completed {
   background-color: rgb(209 250 229 / 0.9);
   color: rgb(4 120 87);
@@ -1125,4 +1592,32 @@ button { max-width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Final Gym contrast overrides. These intentionally sit last so app-wide theme rules cannot dim athletic UI text. */
+main.gym-athletic .gym-hero-title,
+.light-theme main.gym-athletic .gym-hero-title {
+  color: #f8fff9 !important;
+  -webkit-text-fill-color: #f8fff9 !important;
+  text-shadow:
+    0 2px 0 rgb(0 0 0 / 0.42),
+    0 0 28px rgb(0 0 0 / 0.72) !important;
+}
+
+main.gym-athletic .gym-stat-value,
+.light-theme main.gym-athletic .gym-stat-value {
+  color: #f0fdf4 !important;
+  -webkit-text-fill-color: #f0fdf4 !important;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.55) !important;
+}
+
+main.gym-athletic .gym-stat-card svg,
+.light-theme main.gym-athletic .gym-stat-card svg {
+  color: #6ee7b7 !important;
+}
+
+main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
+.light-theme main.gym-athletic .gym-stat-card p:not(.gym-stat-value) {
+  color: #bbf7d0 !important;
+  -webkit-text-fill-color: #bbf7d0 !important;
 }
