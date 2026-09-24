@@ -146,12 +146,10 @@ export default function BottomActionBar({
     setWorkoutExportStatus(COPYING_STATUS);
     try {
       let state: unknown = null;
-      try {
-        state = await getWorkoutState();
-      } catch {
-        const raw = window.localStorage.getItem(workoutStorageKey);
-        state = raw ? JSON.parse(raw) : null;
-      }
+      const raw = window.localStorage.getItem(workoutStorageKey);
+      // Gym writes the currently displayed state locally before its debounced cloud save.
+      if (raw) state = JSON.parse(raw);
+      else state = await getWorkoutState();
 
       const copied = await copyTextToClipboard(formatWorkoutAIExport(state));
       setWorkoutExportStatus(copied ? "AI export copied" : "Copy failed");
@@ -348,6 +346,15 @@ export default function BottomActionBar({
                   icon={Download}
                   label={backupStatus === EXPORTING_STATUS ? EXPORTING_STATUS : "Export all data"}
                 />
+                {isGym && (
+                  <BottomBarButton
+                    active={gymTab === "settings"}
+                    href="/gym?tab=settings"
+                    onClick={() => { setActiveMenu(null); onNavigate(); }}
+                    icon={Dumbbell}
+                    label="Available Loads"
+                  />
+                )}
                 {isGym && (
                   <BottomBarButton
                     active={workoutExportStatus === "AI export copied"}

@@ -1,3 +1,6 @@
+import { analyzeProgress, localDateKey } from "../lib/gym/progress/calculate";
+import type { ProgressSettings } from "../lib/gym/progress/types";
+
 type TrackingType = "weight_reps" | "reps" | "time" | "weight_time";
 
 type WorkoutSet = {
@@ -8,6 +11,7 @@ type WorkoutSet = {
   reps?: number;
   durationSeconds?: number;
   completedAt: string;
+  repsInReserve?: number;
 };
 
 type WorkoutExercise = {
@@ -24,6 +28,7 @@ type WorkoutExercise = {
 };
 
 type GymData = {
+  progressSettings?: ProgressSettings;
   exercises: Array<{ id: string; name: string; trackingType: TrackingType }>;
   plans: Array<{
     id: string;
@@ -90,14 +95,16 @@ function setLabel(set: WorkoutSet, trackingType: TrackingType) {
 }
 
 function volume(set: WorkoutSet) {
-  return Number(set.weight || 0) * Number(set.reps || 0);
+  if (!set) return 0;
+  const result = Number(set.weight || 0) * Number(set.reps || 0);
+  return Number.isFinite(result) ? result : 0;
 }
 
 function sessionSets(session: GymData["sessions"][number], exercise: WorkoutExercise) {
-  return session.sets.filter((set) => set.workoutExerciseId === exercise.id);
+  return (session.sets ?? []).filter((set) => set && set.workoutExerciseId === exercise.id);
 }
 
-export function formatWorkoutAIExport(state: unknown) {
+export function formatWorkoutAIExport(state: unknown, asOfDate = localDateKey()) {
   const data = normalizeWorkoutState(state);
   const parts: string[] = [];
 
@@ -116,7 +123,15 @@ export function formatWorkoutAIExport(state: unknown) {
   const totalMinutes = data.sessions.reduce((sum, session) => sum + Number(minutesBetween(session.startedAt, session.endedAt) || 0), 0);
   const totalVolume = data.sessions.reduce((sum, session) => sum + session.sets.reduce((setSum, set) => setSum + volume(set), 0), 0);
 
-  parts.push("=== SUMMARY CSV ===\n");
+  const analysis = analyzeProgress(data, asOfDate);
+  parts.push("=== PROGRESS ANALYSIS CONTEXT ===\n");
+  parts.push("This is the complete derived analysis used by the Gym Progress Analysis page, including all exercise sessions, valid sets, baseline/current/best performance, estimated strength and confidence, factual load and same-load rep progress, milestone timelines and elapsed exercise sessions, PR histories, monthly metrics, next-target recommendations, available equipment and user-reported RIR. No workout history has been changed. Null means unavailable, not zero. Recommendations are suggestions; estimated strength is not measured strength.\n\n");
+  parts.push("=== PROGRESS ANALYSIS JSON ===\n");
+  parts.push(JSON.stringify(analysis, null, 2));
+  parts.push("\n\n");
+
+  parts.push("=== RAW HISTORY SUMMARY CSV ===\n");
+  parts.push("Unfiltered historical totals below are not the valid-work-set or strength metrics above.\n");
   parts.push("total_sessions,completed_sessions,total_sets,total_training_minutes,total_weight_reps_volume,last_workout_at\n");
   parts.push([
     data.sessions.length,
@@ -164,7 +179,7 @@ export function formatWorkoutAIExport(state: unknown) {
   parts.push("\n");
 
   parts.push("=== HISTORY CSV ===\n");
-  parts.push("started_at,ended_at,duration_minutes,status,plan,exercise,exercise_status,set_number,result,weight,reps,duration_seconds,volume\n");
+  parts.push("started_at,ended_at,duration_minutes,status,plan,exercise,exercise_status,set_number,result,weight,reps,duration_seconds,volume,reps_in_reserve_user_reported\n");
   for (const session of data.sessions) {
     for (const exercise of session.exercises) {
       const sets = sessionSets(session, exercise);
@@ -177,6 +192,7 @@ export function formatWorkoutAIExport(state: unknown) {
           csvEscape(session.planNameSnapshot),
           csvEscape(exercise.nameSnapshot),
           csvEscape(exercise.status),
+          "",
           "",
           "",
           "",
@@ -200,6 +216,7 @@ export function formatWorkoutAIExport(state: unknown) {
           set.reps ?? "",
           set.durationSeconds ?? "",
           volume(set).toFixed(2),
+          set.repsInReserve ?? "",
         ].join(",") + "\n");
       }
     }
@@ -211,7 +228,7 @@ export function formatWorkoutAIExport(state: unknown) {
   parts.push("\n\n");
 
   parts.push("=== AI ANALYSIS PROMPT ===\n\n");
-  parts.push("Analyze my workout data in Chinese. Summarize training consistency, plan/routine structure, exercise balance, strength or endurance progress, missed or skipped exercises, recovery risks, and clear next changes for the next 2-4 weeks. Use the plan targets and routine rotation together with history. Be practical and specific.");
+  parts.push("Analyze my workout data in Chinese. Use PROGRESS ANALYSIS JSON as the reproducible analysis and raw history for context. Clearly separate measured logs, estimated 1RM/strength, subjective RIR and app recommendations. Explain progress since baseline versus all-time best, same-load rep progress, load milestones in days and exercise-specific sessions, PR categories, this month's changes and practical next targets using only available loads. Do not invent scores, treat volume as strength, count first baselines as improvement PRs, infer plateau from inactivity or report missing data as 0% improvement. Summarize consistency, plan/routine structure and exercise balance, acknowledging limited history and confidence.");
 
   return parts.join("").trim();
 }

@@ -1,0 +1,110 @@
+.gym-page.gym-ui {
+  background-color: var(--gym-canvas);
+}
+
+.gym-progress-analysis {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+html body .gym-progress-analysis :is(h1, h2, h3, h4, p, span, dt, dd, strong, label, summary, li),
+html body .gym-progress-entry :is(h2, p) {
+  color: var(--gym-text);
+  -webkit-text-fill-color: var(--gym-text);
+  letter-spacing: 0;
+}
+
+html body .gym-progress-analysis .progress-muted,
+html body .gym-progress-analysis .progress-metric dt,
+html body .gym-progress-analysis .progress-details li > span,
+html body .gym-progress-entry p {
+  color: var(--gym-text-muted) !important;
+  -webkit-text-fill-color: var(--gym-text-muted) !important;
+}
+
+.gym-progress-analysis h1 { font-size: 26px; line-height: 1.2; font-weight: 750; }
+.gym-progress-analysis h2 { font-size: 19px; line-height: 1.35; font-weight: 700; }
+.gym-progress-analysis h3 { font-size: 18px; line-height: 1.4; font-weight: 700; overflow-wrap: anywhere; }
+.gym-progress-analysis h4 { font-size: 18px; line-height: 1.4; font-weight: 700; }
+.gym-progress-analysis p { font-size: 14px; line-height: 1.6; }
+.gym-progress-analysis .progress-eyebrow { font-size: 12px; font-weight: 700; }
+.progress-page-heading, .progress-section-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.progress-section-heading { margin-bottom: 16px; flex-wrap: wrap; }
+.progress-section-heading > span { font-size: 13px; }
+.progress-overview { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 24px 0; border-block: 1px solid var(--gym-border); }
+.progress-overview h2 { font-size: 28px; margin: 4px 0; }
+.progress-overall-estimate > strong { display: block; font-size: 28px; line-height: 1.3; margin: 4px 0; }
+.progress-overall-counts { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.progress-metric { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.progress-metric dt { font-size: 12px; line-height: 1.5; }
+.progress-metric dd { font-size: 16px; line-height: 1.5; font-weight: 700; overflow-wrap: anywhere; }
+.progress-overall-counts dd, .progress-month-grid dd { font-size: 22px; }
+.progress-month-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.progress-baseline { border-left: 3px solid var(--gym-accent); padding: 4px 0 4px 16px; }
+.progress-baseline h2 { margin-bottom: 6px; }
+.progress-recent { display: flex; gap: 16px; padding-block: 20px; border-block: 1px solid var(--gym-border); }
+.progress-recent > svg { flex-shrink: 0; margin-top: 3px; color: var(--gym-accent-soft); }
+.progress-recent h2 { margin-block: 4px; }
+.progress-exercise-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.progress-exercise { border: 1px solid var(--gym-border); border-radius: 8px; padding: 20px; min-width: 0; }
+.progress-exercise-heading { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: start; }
+.progress-exercise-heading > div { flex: 1 1 220px; min-width: 0; }
+.progress-exercise-heading p { margin-top: 4px; font-size: 12px; }
+.progress-status { font-size: 12px; line-height: 1.7; display: flex; gap: 4px; align-items: center; }
+.progress-change { margin-block: 20px; }
+.progress-change > strong { display: block; margin-block: 3px; font-size: 23px; line-height: 1.35; }
+html body .gym-progress-analysis .progress-positive { color: var(--gym-accent-soft) !important; -webkit-text-fill-color: var(--gym-accent-soft) !important; }
+.progress-comparison { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-block: 12px; }
+.progress-comparison dd { font-size: 14px; }
+.progress-date { margin-bottom: 16px; }
+.progress-target { border-top: 1px solid var(--gym-border); padding-block: 16px; margin-top: 16px; }
+.progress-target h4 { margin: 4px 0; }
+.progress-target-bar { margin-top: 12px; }
+.progress-bar-label { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: 12px; margin-bottom: 8px; }
+.progress-target progress { display: block; width: 100%; height: 7px; border: 0; border-radius: 4px; overflow: hidden; appearance: none; background: var(--gym-surface-soft); }
+.progress-target progress::-webkit-progress-bar { background: var(--gym-surface-soft); }
+.progress-target progress::-webkit-progress-value { background: var(--gym-accent); border-radius: 4px; }
+.progress-target progress::-moz-progress-bar { background: var(--gym-accent); border-radius: 4px; }
+.progress-details { border-top: 1px solid var(--gym-border); padding-block: 12px; }
+.progress-details:last-child { padding-bottom: 0; }
+.progress-details summary { cursor: pointer; min-height: 28px; font-size: 14px; font-weight: 600; }
+.progress-details summary > span { float: right; font-size: 12px; font-weight: 400; }
+.progress-details ol, .progress-details ul { display: grid; gap: 12px; margin-block: 16px 8px; }
+.progress-details li { display: grid; gap: 4px; font-size: 13px; }
+.progress-details li > span { font-size: 12px; }
+.progress-footnote { border-top: 1px solid var(--gym-border); padding-top: 16px; }
+.progress-info { display: inline; }
+html body .gym-progress-analysis .progress-info > button { display: inline-flex; justify-content: center; align-items: center; vertical-align: middle; min-width: 28px; min-height: 28px; padding: 4px; color: var(--gym-text-muted) !important; background: transparent !important; border: 0; box-shadow: none; }
+html body .gym-progress-analysis .progress-info-text { display: block; font-size: 13px; font-weight: 400; line-height: 1.5; background: var(--gym-surface-soft); border-left: 2px solid var(--gym-border-strong); padding: 10px; margin-block: 6px; white-space: normal; }
+.progress-text-link { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 14px; text-decoration: underline; text-underline-offset: 4px; }
+.gym-progress-entry { display: flex; gap: 16px; align-items: center; border: 1px solid var(--gym-border); border-radius: 8px; padding: 20px; min-width: 0; }
+.gym-progress-entry > div { flex: 1; min-width: 0; }
+.gym-progress-entry h2 { font-size: 18px; font-weight: 700; }
+.gym-progress-entry p { font-size: 14px; margin-top: 4px; }
+.gym-progress-entry > svg { color: var(--gym-accent-soft); flex-shrink: 0; }
+.gym-progress-entry:hover { outline: 1px solid var(--gym-accent); }
+.progress-equipment { max-width: 640px; gap: 16px; }
+.progress-equipment textarea { padding: 12px; border: 1px solid var(--gym-border-strong); border-radius: 8px; font-size: 16px; }
+.progress-equipment button { justify-self: start; }
+dialog.progress-rir-dialog { display: none; }
+dialog.progress-rir-dialog[open] { display: grid; margin: auto; width: min(480px, calc(100% - 32px)); max-height: calc(100dvh - 48px); overflow-y: auto; padding: 24px; border: 1px solid var(--gym-border-strong); border-radius: 8px; background: var(--gym-surface); gap: 16px; }
+.progress-rir-dialog::backdrop { background: rgb(0 0 0 / 0.75); backdrop-filter: blur(4px); }
+.progress-rir-options { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+html body .gym-progress-analysis.progress-rir-dialog button:not(.progress-info button) { min-height: 44px; border: 1px solid var(--gym-border-strong); border-radius: 6px; background: var(--gym-surface-soft) !important; color: var(--gym-text) !important; }
+.progress-rir-skip { justify-self: end; padding-inline: 16px; }
+
+@media (max-width: 700px) {
+  .progress-exercise-grid { grid-template-columns: minmax(0, 1fr); }
+  .progress-overview { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .progress-month-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 20px; }
+  .progress-exercise { padding: 16px; }
+  .progress-overview h2, .progress-overall-estimate > strong { font-size: 26px; }
+}
+
+@media (max-width: 370px) {
+  .progress-comparison { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .progress-overall-counts { gap: 10px; }
+}

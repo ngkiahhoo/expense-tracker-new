@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit --pretty false",
     "test": "node scripts/ai-check.mjs",
+    "test:gym-progress": "node scripts/gym-progress-check.mjs",
     "test:living-expenses": "node scripts/living-expense-check.mjs",
     "test:expense-sync": "node scripts/expense-storage-check.mjs && node scripts/expense-sync-check.mjs",
     "test:goals": "node scripts/goal-projection-check.mjs",

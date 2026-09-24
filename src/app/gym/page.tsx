@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Activity,
+  ArrowRight,
   CalendarDays,
   Check,
   Dumbbell,
@@ -15,12 +16,18 @@ import {
   Trash2,
   Timer,
   Trophy,
+  TrendingUp,
   X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
 import { getWorkoutState, saveWorkoutState } from "@/services/workoutService";
+import ProgressAnalysis, { recordLabel } from "@/components/gym/ProgressAnalysis";
+import AvailableLoads from "@/components/gym/AvailableLoads";
+import RIRPrompt from "@/components/gym/RIRPrompt";
+import { analyzeProgress, localDateKey } from "@/lib/gym/progress/calculate";
+import type { ProgressSettings } from "@/lib/gym/progress/types";
 
 type TrackingType = "weight_reps" | "reps" | "time" | "weight_time";
 type ExerciseCategory = "upper" | "core" | "lower" | "full_body" | "cardio" | "mobility";
@@ -88,6 +95,7 @@ type WorkoutSet = {
   reps?: number;
   durationSeconds?: number;
   completedAt: string;
+  repsInReserve?: number;
 };
 
 type WorkoutSession = {
@@ -107,6 +115,7 @@ type GymData = {
   plans: Plan[];
   routines: Routine[];
   sessions: WorkoutSession[];
+  progressSettings?: ProgressSettings;
 };
 
 type ActiveWorkout = {
@@ -122,12 +131,12 @@ type PersistedWorkoutState =
       paused?: ActiveWorkout | null;
     };
 
-type GymTab = "home" | "library" | "plans" | "routines" | "history" | "progress" | "summary";
+type GymTab = "home" | "library" | "plans" | "routines" | "history" | "progress" | "summary" | "settings";
 
 const storageKey = "expense-tracker-gym-mvp";
 const activeWorkoutKey = "expense-tracker-gym-active";
 const pausedWorkoutKey = "expense-tracker-gym-paused";
-const gymTabs: GymTab[] = ["home", "library", "plans", "routines", "history", "progress", "summary"];
+const gymTabs: GymTab[] = ["home", "library", "plans", "routines", "history", "progress", "summary", "settings"];
 
 const trackingLabels: Record<TrackingType, string> = {
   weight_reps: "Weight + Reps",
@@ -409,10 +418,6 @@ function sessionExerciseSets(session: WorkoutSession, exercise: WorkoutExercise)
   return session.sets.filter((set) => set.workoutExerciseId === exercise.id);
 }
 
-function sessionImprovementCount(data: GymData, session: WorkoutSession) {
-  return sessionImprovementDetails(data, session).length;
-}
-
 function performanceValue(set: WorkoutSet, trackingType: TrackingType) {
   if (trackingType === "time") return Number(set.durationSeconds || 0);
   if (trackingType === "reps") return Number(set.reps || 0);
@@ -521,6 +526,7 @@ function GymPageContent() {
   const [completeAllSetsMode, setCompleteAllSetsMode] = useState(false);
   const [showPlanPreview, setShowPlanPreview] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [rirRequest, setRirRequest] = useState<{ sessionId: string; setId: string; exerciseName: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -592,13 +598,11 @@ function GymPageContent() {
   }, 0);
   const thisMonth = new Date().toISOString().slice(0, 7);
   const recentSession = data.sessions.at(-1);
-  const recentPr = useMemo(() => {
-    for (const exercise of data.exercises) {
-      const last = lastExerciseSets(data, exercise.id);
-      if (last?.sets.length) return `${exercise.name}: ${setLabel(last.sets[0], exercise.trackingType)}`;
-    }
-    return "No PR yet";
-  }, [data]);
+  const analysisDate = localDateKey(new Date(nowMs));
+  const progressAnalysis = useMemo(() => analyzeProgress(data, analysisDate), [data, analysisDate]);
+  const recentPr = progressAnalysis.recentSignal
+    ? `${progressAnalysis.recentSignal.exerciseName}: ${recordLabel(progressAnalysis.recentSignal)}`
+    : "No improvement PR yet";
 
   if (!hydrated) {
     return (
@@ -881,6 +885,9 @@ function GymPageContent() {
     };
     const sets = [...active.session.sets, nextSet];
     const targetReached = existingSets.length + 1 >= exercise.plannedSetsSnapshot;
+    if (targetReached && (exercise.trackingTypeSnapshot === "weight_reps" || exercise.trackingTypeSnapshot === "reps")) {
+      setRirRequest({ sessionId: active.session.id, setId: nextSet.id, exerciseName: exercise.nameSnapshot });
+    }
     const exercises = active.session.exercises.map((item) => {
       if (item.id !== exercise.id) return item;
       return { ...item, status: targetReached ? "completed" as ExerciseStatus : "partial" as ExerciseStatus };
@@ -904,6 +911,10 @@ function GymPageContent() {
       completedAt,
       ...values,
     }));
+    const finalSet = addedSets.at(-1);
+    if (finalSet && (exercise.trackingTypeSnapshot === "weight_reps" || exercise.trackingTypeSnapshot === "reps")) {
+      setRirRequest({ sessionId: active.session.id, setId: finalSet.id, exerciseName: exercise.nameSnapshot });
+    }
     const exercises = active.session.exercises.map((item) =>
       item.id === exercise.id ? { ...item, status: "completed" as ExerciseStatus } : item
     );
@@ -1038,8 +1049,20 @@ function GymPageContent() {
     router.replace("/gym?tab=home");
   }
 
+  function saveRIR(repsInReserve?: number) {
+    if (rirRequest && repsInReserve !== undefined) {
+      setActive(current => current && current.session.id === rirRequest.sessionId ? {
+        ...current,
+        session: { ...current.session, sets: current.session.sets.map(set => set.id === rirRequest.setId ? { ...set, repsInReserve } : set) },
+      } : current);
+    }
+    setRirRequest(null);
+  }
+
   if (active) {
     return (
+      <>
+      {rirRequest && <RIRPrompt exerciseName={rirRequest.exerciseName} onAnswer={saveRIR} />}
       <WorkoutMode
         active={active}
         data={data}
@@ -1055,6 +1078,7 @@ function GymPageContent() {
         onFinishWorkout={finishWorkout}
         onDiscardWorkout={discardWorkout}
       />
+      </>
     );
   }
 
@@ -1113,6 +1137,11 @@ function GymPageContent() {
                 <Stat icon={Layers} label="Total sets" value={String(allSets.length)} />
               </div>
             </div>
+            <Link href="/gym?tab=progress" className="gym-progress-entry gym-card" aria-label="Open Progress Analysis">
+              <TrendingUp size={24} aria-hidden />
+              <div><h2>Progress Analysis</h2><p>{progressAnalysis.overall.estimatedStrengthChangePercent === null ? "Building your training baseline" : `${progressAnalysis.overall.estimatedStrengthChangePercent > 0 ? "+" : ""}${progressAnalysis.overall.estimatedStrengthChangePercent.toFixed(1)}% estimated strength since start`}</p></div>
+              <ArrowRight size={22} aria-hidden />
+            </Link>
             <div className="gym-card rounded-2xl border p-4">
               <h3 className="font-semibold">Recent signals</h3>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -1550,68 +1579,8 @@ function GymPageContent() {
           </section>
         )}
 
-        {activeTab === "progress" && (
-          <section className="grid gap-4">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat label="Total workouts" value={String(data.sessions.length)} />
-              <Stat label="Training time" value={`${Math.round(totalTime / 60_000)}m`} />
-              <Stat label="Total sets" value={String(allSets.length)} />
-              <Stat label="PRs" value={String(data.sessions.reduce((sum, session) => sum + sessionImprovementCount(data, session), 0))} />
-            </div>
-            <div className="grid gap-3 lg:grid-cols-2">
-              {data.plans.map((plan) => {
-                const sessions = data.sessions.filter((session) => session.planId === plan.id);
-                const totalDuration = sessions.reduce((sum, session) => {
-                  if (!session.endedAt) return sum;
-                  return sum + Math.max(0, new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime());
-                }, 0);
-                return (
-                  <article key={plan.id} className="rounded-2xl border border-white/10 p-4">
-                    <h3 className="font-semibold">{plan.name}</h3>
-                    <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
-                      <p className="rounded-xl bg-white/[0.04] p-2">Completed<br /><span className="font-semibold">{sessions.length}</span></p>
-                      <p className="rounded-xl bg-white/[0.04] p-2">Avg duration<br /><span className="font-semibold">{sessions.length ? `${Math.round(totalDuration / sessions.length / 60_000)}m` : "No data"}</span></p>
-                      <p className="rounded-xl bg-white/[0.04] p-2">Last<br /><span className="font-semibold">{sessions.at(-1) ? niceDate(sessions.at(-1)!.startedAt) : "No data"}</span></p>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {data.exercises.map((exercise) => {
-              const history = exerciseHistory(data, exercise.id);
-              const first = history.at(-1)?.sets[0];
-              const current = history[0]?.sets[0];
-              const best = bestSetForTracking(history.flatMap((entry) => entry.sets), exercise.trackingType);
-              return (
-                <article key={exercise.id} className="rounded-2xl border border-white/10 p-4">
-                  <h3 className="font-semibold">{exercise.name}</h3>
-                  <p className="text-sm text-slate-400">Performed {history.length} time(s)</p>
-                  <div className="mt-3 grid gap-2 text-sm">
-                    <p className="rounded-xl bg-white/[0.04] p-2">Started<br /><span className="font-semibold">{first ? setLabel(first, exercise.trackingType) : "No data yet"}</span></p>
-                    <p className="rounded-xl bg-white/[0.04] p-2">Current<br /><span className="font-semibold">{current ? setLabel(current, exercise.trackingType) : "No data yet"}</span></p>
-                    <p className="rounded-xl bg-cyan-400/10 p-2">Best<br /><span className="font-semibold">{best ? setLabel(best, exercise.trackingType) : "No data yet"}</span></p>
-                  </div>
-                  {!!history.length && (
-                    <div className="mt-4 flex h-16 items-end gap-1 rounded-xl bg-white/[0.03] p-2">
-                      {history.slice(0, 8).reverse().map((entry) => {
-                        const bestForSession = bestSetForTracking(entry.sets, exercise.trackingType);
-                        const maxValue = Math.max(...history.flatMap((item) => item.sets.map((set) => performanceValue(set, exercise.trackingType))), 1);
-                        const height = bestForSession ? Math.max(12, (performanceValue(bestForSession, exercise.trackingType) / maxValue) * 100) : 12;
-                        return (
-                          <div key={`${entry.session.id}-${entry.workoutExercise.id}-bar`} className="flex flex-1 items-end">
-                            <div className="w-full rounded-t bg-cyan-300/70" style={{ height: `${height}%` }} title={`${niceDate(entry.session.startedAt)} ${bestForSession ? setLabel(bestForSession, exercise.trackingType) : ""}`} />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-            </div>
-          </section>
-        )}
+        {activeTab === "progress" && <ProgressAnalysis analysis={progressAnalysis} />}
+        {activeTab === "settings" && <AvailableLoads settings={data.progressSettings} onSave={progressSettings => setData(current => ({ ...current, progressSettings }))} />}
       </div>
     </main>
   );
