@@ -124,28 +124,21 @@ try {
   await page.getByRole('button', { name: 'Start Workout', exact: true }).click();
   await page.getByRole('checkbox', { name: 'Complete all sets', exact: true }).check();
   await page.getByRole('button', { name: 'Complete All Sets', exact: true }).click();
-  const rir = page.getByRole('dialog', { name: 'How many more reps could you do?' });
-  await rir.waitFor();
-  assert.ok(await rir.getByText('Dumbbell Floor Press · Final working set saved', { exact: true }).isVisible());
-  await page.screenshot({ path: `${output}/rir-mobile.png` });
-  await rir.getByRole('button', { name: '2', exact: true }).click();
+  assert.equal(await page.getByRole('dialog').count(), 0);
   assert.ok(await page.getByRole('heading', { name: 'One-Arm Dumbbell Row', exact: true }).first().isVisible());
   const active = await page.evaluate(() => JSON.parse(localStorage.getItem('expense-tracker-gym-active')));
   assert.equal(active.session.sets.length, 3);
-  assert.equal(active.session.sets[2].repsInReserve, 2);
-  assert.equal(active.session.sets[0].repsInReserve, undefined);
+  assert.equal(active.session.sets[2].repsInReserve, undefined);
   await page.getByRole('checkbox', { name: 'Complete all sets', exact: true }).uncheck();
   await page.getByRole('button', { name: 'Complete Set', exact: true }).click();
   assert.equal(await page.getByRole('dialog').count(), 0);
   await page.getByRole('button', { name: 'Complete Set', exact: true }).click();
   assert.equal(await page.getByRole('dialog').count(), 0);
   await page.getByRole('button', { name: 'Complete Set', exact: true }).click();
-  await rir.waitFor();
-  await page.keyboard.press('Escape');
-  await rir.waitFor({ state: 'detached' });
+  assert.equal(await page.getByRole('dialog').count(), 0);
   const skippedRir = await page.evaluate(() => JSON.parse(localStorage.getItem('expense-tracker-gym-active')));
   assert.equal(skippedRir.session.sets.length, 6);
-  assert.equal(skippedRir.session.sets.at(-1).repsInReserve, undefined, 'Skipping RIR must not record zero');
+  assert.equal(skippedRir.session.sets.at(-1).repsInReserve, undefined, 'Completing sets must not record RIR');
   await context.close();
 
   const empty = await setup('light', 360, 'empty');
@@ -155,7 +148,7 @@ try {
   assert.equal((await inspect(empty.page)).overflow, false);
   await empty.context.close();
   assert.deepEqual(errors, []);
-  console.log(`PASS dark/light at 360/440/1440px, >=4.5 text contrast, empty/baseline/rich history, navigation, disclosures, settings, clipboard export, final-set RIR and auto-advance. Screenshots: ${output}`);
+  console.log(`PASS dark/light at 360/440/1440px, >=4.5 text contrast, empty/baseline/rich history, navigation, disclosures, settings, clipboard export, auto-advance without RIR prompt. Screenshots: ${output}`);
 } finally {
   await browser.close();
 }

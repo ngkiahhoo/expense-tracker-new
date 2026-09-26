@@ -25,7 +25,6 @@ import { Input, Select } from "@/components/ui/Field";
 import { getWorkoutState, saveWorkoutState } from "@/services/workoutService";
 import ProgressAnalysis, { recordLabel } from "@/components/gym/ProgressAnalysis";
 import AvailableLoads from "@/components/gym/AvailableLoads";
-import RIRPrompt from "@/components/gym/RIRPrompt";
 import { analyzeProgress, localDateKey } from "@/lib/gym/progress/calculate";
 import type { ProgressSettings } from "@/lib/gym/progress/types";
 
@@ -526,7 +525,6 @@ function GymPageContent() {
   const [completeAllSetsMode, setCompleteAllSetsMode] = useState(false);
   const [showPlanPreview, setShowPlanPreview] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [rirRequest, setRirRequest] = useState<{ sessionId: string; setId: string; exerciseName: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -885,9 +883,6 @@ function GymPageContent() {
     };
     const sets = [...active.session.sets, nextSet];
     const targetReached = existingSets.length + 1 >= exercise.plannedSetsSnapshot;
-    if (targetReached && (exercise.trackingTypeSnapshot === "weight_reps" || exercise.trackingTypeSnapshot === "reps")) {
-      setRirRequest({ sessionId: active.session.id, setId: nextSet.id, exerciseName: exercise.nameSnapshot });
-    }
     const exercises = active.session.exercises.map((item) => {
       if (item.id !== exercise.id) return item;
       return { ...item, status: targetReached ? "completed" as ExerciseStatus : "partial" as ExerciseStatus };
@@ -911,10 +906,6 @@ function GymPageContent() {
       completedAt,
       ...values,
     }));
-    const finalSet = addedSets.at(-1);
-    if (finalSet && (exercise.trackingTypeSnapshot === "weight_reps" || exercise.trackingTypeSnapshot === "reps")) {
-      setRirRequest({ sessionId: active.session.id, setId: finalSet.id, exerciseName: exercise.nameSnapshot });
-    }
     const exercises = active.session.exercises.map((item) =>
       item.id === exercise.id ? { ...item, status: "completed" as ExerciseStatus } : item
     );
@@ -1049,20 +1040,8 @@ function GymPageContent() {
     router.replace("/gym?tab=home");
   }
 
-  function saveRIR(repsInReserve?: number) {
-    if (rirRequest && repsInReserve !== undefined) {
-      setActive(current => current && current.session.id === rirRequest.sessionId ? {
-        ...current,
-        session: { ...current.session, sets: current.session.sets.map(set => set.id === rirRequest.setId ? { ...set, repsInReserve } : set) },
-      } : current);
-    }
-    setRirRequest(null);
-  }
-
   if (active) {
     return (
-      <>
-      {rirRequest && <RIRPrompt exerciseName={rirRequest.exerciseName} onAnswer={saveRIR} />}
       <WorkoutMode
         active={active}
         data={data}
@@ -1078,7 +1057,6 @@ function GymPageContent() {
         onFinishWorkout={finishWorkout}
         onDiscardWorkout={discardWorkout}
       />
-      </>
     );
   }
 
