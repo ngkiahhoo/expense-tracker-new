@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { APP_ICON_BUCKET, APP_ICON_PATH } from "@/utils/appIcon";
-import { supabase } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,7 @@ const noStoreHeaders = {
 };
 
 export async function GET(request: Request) {
+  if (!isSupabaseConfigured) return NextResponse.redirect(new URL("/icon.svg", request.url), { headers: noStoreHeaders });
   const { data, error } = await supabase.storage
     .from(APP_ICON_BUCKET)
     .download(APP_ICON_PATH);

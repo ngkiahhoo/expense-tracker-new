@@ -96,6 +96,8 @@ try {
   const { context, page } = await setup('dark', 440, 'history');
   await page.getByRole('link', { name: 'Open Progress Analysis' }).click();
   const card = page.getByRole('article').filter({ has: page.getByRole('heading', { name: 'Dumbbell Floor Press', exact: true }) });
+  assert.equal(await card.locator('details[open]').count(), 0);
+  await card.getByText('View details', { exact: true }).click();
   await card.getByText('Load history', { exact: false }).click();
   assert.ok(await card.getByText('5 to 7.5kg', { exact: true }).isVisible());
   await card.getByText('PR history', { exact: false }).click();
@@ -106,18 +108,18 @@ try {
   assert.deepEqual((await inspect(page)).violations, []);
 
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('link', { name: 'Available Loads', exact: true }).click();
-  await page.getByLabel('Weights you can configure').fill('5, 7.5, 12.5');
-  await page.getByRole('button', { name: 'Save loads' }).click();
-  await page.getByText('Available loads saved.', { exact: true }).waitFor();
+  await page.getByRole('link', { name: 'Equipment', exact: true }).click();
+  await page.getByLabel('Plate inventory').fill('1.25, 4\n2.5, 4\n3, 8');
+  await page.getByRole('button', { name: 'Save equipment' }).click();
+  await page.getByText('Equipment saved.', { exact: true }).waitFor();
   await page.getByRole('link', { name: 'Progress', exact: true }).click();
-  await page.getByRole('heading', { name: '12.5kg x 8', exact: true }).first().waitFor();
+  await page.getByRole('heading', { name: '8.5kg x 8', exact: true }).first().waitFor();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Export for AI', exact: true }).click();
   await page.getByText('AI export copied', { exact: true }).waitFor();
   const exported = await page.evaluate(() => navigator.clipboard.readText());
   assert.ok(exported.includes('PROGRESS ANALYSIS JSON'));
-  assert.ok(exported.includes('12.5kg x 8'));
+  assert.ok(exported.includes('8.5kg x 8'));
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
 
   await page.getByRole('link', { name: 'Go to Gym home', exact: true }).click();

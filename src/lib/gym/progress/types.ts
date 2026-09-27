@@ -27,7 +27,9 @@ export type ProgressExerciseOccurrence = {
   status: string;
 };
 
+export type PlateInventory = { weightKg: number; quantity: number };
 export type ProgressSettings = {
+  plateInventory?: PlateInventory[];
   availableLoads: number[];
   weightConvention: "per_dumbbell";
 };
@@ -83,7 +85,7 @@ export type LoadMilestone = {
   changePercent: number | null;
 };
 
-export type PRType = "load" | "estimated_strength" | "reps" | "duration" | "volume";
+export type PRType = "load" | "estimated_strength" | "reps" | "bodyweight_reps" | "duration" | "volume";
 export type PersonalRecord = {
   exerciseId: string;
   exerciseName: string;
@@ -131,6 +133,9 @@ export type ExerciseProgress = {
   currentRepsAtLoad: number | null;
   bestRepsAtCurrentLoad: number | null;
   bestRepsAtLoad: Record<string, number>;
+  repHistoryByLoad: Array<{ load: number; starting: number; current: number; change: number | null }>;
+  bestVolume: number | null;
+  volumeChange: number | null;
   repChangeAtCurrentLoad: number | null;
   startingMaxReps: number | null;
   currentMaxReps: number | null;
@@ -173,6 +178,7 @@ export type ProgressAnalysis = {
     rir: string;
   };
   overall: {
+    earlyTrend: boolean;
     trainingStartDate: string | null;
     trainingDays: number | null;
     workoutsCompleted: number;
@@ -183,5 +189,6 @@ export type ProgressAnalysis = {
   };
   monthly: { month: string; workoutsCompleted: number; exercisesImproved: number; loadIncreases: number; prs: number; progressSlowing: number; possiblePlateaus: number };
   recentSignal: PersonalRecord | null;
+  workoutFeedback: { date: string; today: boolean; improved: number; prs: number; items: Array<{ exerciseId: string; name: string; label: string; improved: boolean }> } | null;
   exercises: ExerciseProgress[];
 };

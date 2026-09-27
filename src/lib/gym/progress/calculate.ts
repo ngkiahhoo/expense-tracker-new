@@ -1,3 +1,4 @@
+import { DEFAULT_PLATE_INVENTORY, generateAvailableDumbbellLoads, getNextAvailableLoad } from "./equipment";
 import type { Confidence, ExerciseProgress, NextTarget, PersonalRecord, ProgressAnalysis, ProgressInput, ProgressSet, SessionPerformance, Targets, TrackingType } from "./types";
 
 const DAY = 86_400_000;
@@ -113,15 +114,20 @@ export function getNextTarget(type: TrackingType, current: SessionPerformance | 
     return { ...base, kind: "duration", weight: current.bestSet.weight ?? null, durationSeconds: next, label: `${type === "weight_time" ? `${current.bestSet.weight}kg x ` : ""}${next}s`, reason: "Next duration target", progressCurrent: duration, progressTarget: next };
   }
   const weight = current.highestWeight!;
+  if (!availableLoads.includes(weight)) {
+    const supported = availableLoads.filter(load => load <= weight).at(-1) ?? availableLoads[0];
+    return supported === undefined
+      ? { ...base, kind: "equipment_limit", label: "Equipment limit reached", reason: "No balanced plate load is available. Consider a bodyweight variation." }
+      : { ...base, kind: "repeat", weight: supported, reps: target.repMin, label: `${supported}kg x ${target.repMin}`, reason: "Your logged load is preserved. Establish a working baseline at an available plate load." };
+  }
   const sets = current.validSets;
   const reps = current.bestRepsAtWeight[String(weight)];
   const mastered = sets.length >= target.sets && sets.every(s => s.weight === weight && s.reps! >= target.repMax);
-  const common = { ...base, weight, reps, repRangeMastered: mastered, progressCurrent: reps, progressTarget: target.repMax };
+  const common = { ...base, weight, reps, repRangeMastered: mastered, progressCurrent: Math.min(...sets.filter(s => s.weight === weight).map(s => s.reps!)), progressTarget: target.repMax };
   if (mastered && current.repsInReserve === 0) return { ...common, kind: "repeat", label: `${weight}kg x ${target.repMax}`, reason: "Repeat this load and try to make the final set more comfortable (reported RIR 0)." };
   if (mastered) {
-    if (!availableLoads.length) return { ...common, kind: "configure_loads", label: "Set your available loads", reason: "Rep range completed. Configure equipment before increasing load." };
-    const nextLoad = availableLoads.find(load => load > weight);
-    if (nextLoad !== undefined) return { ...common, kind: "increase_load", weight: nextLoad, reps: target.repMin, label: `${nextLoad}kg x ${target.repMin}`, reason: "Rep range completed across all working sets. Ready to increase load." };
+    const nextLoad = getNextAvailableLoad(weight, availableLoads);
+    if (nextLoad !== null) return { ...common, kind: "increase_load", weight: nextLoad, reps: target.repMin, label: `${nextLoad}kg x ${target.repMin}`, reason: "Rep range completed across all working sets. Ready to increase load." };
     return { ...common, kind: "equipment_limit", label: "Current equipment limit reached", reason: "Keep this load; consider more reps, slower tempo or a harder variation." };
   }
   const nextReps = Math.min(target.repMax, Math.max(target.repMin, reps + 1));
@@ -134,6 +140,16 @@ export function getProgressStatus(sessionCount: number, noImprovement: number): 
   if (noImprovement >= 4) return "Progress slowing";
   if (noImprovement >= 3) return "Stable";
   return "Progressing";
+}
+
+export function getExerciseStatus(e: ExerciseProgress, asOfDate: string): string {
+  if (e.current && calendarDays(e.current.sessionDate, asOfDate) >= 21) return "No recent data";
+  const next = e.nextTarget;
+  if (next.kind === "equipment_limit") return "Equipment limit";
+  if (next.kind === "increase_load") return "Ready to increase load";
+  if (next.repRangeMastered) return "Rep range mastered";
+  if (next.progressTarget !== null && next.progressCurrent !== null && next.progressTarget - next.progressCurrent === 1) return "Close to target";
+  return e.status;
 }
 
 function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exercises"][number], today: string, availableLoads: number[]): ExerciseProgress {
@@ -194,7 +210,7 @@ function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exer
     for (const [load, reps] of Object.entries(session.bestRepsAtWeight)) {
       const previous = bestRepsAtLoad[load] ?? (type === "reps" && zeroRepBaselineDate ? 0 : undefined);
       if (previous !== undefined && reps > previous) {
-        addPR("reps", reps, previous, weighted(type) ? Number(load) : null, session.validSets.find(s => s.reps === reps && (!weighted(type) || s.weight === Number(load)))!);
+        addPR(type === "reps" ? "bodyweight_reps" : "reps", reps, previous, weighted(type) ? Number(load) : null, session.validSets.find(s => s.reps === reps && (!weighted(type) || s.weight === Number(load)))!);
         improved = true;
       }
       improvedFromPrevious ||= (previousReps[load] !== undefined && reps > previousReps[load]) || (type === "reps" && !!zeroRepBaselineDate && index === 0);
@@ -238,7 +254,7 @@ function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exer
   const plan = input.plans?.flatMap(p => p.exerciseIds ?? []).find(p => p.exerciseId === exercise.id);
   const target = plan ? targets(plan.targetSets, plan.targetRepMin, plan.targetRepMax, plan.targetDurationMax ?? plan.targetDurationMin) : current?.targets ?? targets();
   const nextTarget = getNextTarget(type, current, target, availableLoads);
-  if (!current && type === "reps" && zeroRepBaselineDate) Object.assign(nextTarget, { kind: "reps", label: "1 rep", reps: 1, reason: "First completed rep", progressCurrent: 0, progressTarget: 1 });
+  if (!current && type === "reps" && zeroRepBaselineDate) Object.assign(nextTarget, { kind: "reps", label: "1 rep", reps: 1, reason: /^pull[ -]?up$/i.test(exercise.name.trim()) ? "First Pull-up" : "First completed rep", progressCurrent: 0, progressTarget: 1 });
   const noImprovement = Math.max(0, uniqueSessions.length - 1 - lastImprovedSession);
   return {
     exerciseId: exercise.id, exerciseName: exercise.name, trackingType: type, sessions, sessionCount: uniqueSessions.length,
@@ -249,6 +265,8 @@ function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exer
     startingLoad: loadMilestones[0]?.load ?? null, currentLoad, highestLoad,
     loadChangePercent: uniqueSessions.length >= 2 ? percent(currentLoad, loadMilestones[0]?.load ?? null) : null,
     currentRepsAtLoad, bestRepsAtCurrentLoad: currentLoad !== null ? bestRepsAtLoad[String(currentLoad)] ?? null : null,
+    repHistoryByLoad: Object.keys(bestRepsAtLoad).map(load => ({ load: Number(load), starting: firstReps[load], current: previousReps[load], change: sessions.filter(s => s.bestRepsAtWeight[load] !== undefined).length >= 2 ? previousReps[load] - firstReps[load] : null })),
+    bestVolume, volumeChange: current?.sessionVolume != null && baseline?.sessionVolume != null && uniqueSessions.length >= 2 ? current.sessionVolume - baseline.sessionVolume : null,
     bestRepsAtLoad, repChangeAtCurrentLoad: currentRepsAtLoad !== null && currentLoad !== null ? currentRepsAtLoad - firstReps[String(currentLoad)] : null,
     startingMaxReps, currentMaxReps, bestMaxReps: type === "reps" ? bestRepsAtLoad["0"] ?? (zeroRepBaselineDate ? 0 : null) : null,
     repChange: startingMaxReps !== null && currentMaxReps !== null && (uniqueSessions.length >= 2 || !!zeroRepBaselineDate) ? currentMaxReps - startingMaxReps : null,
@@ -267,9 +285,78 @@ function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exer
   };
 }
 
+export function getOverallStrengthTrend(changes: number[]): number | null {
+  const values = changes.filter(Number.isFinite).map(n => Math.max(-50, Math.min(50, n))).sort((a, b) => a - b);
+  if (values.length < 2) return null;
+  const middle = Math.floor(values.length / 2);
+  return values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2;
+}
+
+function countAchievements(records: PersonalRecord[]) {
+  return new Set(records.map(r => `${r.exerciseId}:${r.sessionId}`)).size;
+}
+
+export function getSinceLastWorkoutProgress(input: ProgressInput, exercises: ExerciseProgress[], today: string): ProgressAnalysis["workoutFeedback"] {
+  const completed = input.sessions.filter(s => s && s.status === "completed" && validDate(s.endedAt ?? s.startedAt) && localDateKey(new Date(s.endedAt ?? s.startedAt)) <= today)
+    .sort((a, b) => Date.parse(a.endedAt ?? a.startedAt) - Date.parse(b.endedAt ?? b.startedAt) || a.id.localeCompare(b.id));
+  const latest = completed.at(-1);
+  if (!latest) return null;
+  const ids = new Set(completed.map(s => s.id));
+  const date = localDateKey(new Date(latest.endedAt ?? latest.startedAt));
+  // A partial workout can inform detailed analytics, but cannot establish a
+  // comparison/PR baseline for completed-workout feedback.
+  const feedbackExercises = input.sessions.some(s => s && !ids.has(s.id))
+    ? exercises.map(e => getExerciseProgress({ ...input, sessions: completed }, { id: e.exerciseId, name: e.exerciseName, trackingType: e.trackingType }, today, []))
+    : exercises;
+  const items = feedbackExercises.flatMap(e => {
+    const history = e.sessions.filter(s => ids.has(s.sessionId));
+    const index = history.findLastIndex(s => s.sessionId === latest.id);
+    if (index < 0) {
+      const occurrences = latest.exercises.filter(o => o.exerciseId === e.exerciseId && o.status !== "skipped" && o.trackingTypeSnapshot === e.trackingType);
+      if (!occurrences.length) return [];
+      const zeroAttempt = e.trackingType === "reps" && latest.sets.some(s => s && eligibleSet(s) && s.reps === 0 && occurrences.some(o => o.id === s.workoutExerciseId));
+      return [{ exerciseId: e.exerciseId, name: e.exerciseName, label: zeroAttempt ? "0 reps · First completed rep is next" : "No comparable data", improved: false }];
+    }
+    const current = history[index];
+    const prior = history.slice(0, index).filter(s => s.sessionId !== latest.id);
+    const previous = prior.at(-1);
+    let label = "No comparable data", improved = false;
+    if (previous) {
+      const load = current.highestWeight;
+      if (current.establishedLoad !== null && previous.establishedLoad !== null && current.establishedLoad > previous.establishedLoad) {
+        label = `Load ${previous.establishedLoad} → ${current.establishedLoad}kg`; improved = true;
+      } else {
+        const key = String(load ?? 0);
+        const duration = timed(e.trackingType);
+        const value = duration ? current.bestDurationAtWeight[key] : current.bestRepsAtWeight[key];
+        const comparable = prior.filter(s => (duration ? s.bestDurationAtWeight[key] : s.bestRepsAtWeight[key]) !== undefined);
+        const last = comparable.at(-1);
+        if (last) {
+          const before = duration ? last.bestDurationAtWeight[key] : last.bestRepsAtWeight[key];
+          const best = Math.max(...comparable.map(s => duration ? s.bestDurationAtWeight[key] : s.bestRepsAtWeight[key]));
+          improved = value > before;
+          label = improved ? `+${value - before} ${duration ? "sec" : value - before === 1 ? "rep" : "reps"}${load !== null ? ` at ${load}kg` : ""}` : value >= best ? "Matched previous best" : "Below previous best";
+        } else if (current.sessionE1RM !== null && previous.sessionE1RM !== null) {
+          improved = current.sessionE1RM > previous.sessionE1RM + 1e-9;
+          label = improved ? "Estimated strength improved" : current.sessionE1RM === previous.sessionE1RM ? "Matched previous best" : "Below previous best";
+        }
+      }
+    }
+    const pr = e.prHistory.filter(r => r.sessionId === latest.id).sort((a, b) => ({load: 0, estimated_strength: 1, reps: 2, bodyweight_reps: 2, duration: 2, volume: 3}[a.type] - {load: 0, estimated_strength: 1, reps: 2, bodyweight_reps: 2, duration: 2, volume: 3}[b.type]))[0];
+    if (pr) {
+      const title = pr.type === "bodyweight_reps" && pr.previousValue === 0 ? (/^pull[ -]?up$/i.test(e.exerciseName.trim()) ? "First Pull-up" : "First completed rep") : `New ${{load: "Load PR", reps: "Rep PR", bodyweight_reps: "Bodyweight Rep PR", estimated_strength: "Estimated Strength PR", duration: "Duration PR", volume: "Volume PR"}[pr.type]}`;
+      label = label.startsWith("+") ? `${label} · ${title}` : title;
+      improved = pr.type !== "volume" || improved;
+    }
+    return [{ exerciseId: e.exerciseId, name: e.exerciseName, label, improved }];
+  });
+  return { date, today: date === today, items, improved: items.filter(i => i.improved).length, prs: countAchievements(feedbackExercises.flatMap(e => e.prHistory).filter(r => r.sessionId === latest.id)) };
+}
+
 export function analyzeProgress(input: ProgressInput, asOfDate = localDateKey()): ProgressAnalysis {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(asOfDate) || !validDate(asOfDate)) throw new Error("A valid analysis date is required");
-  const settings = { availableLoads: normalizeAvailableLoads(input.progressSettings?.availableLoads), weightConvention: "per_dumbbell" as const };
+  const plateInventory = input.progressSettings?.plateInventory ?? DEFAULT_PLATE_INVENTORY;
+  const settings = { plateInventory, availableLoads: generateAvailableDumbbellLoads(plateInventory), weightConvention: "per_dumbbell" as const };
   const catalog = new Map((input.exercises ?? []).filter(Boolean).map(e => [e.id, e]));
   const catalogIds = new Set(catalog.keys());
   const historicalSessions = [...(input.sessions ?? [])].filter(s => s && validDate(s.startedAt) && s.status !== "deleted" && localDateKey(new Date(s.startedAt)) <= asOfDate)
@@ -284,37 +371,37 @@ export function analyzeProgress(input: ProgressInput, asOfDate = localDateKey())
     return (ai < 0 ? Infinity : ai) - (bi < 0 ? Infinity : bi) || a.id.localeCompare(b.id);
   }).map(e => getExerciseProgress(input, e, asOfDate, settings.availableLoads));
   const validSessionIds = new Set(exercises.flatMap(e => e.sessions.map(s => s.sessionId)));
-  const completed = (input.sessions ?? []).filter(s => s && s.status === "completed" && validSessionIds.has(s.id)).sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
+  const completed = historicalSessions.filter(s => s.status === "completed" && (validSessionIds.has(s.id) || s.exercises.some(o => o && o.status !== "skipped" && o.trackingTypeSnapshot === "reps" && s.sets.some(set => set && set.workoutExerciseId === o.id && eligibleSet(set) && set.reps === 0))));
   const eligible = exercises.filter(e => e.eligibleStrengthSessions >= 2 && e.baselineE1RM && e.currentE1RM);
-  const overallPercent = eligible.length >= 2 ? Math.expm1(eligible.reduce((sum, e) => sum + Math.log(e.currentE1RM! / e.baselineE1RM!), 0) / eligible.length) * 100 : null;
+  const overallPercent = getOverallStrengthTrend(eligible.map(e => e.estimatedStrengthChangePercent!));
   const records = exercises.flatMap(e => e.prHistory);
   const month = asOfDate.slice(0, 7);
   const activeThisMonth = exercises.filter(e => e.sessions.some(s => s.sessionDate.startsWith(month)));
-  const priority = { load: 0, estimated_strength: 1, reps: 2, duration: 2, volume: 3 };
-  const recent = [...records].sort((a, b) => b.date.localeCompare(a.date) || priority[a.type] - priority[b.type] || a.exerciseId.localeCompare(b.exerciseId))[0] ?? null;
+  const priority = { load: 0, estimated_strength: 1, reps: 2, bodyweight_reps: 2, duration: 2, volume: 3 };
+  const recent = [...records].sort((a, b) => b.date.localeCompare(a.date) || Number(b.type === "bodyweight_reps" && b.previousValue === 0) - Number(a.type === "bodyweight_reps" && a.previousValue === 0) || priority[a.type] - priority[b.type] || a.exerciseId.localeCompare(b.exerciseId))[0] ?? null;
   const start = completed[0] ? localDateKey(new Date(completed[0].startedAt)) : null;
   return {
     asOfDate, settings,
     methodology: {
       e1rm: "Estimate: Epley weight*(1+reps/30), 1-15 reps only; 11-15 reps lower confidence. Current is the most recent suitable session, not the historical best.",
-      overall: "Geometric mean of current/baseline e1RM ratios; at least two exercises, each with two eligible workout sessions.",
+      overall: "Median of per-exercise changes capped to -50%/+50% for aggregation only; at least two exercises with two eligible sessions. Early until 14 days and three eligible sessions per contributing exercise.",
       validSets: "Only valid completed non-warmup sets, excluding skipped exercises, deleted sets, invalid technique, zero reps and invalid values. Partial workouts may contribute valid sets. Changed tracking types are not mixed.",
       zeroRepAttempts: "An explicitly logged zero-rep attempt may establish a reps-only zero baseline; it never counts as a valid work set, volume or performed session.",
       loadMilestoneSessions: "Unique sessions performing this exercise after the previous milestone session, through and including the new milestone session. Calendar dates use the viewer's local timezone.",
-      prCounting: "Improvement records only; first result in each metric/load establishes its baseline. Separate categories can produce multiple PRs in one session. A first completed rep after an explicit zero attempt is an improvement.",
-      weightConvention: "Logged kg per dumbbell, or the single implement used; never silently doubled. Volume is logged weight*reps, not a strength score. Existing weights are not converted.",
+      prCounting: "Improvement records only; first result in each metric/load establishes its baseline. Detailed categories retained; headline counts deduplicate by exercise and workout. A first completed rep after an explicit zero attempt is an improvement.",
+      weightConvention: "Plate-only kg per dumbbell including single-dumbbell exercises; handles excluded; never silently doubled. Volume is logged weight*reps, not a strength score. Existing weights are not converted.",
       recommendations: "App suggestions, not measured outcomes. Use configured available loads only. Current plan targets take precedence for next targets; historical targets are used for historical established loads. For multiple plans the first plan containing the exercise supplies the current target.",
       rir: "User-reported subjective reps in reserve; 4 means 4 or more. Missing RIR is unknown, not zero.",
     },
-    overall: { trainingStartDate: start, trainingDays: start ? calendarDays(start, asOfDate) : null, workoutsCompleted: new Set(completed.map(s => s.id)).size,
-      validSets: exercises.reduce((sum, e) => sum + e.sessions.reduce((n, s) => n + s.validSets.length, 0), 0), lifetimePRs: records.length,
+    overall: { earlyTrend: !start || calendarDays(start, asOfDate) < 14 || eligible.length < 2 || eligible.some(e => e.eligibleStrengthSessions < 3), trainingStartDate: start, trainingDays: start ? calendarDays(start, asOfDate) : null, workoutsCompleted: new Set(completed.map(s => s.id)).size,
+      validSets: exercises.reduce((sum, e) => sum + e.sessions.reduce((n, s) => n + s.validSets.length, 0), 0), lifetimePRs: countAchievements(records),
       estimatedStrengthChangePercent: overallPercent, eligibleExerciseCount: eligible.length },
     monthly: { month, workoutsCompleted: completed.filter(s => localDateKey(new Date(s.startedAt)).startsWith(month)).length,
       exercisesImproved: exercises.filter(e => e.improvementDates.some(d => d.startsWith(month))).length,
       loadIncreases: records.filter(r => r.type === "load" && r.date.startsWith(month)).length,
-      prs: records.filter(r => r.date.startsWith(month)).length,
+      prs: countAchievements(records.filter(r => r.date.startsWith(month))),
       progressSlowing: activeThisMonth.filter(e => e.status === "Progress slowing").length,
       possiblePlateaus: activeThisMonth.filter(e => e.status === "Possible plateau").length },
-    recentSignal: recent, exercises,
+    recentSignal: recent, workoutFeedback: getSinceLastWorkoutProgress(input, exercises, asOfDate), exercises,
   };
 }

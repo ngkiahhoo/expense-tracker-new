@@ -352,7 +352,7 @@ export default function BottomActionBar({
                     href="/gym?tab=settings"
                     onClick={() => { setActiveMenu(null); onNavigate(); }}
                     icon={Dumbbell}
-                    label="Available Loads"
+                    label="Equipment"
                   />
                 )}
                 {isGym && (

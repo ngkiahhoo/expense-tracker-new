@@ -1,8 +1,9 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { moduleURL } from './load-typescript.mjs';
 
 const { analyzeProgress, calculateE1RM, normalizeAvailableLoads } = await import(moduleURL('src/lib/gym/progress/calculate.ts'));
 const { formatWorkoutAIExport } = await import(moduleURL('src/utils/formatWorkoutAIExport.ts'));
+const { generateAvailableDumbbellLoads, getNextAvailableLoad } = await import(moduleURL('src/lib/gym/progress/equipment.ts'));
 const today = '2026-11-30';
 const date = day => `2026-09-${String(day).padStart(2, '0')}T12:00:00Z`;
 const exercise = (id = 'press', trackingType = 'weight_reps') => ({ id, name: id, trackingType });
@@ -37,7 +38,7 @@ assert.equal(result.averageDaysPerLoadIncrease, null);
 // B: all planned working sets must master the range, with available equipment.
 const b = data([workout(1, [set(7.5, 12), set(7.5, 12), set(7.5, 12)])]);
 assert.equal(first(b).nextTarget.repRangeMastered, true);
-assert.equal(first(b).nextTarget.label, '10kg x 8');
+assert.equal(first(b).nextTarget.label, '8.5kg x 8');
 b.sessions[0].sets[2].reps = 11;
 assert.equal(first(b).nextTarget.repRangeMastered, false);
 assert.equal(first(b).nextTarget.weight, 7.5);
@@ -46,10 +47,10 @@ b.sessions[0].sets[2].repsInReserve = 0;
 assert.equal(first(b).nextTarget.kind, 'repeat');
 b.sessions[0].sets[2].repsInReserve = 2;
 assert.equal(first(b).nextTarget.kind, 'increase_load');
-b.progressSettings.availableLoads = [5, 7.5];
+b.progressSettings.plateInventory = [{ weightKg: 1.25, quantity: 4 }, { weightKg: 2.5, quantity: 4 }];
 assert.equal(first(b).nextTarget.kind, 'equipment_limit');
-b.progressSettings.availableLoads = [];
-assert.equal(first(b).nextTarget.kind, 'configure_loads');
+b.progressSettings.plateInventory = [];
+assert.equal(first(b).nextTarget.kind, 'equipment_limit');
 assert.deepEqual(normalizeAvailableLoads([10, 5, 5, -1, 0, NaN, Infinity, '7.5']), [5, 10]);
 
 // C: an explicit zero attempt is a baseline, but not a valid work set/session.
@@ -141,7 +142,7 @@ assert.equal(first(invalid).sessionCount, 0);
 const row = exercise('row');
 const overall = data([workout(1, [set(5, 10)]), workout(2, [set(6, 10)]), workout(1, [set(5, 10)], row), workout(2, [set(6.5, 10)], row)], [exercise(), row]);
 overall.plans.push({ id: 'B', name: 'Plan B', exerciseIds: overall.plans[0].exerciseIds });
-near(analyze(overall).overall.estimatedStrengthChangePercent, (Math.sqrt(1.2 * 1.3) - 1) * 100);
+near(analyze(overall).overall.estimatedStrengthChangePercent, 25);
 assert.equal(analyze(overall).exercises.length, 2);
 assert.equal(analyzeProgress(overall, '2026-09-30').monthly.exercisesImproved, 2);
 overall.exercises[0].name = 'Renamed press';
@@ -197,4 +198,66 @@ const mixed = data([workout(1, [set(5, 12), set(7.5, 12), set(7.5, 12)])]);
 assert.equal(first(mixed).nextTarget.repRangeMastered, false);
 mixed.sessions[0].sets = mixed.sessions[0].sets.slice(1);
 assert.equal(first(mixed).nextTarget.repRangeMastered, false);
-console.log('PASS Gym analysis A-H, invalid data, RIR, equipment, milestones, monthly metrics, geometric mean, identity, determinism and complete AI-export parity');
+console.log('PASS Gym analysis A-H, invalid data, RIR, equipment, milestones, monthly metrics, robust median, identity, determinism and complete AI-export parity');
+
+// Actual balanced plate inventory, exact subset sums and every next-load transition.
+const expectedLoads = [2.5, 5, 6, 7.5, 8.5, 11, 12, 13.5, 14.5, 17, 19.5];
+assert.deepEqual(generateAvailableDumbbellLoads(), expectedLoads);
+expectedLoads.forEach((load, i) => assert.equal(getNextAvailableLoad(load, expectedLoads), expectedLoads[i + 1] ?? null));
+assert.deepEqual(generateAvailableDumbbellLoads([{weightKg: 3, quantity: 7}]), [6]);
+assert.deepEqual(generateAvailableDumbbellLoads([{weightKg: 3, quantity: 2}, {weightKg: 3, quantity: 2}]), [6]);
+assert.equal(getNextAvailableLoad(7, [10, 8.5, 7.5]), 7.5);
+const sameLoad = data([workout(1,[set(5,10)]),workout(2,[set(5,12)]),workout(3,[set(7.5,8)]),workout(4,[set(7.5,11)])]);
+assert.equal(first(sameLoad).repChangeAtCurrentLoad, 3);
+assert.equal(first(sameLoad).bestRepsAtLoad['5'], 12);
+assert.match(analyze(sameLoad).workoutFeedback.items[0].label, /\+3 reps at 7.5kg/);
+const mastery = data([workout(1,[set(7.5,12),set(7.5,12),set(7.5,10)])]);
+assert.equal(first(mastery).nextTarget.weight,7.5);
+assert.equal(first(mastery).nextTarget.progressCurrent,10);
+mastery.sessions[0].sets[2].reps=12;
+assert.equal(first(mastery).nextTarget.weight,8.5);
+const pullup = {id:'pullup',name:'Pull-up',trackingType:'reps'};
+const zero = data([workout(1,[{reps:0}],pullup)],[pullup]);
+assert.equal(first(zero).nextTarget.reps,1);
+assert.equal(first(zero).nextTarget.reason,'First Pull-up');
+assert.equal(first(zero).estimatedStrengthChangePercent,null);
+zero.sessions.push(workout(2,[{reps:1}],pullup));
+assert.equal(first(zero).nextTarget.reps,2);
+assert.equal(analyze(zero).workoutFeedback.items[0].label,'First Pull-up');
+const feedback = data([workout(1,[set(5,10)]),workout(2,[set(5,11)])]);
+assert.equal(analyze(feedback).workoutFeedback.improved,1);
+assert.equal(analyze(feedback).overall.lifetimePRs,1);
+assert.equal(analyzeProgress(feedback,'2026-09-02').workoutFeedback.today,true);
+feedback.sessions.push(workout(3,[set(5,11)]));
+assert.equal(analyze(feedback).workoutFeedback.items[0].label,'Matched previous best');
+feedback.sessions.push(workout(4,[set(5,12)],exercise(),{status:'partial'}));
+assert.equal(analyze(feedback).workoutFeedback.date,'2026-09-03');
+assert.equal(analyzeProgress(overall,'2026-09-02').overall.earlyTrend,true);
+console.log('PASS inventory, exact load transitions, same-load reps, mastery, pull-up, completed-workout feedback and PR deduplication');
+
+
+// Independently enumerate all 16 subsets; the requested 10kg and 16kg are impossible.
+const pairs = [2.5,5,6,6];
+const brute = [...new Set(Array.from({length:16}, (_,mask) => pairs.reduce((sum,n,i) => sum + ((mask & (1 << i)) ? n : 0), 0)))].filter(Boolean).sort((a,b)=>a-b);
+assert.deepEqual(generateAvailableDumbbellLoads(),brute);
+assert.ok(!brute.includes(10) && !brute.includes(16));
+assert.deepEqual(first(sameLoad).repHistoryByLoad.map(r=>r.change),[2,3]);
+const combined = day => {
+  const press = workout(day,[set(5,day===1?10:11)]);
+  const rowSession = workout(day,[set(7.5,10)],row);
+  rowSession.exercises[0].id += '-row';
+  rowSession.sets.forEach(s=>s.workoutExerciseId += '-row');
+  press.exercises.push(...rowSession.exercises);press.sets.push(...rowSession.sets);
+  return press;
+};
+const two = analyze(data([combined(1),combined(2)],[exercise(),row]));
+assert.equal(two.workoutFeedback.improved,1);
+assert.equal(two.workoutFeedback.items.length,2);
+assert.equal(two.workoutFeedback.items.find(i=>i.exerciseId==='row').label,'Matched previous best');
+const mature = data([1,2,20].flatMap(day=>[workout(day,[set(5,10)]),workout(day,[set(5,10)],row)]),[exercise(),row]);
+assert.equal(analyzeProgress(mature,'2026-09-20').overall.earlyTrend,false);
+assert.equal(analyze(data([workout(1,[set(10,12)])])).exercises[0].nextTarget.weight,8.5);
+const { getOverallStrengthTrend } = await import(moduleURL('src/lib/gym/progress/calculate.ts'));
+assert.equal(getOverallStrengthTrend([1000,10,12]),12);
+assert.equal(getOverallStrengthTrend([1000]),null);
+console.log('PASS independent subset enumeration, multi-exercise feedback, confidence maturation and outlier robustness');

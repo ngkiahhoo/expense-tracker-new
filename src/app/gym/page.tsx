@@ -23,7 +23,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
 import { getWorkoutState, saveWorkoutState } from "@/services/workoutService";
-import ProgressAnalysis, { recordLabel } from "@/components/gym/ProgressAnalysis";
+import ProgressAnalysis, { recordLabel, WorkoutFeedback } from "@/components/gym/ProgressAnalysis";
 import AvailableLoads from "@/components/gym/AvailableLoads";
 import { analyzeProgress, localDateKey } from "@/lib/gym/progress/calculate";
 import type { ProgressSettings } from "@/lib/gym/progress/types";
@@ -390,19 +390,6 @@ function exerciseHistory(data: GymData, exerciseId: string) {
     });
 }
 
-function bestSetForTracking(sets: WorkoutSet[], trackingType: TrackingType) {
-  return [...sets].sort((a, b) => {
-    if (trackingType === "weight_reps") {
-      return ((b.weight || 0) * (b.reps || 0)) - ((a.weight || 0) * (a.reps || 0));
-    }
-    if (trackingType === "weight_time") {
-      return ((b.weight || 0) * (b.durationSeconds || 0)) - ((a.weight || 0) * (a.durationSeconds || 0));
-    }
-    if (trackingType === "time") return (b.durationSeconds || 0) - (a.durationSeconds || 0);
-    return (b.reps || 0) - (a.reps || 0);
-  })[0];
-}
-
 function sessionDurationLabel(session: WorkoutSession) {
   if (!session.endedAt) return "In progress";
   const minutes = Math.max(1, Math.round((new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()) / 60_000));
@@ -422,18 +409,6 @@ function performanceValue(set: WorkoutSet, trackingType: TrackingType) {
   if (trackingType === "reps") return Number(set.reps || 0);
   if (trackingType === "weight_time") return Number(set.weight || 0) * Number(set.durationSeconds || 0);
   return Number(set.weight || 0) * Number(set.reps || 0);
-}
-
-function sessionImprovementDetails(data: GymData, session: WorkoutSession) {
-  return session.exercises.flatMap((exercise) => {
-    const currentBest = bestSetForTracking(sessionExerciseSets(session, exercise), exercise.trackingTypeSnapshot);
-    const previous = lastExerciseSets(data, exercise.exerciseId, session.id);
-    const previousBest = previous ? bestSetForTracking(previous.sets, exercise.trackingTypeSnapshot) : undefined;
-    if (!currentBest || !previousBest) return [];
-    return performanceValue(currentBest, exercise.trackingTypeSnapshot) > performanceValue(previousBest, exercise.trackingTypeSnapshot)
-      ? [{ exercise, currentBest, previousBest }]
-      : [];
-  });
 }
 
 function completedSetComparison(previous: WorkoutSet[] | undefined, today: WorkoutSet[], trackingType: TrackingType) {
@@ -1491,38 +1466,16 @@ function GymPageContent() {
         {activeTab === "summary" && lastFinishedSession && (
           <section className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
             <article className="rounded-3xl border border-cyan-400/25 bg-cyan-400/10 p-5">
-              {(() => {
-                const improvements = sessionImprovementDetails(data, lastFinishedSession);
-                return (
-                  <>
               <p className="text-sm font-semibold uppercase tracking-wide text-cyan-300">Workout Summary</p>
               <h2 className="mt-2 text-3xl font-bold">{lastFinishedSession.planNameSnapshot}</h2>
               <p className="mt-1 text-sm text-slate-400">{niceDate(lastFinishedSession.startedAt)} - {sessionDurationLabel(lastFinishedSession)} - {lastFinishedSession.status}</p>
               <div className="mt-5 grid grid-cols-2 gap-3">
-                <Stat label="Exercises" value={`${lastFinishedSession.exercises.filter((item) => item.status === "completed").length}/${lastFinishedSession.exercises.length}`} />
+                <Stat label="Exercises" value={String(lastFinishedSession.exercises.filter(item => item.status === "completed").length)} />
                 <Stat label="Sets" value={String(lastFinishedSession.sets.length)} />
-                <Stat label="Volume" value={`${sessionVolume(lastFinishedSession).toLocaleString()}kg`} />
-                <Stat label="PRs" value={String(improvements.length)} />
+                <Stat label="Volume" value={sessionVolume(lastFinishedSession).toLocaleString() + " kg-reps"} />
+                <Stat label="PRs" value={String(new Set(progressAnalysis.exercises.flatMap(e => e.prHistory).filter(r => r.sessionId === lastFinishedSession.id).map(r => r.exerciseId)).size)} />
               </div>
-              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                <p className="font-semibold">{improvements.length ? `${improvements.length} performance PR${improvements.length === 1 ? "" : "s"}` : "Solid session"}</p>
-                <div className="mt-3 grid gap-2">
-                  {improvements.length ? improvements.map((item) => (
-                    <p key={item.exercise.id} className="rounded-xl bg-cyan-400/10 p-3 text-sm">
-                      <span className="font-semibold">{item.exercise.nameSnapshot}</span>
-                      <br />
-                      Previous: {setLabel(item.previousBest, item.exercise.trackingTypeSnapshot)}
-                      <br />
-                      Today: {setLabel(item.currentBest, item.exercise.trackingTypeSnapshot)}
-                    </p>
-                  )) : (
-                    <p className="text-sm text-slate-300">Completed {lastFinishedSession.exercises.filter((item) => item.status === "completed").length} / {lastFinishedSession.exercises.length} exercises.</p>
-                  )}
-                </div>
-              </div>
-                  </>
-                );
-              })()}
+              {lastFinishedSession.status === "completed" && <div className="gym-progress-analysis mt-4"><WorkoutFeedback feedback={progressAnalysis.workoutFeedback} /></div>}
               {lastFinishedSession.status === "partial" && lastFinishedSession.routineId && (
                 <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
                   <p className="font-semibold text-amber-200">Partial workout</p>

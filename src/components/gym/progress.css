@@ -101,3 +101,26 @@ html body .gym-progress-analysis .progress-info-text { display: block; font-size
   .progress-comparison { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .progress-overall-counts { gap: 10px; }
 }
+
+/* Compact dashboard: detailed records remain in native, keyboard-accessible disclosures. */
+.gym-progress-analysis { gap: 18px; }
+.progress-exercise { border-radius: 14px; }
+.progress-exercise-heading > div { flex-basis: 170px; }
+.progress-change { margin-block: 10px; }
+.progress-change > strong { font-size: 20px; }
+.progress-compact-comparison { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-block: 8px; }
+.progress-target { margin-top: 10px; padding-block: 10px; }
+.progress-target h4 { font-size: 22px; }
+.progress-target-bar { margin-top: 8px; }
+.progress-recent { padding: 18px; border: 1px solid var(--gym-accent); border-radius: 14px; background: var(--gym-surface-soft); }
+.progress-feedback { border: 1px solid var(--gym-border); border-radius: 14px; padding: 16px; }
+.progress-feedback ul { margin-top: 12px; display: grid; gap: 10px; }
+.progress-feedback li { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 16px; font-size: 14px; }
+.progress-feedback li strong { font-size: 14px; }
+.progress-all-details > summary { min-height: 36px; }
+@media (max-width: 700px) {
+  .progress-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding-block: 16px; }
+  .progress-overview h2, .progress-overall-estimate > strong { font-size: 23px; }
+  .progress-month-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .progress-section-heading { margin-bottom: 10px; }
+}

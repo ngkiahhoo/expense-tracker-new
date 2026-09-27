@@ -9,6 +9,7 @@ import useSoundPreference from "@/hooks/useSoundPreference";
 import useThemePreference from "../hooks/useThemePreference";
 import SyncStatus from "./SyncStatus";
 import { confirmPanelClose } from "@/hooks/useUnsavedChanges";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 const ToolsContext = createContext<{ activeTool: BottomTool | null; setActiveTool: Dispatch<SetStateAction<BottomTool | null>> } | null>(null);
 export function useAppTools() {
@@ -18,6 +19,19 @@ export function useAppTools() {
 }
 
 export default function AppShell({ children }: { children: ReactNode }) {
+  if (!isSupabaseConfigured) return <main className="min-h-screen bg-slate-950 p-6 text-slate-100 flex items-center justify-center">
+    <section className="max-w-xl rounded-2xl border border-emerald-800 bg-slate-900 p-6 space-y-4">
+      <h1 className="text-2xl font-semibold">Connect your existing database</h1>
+      <p>This local installation is missing its Supabase configuration. Your saved data has not been changed.</p>
+      <p>Restore your project’s <code>.env.local</code> file in the project root with these settings, then restart the development server:</p>
+      <ul className="list-disc pl-5 break-all"><li><code>NEXT_PUBLIC_SUPABASE_URL</code></li><li><code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code></li></ul>
+      <p>Use the existing project’s public URL and anon key, not a service-role secret.</p>
+    </section>
+  </main>;
+  return <ConfiguredAppShell>{children}</ConfiguredAppShell>;
+}
+
+function ConfiguredAppShell({ children }: { children: ReactNode }) {
   const [activeTool, setActiveTool] = useState<BottomTool | null>(null);
   const pathname = usePathname();
   const router = useRouter();
