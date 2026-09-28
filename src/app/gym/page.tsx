@@ -33,6 +33,7 @@ type TrackingType = "weight_reps" | "reps" | "time" | "weight_time";
 type ExerciseCategory = "upper" | "core" | "lower" | "full_body" | "cardio" | "mobility";
 type ScheduleType = "interval" | "weekdays" | "none";
 type SessionStatus = "completed" | "partial";
+import type { WorkoutFeedback as SessionFeedback } from "@/lib/gym/progress/types";
 type ExerciseStatus = "pending" | "completed" | "skipped" | "partial";
 
 type Exercise = {
@@ -110,6 +111,7 @@ type WorkoutSession = {
   status: SessionStatus;
   exercises: WorkoutExercise[];
   sets: WorkoutSet[];
+  feedback?: SessionFeedback;
 };
 
 type GymData = {
@@ -474,6 +476,35 @@ function GymPageShell() {
   );
 }
 
+function WorkoutFeedbackModal({ onSkip, onSave }: { onSkip: () => void; onSave: (feedback: SessionFeedback) => void }) {
+ const [feedback, setFeedback] = useState<SessionFeedback>({ finalSetRir: null, technique: "stable", pain: "none" });
+  const field = (label: string, key: keyof SessionFeedback, options: Array<[string | number, string]>) => (
+    <label className="grid gap-1 text-sm font-semibold text-slate-200">{label}
+      <Select value={feedback[key] == null ? "" : String(feedback[key])} onChange={(event) => setFeedback(current => ({ ...current, [key]: key === "finalSetRir" ? (event.target.value === "" ? null : Number(event.target.value)) : event.target.value }))}>
+        {options.map(([value, text]) => <option key={String(value)} value={String(value)}>{text}</option>)}
+      </Select>
+    </label>
+  );
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+      <div className="max-h-[calc(100dvh-3rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-emerald-400/35 bg-[#0b2118] p-5 shadow-2xl">
+        <h2 id="feedback-title" className="text-xl font-bold text-emerald-100">Training feedback</h2>
+        <p className="mt-2 text-sm text-slate-300">Optional. Choose the closest answer so the next target can account for today&apos;s condition.</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {field("Final working set RIR", "finalSetRir", [["", "Not sure"], [4, "4+ reps left"], [3, "3 reps left"], [2, "2 reps left"], [1, "1 rep left"], [0, "0 · could not do another rep"]])}
+          {field("Technique quality", "technique", [["stable", "Stable throughout"], ["some_breakdown", "Some breakdown near the end"], ["poor", "Technique limited performance"]])}
+          {field("Pain during training", "pain", [["none", "None"], ["mild", "Mild, did not change movement"], ["limiting", "Limited or stopped movement"]])}
+        </div>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <Button className="gym-button-primary" onClick={() => onSave(feedback)}>Save feedback</Button>
+          <Button className="gym-button-contrast" variant="outline" onClick={onSkip}>Skip feedback</Button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function GymPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -502,6 +533,7 @@ function GymPageContent() {
   const [completeAllSetsMode, setCompleteAllSetsMode] = useState(false);
   const [showPlanPreview, setShowPlanPreview] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [pendingFeedback, setPendingFeedback] = useState<WorkoutSession | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -615,6 +647,23 @@ function GymPageContent() {
       exercises: [...current.exercises, { id: id("ex"), name, trackingType: newExerciseType, category: newExerciseCategory, createdAt: now, updatedAt: now }],
     }));
     setNewExerciseName("");
+  }
+
+  function saveFinishedSession(session: WorkoutSession, feedback?: SessionFeedback) {
+    const completedSession = { ...session, feedback };
+    setData((current) => ({
+      ...current,
+      sessions: [...current.sessions, completedSession],
+      routines: current.routines.map((routine) => routine.id !== session.routineId ? routine : {
+        ...routine,
+        rotationIndex: routine.planIds.length ? (routine.rotationIndex + 1) % routine.planIds.length : 0,
+        lastCompletedAt: session.endedAt,
+      }),
+    }));
+    setLastFinishedSession(completedSession);
+    setPendingFeedback(null);
+    setTab("summary");
+    router.replace("/gym?tab=summary");
   }
 
   function startEditExercise(exercise: Exercise) {
@@ -954,22 +1003,8 @@ function GymPageContent() {
       router.replace("/gym?tab=home");
       return;
     }
-    setData((current) => ({
-      ...current,
-      sessions: [...current.sessions, session],
-      routines: current.routines.map((routine) => {
-        if (routine.id !== session.routineId || status !== "completed") return routine;
-        return {
-          ...routine,
-          rotationIndex: routine.planIds.length ? (routine.rotationIndex + 1) % routine.planIds.length : 0,
-          lastCompletedAt: session.endedAt,
-        };
-      }),
-    }));
-    setLastFinishedSession(session);
     setActive(null);
-    setTab("summary");
-    router.replace("/gym?tab=summary");
+    setPendingFeedback(session);
   }
 
   function discardWorkout() {
@@ -1043,6 +1078,8 @@ function GymPageContent() {
   }
 
   return (
+    <>
+    {pendingFeedback && <WorkoutFeedbackModal onSkip={() => saveFinishedSession(pendingFeedback)} onSave={(feedback) => saveFinishedSession(pendingFeedback, feedback)} />}
     <main className="gym-page gym-athletic gym-ui min-h-screen pb-40 text-slate-100">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-5 sm:px-6">
         <Link href="/gym?tab=home" className="gym-topbar flex items-center gap-3 pr-16" aria-label="Go to Gym home">
@@ -1537,6 +1574,7 @@ function GymPageContent() {
         {activeTab === "settings" && <AvailableLoads settings={data.progressSettings} onSave={progressSettings => setData(current => ({ ...current, progressSettings }))} />}
       </div>
     </main>
+    </>
   );
 }
 

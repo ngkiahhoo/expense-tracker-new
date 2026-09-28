@@ -285,7 +285,7 @@ function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exer
   const occurrenceIds = new Set(latestRaw?.exercises.filter(o => o && o.exerciseId === exercise.id && o.trackingTypeSnapshot === type && o.status !== "skipped").map(o => o.id));
   const techniqueIssue = latestRaw?.sets.some(s => s && occurrenceIds.has(s.workoutExerciseId) && !s.deleted && !s.isWarmup && s.techniqueValid === false) ?? false;
   const failedAttempt = latestRaw?.sets.some(s => s && occurrenceIds.has(s.workoutExerciseId) && eligibleSet(s) && (timed(type) ? s.durationSeconds === 0 : s.reps === 0)) ?? false;
-  const nextTarget = prescribeWorkout(type, sessions, target, availableLoads, today, { zeroBaseline: !!zeroRepBaselineDate, techniqueIssue, failedAttempt });
+  const nextTarget = prescribeWorkout(type, sessions, target, availableLoads, today, { zeroBaseline: !!zeroRepBaselineDate, techniqueIssue, failedAttempt, feedback: latestRaw?.feedback });
   const noImprovement = Math.max(0, completedSessionOrder.length - 1 - lastImprovedSession);
   return {
     exerciseId: exercise.id, exerciseName: exercise.name, trackingType: type, sessions, sessionCount: uniqueSessions.length,

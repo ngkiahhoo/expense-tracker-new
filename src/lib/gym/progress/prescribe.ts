@@ -174,6 +174,7 @@ export function prescribeWorkout(
 
   if (options.techniqueIssue || latest.techniqueIssue) return finish({ reason: "The latest workout included a technique issue. Repeat with clean form, reducing the load or difficulty if needed; do not add work today." });
   if (options.failedAttempt) return finish({ action: "rebuild", confidence: "low", reason: "Your latest attempt included zero completed reps or seconds. These are earlier reference targets, not a new progression. Use an easier load or variation and record a controlled baseline before adding work." });
+  if (options.feedback?.pain === "limiting" || options.feedback?.technique === "poor") return finish({ action: "rebuild", confidence: "low", reason: "Your feedback reported limiting pain or poor technique. Do not progress this exercise from that session; use an easier variation or stop and review the movement." });
   const daysSince = asOf ? Math.round((Date.parse(asOf) - Date.parse(latest.date)) / DAY) : 0;
   if (daysSince >= 21) return finish({ action: "rebuild", confidence: "low", reason: `It has been ${daysSince} days since this exercise. Treat these as previous reference targets: restart comfortably, reduce the load if needed, and rebuild a current baseline before progressing.`, basis: [...basis, "The 21-day review threshold is an app precaution, not a predicted amount of strength loss."] });
   if (weighted(type) && !loads.includes(latest.load!)) {

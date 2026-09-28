@@ -1,4 +1,4 @@
-import type { Confidence, NextTarget } from "./types";
+import type { Confidence, NextTarget, WorkoutFeedback } from "./types";
 
 export type PrescriptionSetTarget = {
   setNumber: number;
@@ -23,4 +23,5 @@ export type PrescriptionOptions = {
   /** Preserve a recent technique failure even when no set qualified for analytics. */
   techniqueIssue?: boolean;
   failedAttempt?: boolean;
+  feedback?: WorkoutFeedback;
 };

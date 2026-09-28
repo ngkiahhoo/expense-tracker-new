@@ -1,6 +1,14 @@
 import type { WorkoutPrescription } from "./prescription-types";
 
 export type TrackingType = "weight_reps" | "reps" | "time" | "weight_time";
+export type WorkoutFeedback = {
+  finalSetRir: 0 | 1 | 2 | 3 | 4 | null;
+  technique: "stable" | "some_breakdown" | "poor";
+  pain: "none" | "mild" | "limiting";
+  sleep?: "poor" | "okay" | "good" | "excellent";
+  fatigue?: "fresh" | "normal" | "more_tired" | "very_fatigued";
+  recovery?: "fully_recovered" | "mostly_recovered" | "still_sore" | "not_recovered";
+};
 
 export type ProgressSet = {
   id: string;
@@ -50,6 +58,7 @@ export type ProgressInput = {
   sessions: Array<{
     id: string;
     planId?: string;
+    feedback?: WorkoutFeedback;
     startedAt: string;
     endedAt?: string;
     status: string;
