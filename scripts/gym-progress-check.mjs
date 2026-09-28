@@ -1,7 +1,7 @@
 ﻿import assert from 'node:assert/strict';
 import { moduleURL } from './load-typescript.mjs';
 
-const { analyzeProgress, calculateE1RM, normalizeAvailableLoads } = await import(moduleURL('src/lib/gym/progress/calculate.ts'));
+const { analyzeProgress, calculateE1RM, getWorkoutExerciseProgress, normalizeAvailableLoads } = await import(moduleURL('src/lib/gym/progress/calculate.ts'));
 const { formatWorkoutAIExport } = await import(moduleURL('src/utils/formatWorkoutAIExport.ts'));
 const { generateAvailableDumbbellLoads, getNextAvailableLoad } = await import(moduleURL('src/lib/gym/progress/equipment.ts'));
 const today = '2026-11-30';
@@ -38,7 +38,8 @@ assert.equal(result.averageDaysPerLoadIncrease, null);
 // B: all planned working sets must master the range, with available equipment.
 const b = data([workout(1, [set(7.5, 12), set(7.5, 12), set(7.5, 12)])]);
 assert.equal(first(b).nextTarget.repRangeMastered, true);
-assert.equal(first(b).nextTarget.label, '8.5kg x 8');
+assert.equal(first(b).nextTarget.label, '7.5kg x 12');
+assert.match(first(b).nextTarget.reason, /more than 10%/);
 b.sessions[0].sets[2].reps = 11;
 assert.equal(first(b).nextTarget.repRangeMastered, false);
 assert.equal(first(b).nextTarget.weight, 7.5);
@@ -46,7 +47,10 @@ b.sessions[0].sets[2].reps = 12;
 b.sessions[0].sets[2].repsInReserve = 0;
 assert.equal(first(b).nextTarget.kind, 'repeat');
 b.sessions[0].sets[2].repsInReserve = 2;
-assert.equal(first(b).nextTarget.kind, 'increase_load');
+assert.equal(first(b).nextTarget.kind, 'repeat', 'A positive RIR does not bypass the load-increase limit');
+const smallStep = data([workout(1, [set(10, 12), set(10, 12), set(10, 12)])]);
+smallStep.progressSettings.plateInventory = [{ weightKg: 5, quantity: 4 }, { weightKg: 0.5, quantity: 4 }];
+assert.equal(first(smallStep).nextTarget.label, '11kg x 8', 'A 10% available increment remains eligible');
 b.progressSettings.plateInventory = [{ weightKg: 1.25, quantity: 4 }, { weightKg: 2.5, quantity: 4 }];
 assert.equal(first(b).nextTarget.kind, 'equipment_limit');
 b.progressSettings.plateInventory = [];
@@ -73,7 +77,7 @@ const d = data([30, 40, 45].map((durationSeconds, i) => workout(i + 1, [{ durati
 result = first(d);
 assert.equal(result.durationChange, 15);
 near(result.durationChangePercent, 50);
-assert.equal(result.nextTarget.label, '50s');
+assert.equal(result.nextTarget.label, '45s', 'No invented time increment without a plan goal');
 assert.equal(result.currentE1RM, null);
 d.plans[0].exerciseIds[0].targetDurationMax = 60;
 assert.equal(first(d).nextTarget.label, '60s');
@@ -215,7 +219,7 @@ const mastery = data([workout(1,[set(7.5,12),set(7.5,12),set(7.5,10)])]);
 assert.equal(first(mastery).nextTarget.weight,7.5);
 assert.equal(first(mastery).nextTarget.progressCurrent,10);
 mastery.sessions[0].sets[2].reps=12;
-assert.equal(first(mastery).nextTarget.weight,8.5);
+assert.equal(first(mastery).nextTarget.weight,7.5);
 const pullup = {id:'pullup',name:'Pull-up',trackingType:'reps'};
 const zero = data([workout(1,[{reps:0}],pullup)],[pullup]);
 assert.equal(first(zero).nextTarget.reps,1);
@@ -233,7 +237,25 @@ assert.equal(analyze(feedback).workoutFeedback.items[0].label,'Matched previous 
 feedback.sessions.push(workout(4,[set(5,12)],exercise(),{status:'partial'}));
 assert.equal(analyze(feedback).workoutFeedback.date,'2026-09-03');
 assert.equal(analyzeProgress(overall,'2026-09-02').overall.earlyTrend,true);
-console.log('PASS inventory, exact load transitions, same-load reps, mastery, pull-up, completed-workout feedback and PR deduplication');
+// Workout targets share Progress rules but use the active plan snapshot, not
+// the first plan containing this exercise or the sets being recorded today.
+const targetInput = data([workout(1, [set(10, 12), set(10, 12), set(10, 12)])]);
+targetInput.progressSettings = smallStep.progressSettings;
+const activeSession = workout(3, [set(11, 12), set(11, 12), set(11, 12)]);
+const activeExercise = activeSession.exercises[0];
+assert.deepEqual(getWorkoutExerciseProgress(targetInput, activeSession, activeExercise).nextTarget, first(targetInput).nextTarget);
+const snapshotExercise = { ...activeExercise, targetRepMin: 10, targetRepMax: 15 };
+assert.equal(getWorkoutExerciseProgress(targetInput, activeSession, snapshotExercise).nextTarget.label, '10kg x 13');
+targetInput.sessions.push(activeSession, workout(4, [set(11, 15)]));
+assert.equal(getWorkoutExerciseProgress(targetInput, activeSession, activeExercise).nextTarget.label, '11kg x 8', 'Ignore active and future sessions');
+assert.equal(getWorkoutExerciseProgress(data(), activeSession, activeExercise).nextTarget.weight, null, 'Do not invent a starting load');
+assert.equal(getWorkoutExerciseProgress(targetInput, activeSession, { ...activeExercise, exerciseId: 'different' }).nextTarget.kind, 'first_session');
+assert.equal(getWorkoutExerciseProgress(targetInput, activeSession, { ...activeExercise, trackingTypeSnapshot: 'time' }).nextTarget.kind, 'first_session', 'Do not mix tracking types');
+const holdInput = data([workout(1, [{ durationSeconds: 60 }], plank)], [plank]);
+holdInput.plans[0].exerciseIds[0].targetDurationMax = 60;
+assert.equal(first(holdInput).nextTarget.durationSeconds, 60, 'Reaching a duration goal does not invent another five seconds');
+
+console.log('PASS inventory, load limits, duration goals, active-workout target parity and isolation, same-load reps, mastery, pull-up, completed-workout feedback and PR deduplication');
 
 
 // Independently enumerate all 16 subsets; the requested 10kg and 16kg are impossible.

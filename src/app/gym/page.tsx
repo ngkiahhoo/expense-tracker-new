@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -25,7 +25,8 @@ import { Input, Select } from "@/components/ui/Field";
 import { getWorkoutState, saveWorkoutState } from "@/services/workoutService";
 import ProgressAnalysis, { recordLabel, WorkoutFeedback } from "@/components/gym/ProgressAnalysis";
 import AvailableLoads from "@/components/gym/AvailableLoads";
-import { analyzeProgress, localDateKey } from "@/lib/gym/progress/calculate";
+import WorkoutTarget from "@/components/gym/WorkoutTarget";
+import { analyzeProgress, getWorkoutExerciseProgress, localDateKey } from "@/lib/gym/progress/calculate";
 import type { ProgressSettings } from "@/lib/gym/progress/types";
 
 type TrackingType = "weight_reps" | "reps" | "time" | "weight_time";
@@ -1634,6 +1635,10 @@ function WorkoutMode({
   onDiscardWorkout: () => void;
 }) {
   const current = active.session.exercises[active.currentExerciseIndex];
+  const targetProgress = useMemo(
+    () => getWorkoutExerciseProgress(data, active.session, current),
+    [data, active.session, current]
+  );
   const completedSets = active.session.sets.filter((set) => set.workoutExerciseId === current.id);
   const previous = lastExerciseSets(data, current.exerciseId, active.session.id);
   const prefill = previous?.sets[completedSets.length] || previous?.sets.at(-1);
@@ -1649,8 +1654,17 @@ function WorkoutMode({
   const timerValue = timerStartedAt ? Math.max(0, Math.floor((nowMs - timerStartedAt) / 1000)) : duration;
   const sessionStatus = getSessionStatus(active.session);
   const readyToFinish = sessionStatus === "completed";
+  const completionDialogRef = useRef<HTMLDialogElement>(null);
   const visibleOutlineButton = "gym-button-contrast";
   const visibleDangerButton = "gym-button-danger";
+
+  useEffect(() => {
+    const dialog = completionDialogRef.current;
+    if (!dialog) return;
+    if (readyToFinish) dialog.showModal();
+    else dialog.close();
+    return () => dialog.close();
+  }, [readyToFinish]);
 
   useEffect(() => {
     if (!setFeedback) return;
@@ -1797,13 +1811,16 @@ function WorkoutMode({
               <Check className="size-5" /> {completeAllSetsMode ? "Complete All Sets" : "Complete Set"}
             </Button>
           ) : (
-            <>
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <Button onClick={() => onFinishExercise("completed")}>Finish Exercise</Button>
                 <Button className={visibleOutlineButton} variant="outline" onClick={completeCurrentSet}>+ Add Set</Button>
               </div>
+          )}
+          {completedSets.length > 0 && (
               <div className="gym-success-panel mt-3 rounded-2xl border p-3">
-                <p className="text-sm font-semibold text-emerald-200">Target sets reached</p>
+                <p className="text-sm font-semibold text-emerald-200">
+                  {completedSets.length >= current.plannedSetsSnapshot ? "Target sets reached" : "Completed sets"}
+                </p>
                 <div className="mt-3 grid gap-2">
                   <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-2 text-xs font-semibold uppercase text-emerald-100/70">
                     <span>Set</span>
@@ -1833,15 +1850,6 @@ function WorkoutMode({
                   )}
                 </div>
               </div>
-            </>
-          )}
-          {readyToFinish && (
-            <div className="gym-success-panel mt-4 rounded-2xl border p-3">
-              <p className="text-sm font-semibold text-emerald-100">All exercises are done.</p>
-              <Button className="gym-button-primary mt-3 w-full text-base uppercase" size="lg" onClick={() => setShowFinishConfirm(true)}>
-                <Check className="size-5" /> Finish Workout
-              </Button>
-            </div>
           )}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
@@ -1858,6 +1866,8 @@ function WorkoutMode({
             <span className="text-sm text-slate-500">Exercise {active.currentExerciseIndex + 1} of {active.session.exercises.length}</span>
           </div>
         </section>
+
+        <WorkoutTarget progress={targetProgress} exercise={current} />
 
         <section className="gym-card rounded-3xl border p-5">
           <div>
@@ -1892,6 +1902,26 @@ function WorkoutMode({
         </section>
         </div>
       </div>
+      <dialog
+        ref={completionDialogRef}
+        aria-labelledby="workout-complete-title"
+        className="fixed inset-0 m-auto max-h-[calc(100dvh-3rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-2xl border border-emerald-400/40 bg-[#0d291c] p-4 text-emerald-100 shadow-2xl backdrop:bg-black/75 backdrop:backdrop-blur-md"
+      >
+        <h2 id="workout-complete-title" className="text-lg font-semibold">All exercises are done.</h2>
+        <Button
+          className="gym-button-primary mt-4 w-full text-base uppercase"
+          size="lg"
+          onClick={() => {
+            completionDialogRef.current?.close();
+            setShowFinishConfirm(true);
+          }}
+        >
+          <Check className="size-5" /> Finish Workout
+        </Button>
+        <Button className={`${visibleOutlineButton} mt-2 w-full`} variant="outline" onClick={() => completionDialogRef.current?.close()}>
+          Keep Training
+        </Button>
+      </dialog>
       {showFinishConfirm && typeof document !== "undefined" && createPortal(
         <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-md"

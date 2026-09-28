@@ -1,5 +1,5 @@
 import { DEFAULT_PLATE_INVENTORY, generateAvailableDumbbellLoads, getNextAvailableLoad } from "./equipment";
-import type { Confidence, ExerciseProgress, NextTarget, PersonalRecord, ProgressAnalysis, ProgressInput, ProgressSet, SessionPerformance, Targets, TrackingType } from "./types";
+import type { Confidence, ExerciseProgress, NextTarget, PersonalRecord, ProgressAnalysis, ProgressExerciseOccurrence, ProgressInput, ProgressSet, SessionPerformance, Targets, TrackingType } from "./types";
 
 const DAY = 86_400_000;
 const positive = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n > 0;
@@ -110,8 +110,8 @@ export function getNextTarget(type: TrackingType, current: SessionPerformance | 
   }
   if (timed(type)) {
     const duration = current.bestSet.durationSeconds!;
-    const next = target.duration && target.duration > duration ? target.duration : duration + 5;
-    return { ...base, kind: "duration", weight: current.bestSet.weight ?? null, durationSeconds: next, label: `${type === "weight_time" ? `${current.bestSet.weight}kg x ` : ""}${next}s`, reason: "Next duration target", progressCurrent: duration, progressTarget: next };
+    const next = target.duration ?? duration;
+    return { ...base, kind: "duration", weight: current.bestSet.weight ?? null, durationSeconds: next, label: `${type === "weight_time" ? `${current.bestSet.weight}kg x ` : ""}${next}s`, reason: target.duration ? "Use your plan's duration target at the same load; no automatic time increase." : "Repeat the recorded duration. Set a duration goal in your plan before progressing.", progressCurrent: duration, progressTarget: next };
   }
   const weight = current.highestWeight!;
   if (!availableLoads.includes(weight)) {
@@ -127,11 +127,33 @@ export function getNextTarget(type: TrackingType, current: SessionPerformance | 
   if (mastered && current.repsInReserve === 0) return { ...common, kind: "repeat", label: `${weight}kg x ${target.repMax}`, reason: "Repeat this load and try to make the final set more comfortable (reported RIR 0)." };
   if (mastered) {
     const nextLoad = getNextAvailableLoad(weight, availableLoads);
-    if (nextLoad !== null) return { ...common, kind: "increase_load", weight: nextLoad, reps: target.repMin, label: `${nextLoad}kg x ${target.repMin}`, reason: "Rep range completed across all working sets. Ready to increase load." };
+    // ACSM's 2009 progression guidance uses 2–10% load increases. This app
+    // applies a conservative upper bound, not a prediction of individual capacity.
+    if (nextLoad !== null && nextLoad > weight * 1.1 + 1e-9) return { ...common, kind: "repeat", reps: target.repMax, label: `${weight}kg x ${target.repMax}`, reason: `The next available load (${nextLoad}kg) is more than 10% heavier. Repeat this load or configure smaller plates.` };
+    if (nextLoad !== null) return { ...common, kind: "increase_load", weight: nextLoad, reps: target.repMin, label: `${nextLoad}kg x ${target.repMin}`, reason: "Rep range completed across all working sets. Try the next available load (at most 10% heavier), starting at the lower end of your rep range." };
     return { ...common, kind: "equipment_limit", label: "Current equipment limit reached", reason: "Keep this load; consider more reps, slower tempo or a harder variation." };
   }
   const nextReps = Math.min(target.repMax, Math.max(target.repMin, reps + 1));
   return { ...common, kind: "reps", reps: nextReps, label: `${weight}kg x ${nextReps}`, reason: reps >= target.repMax ? `Bring all ${target.sets} working sets to ${target.repMax} reps at this load.` : `${Math.max(0, target.repMax - reps)} reps to the top of the range; complete all ${target.sets} working sets.` };
+}
+
+// Use the same Progress engine, but the active workout's frozen plan targets.
+// Today's unsaved sets must not move the goalposts while a workout is underway.
+export function getWorkoutExerciseProgress(input: ProgressInput, session: { id: string; startedAt: string }, exercise: ProgressExerciseOccurrence): ExerciseProgress {
+  const scopedInput: ProgressInput = {
+    ...input,
+    sessions: input.sessions.filter(item => item.id !== session.id && Date.parse(item.startedAt) < Date.parse(session.startedAt)),
+    plans: [{ id: session.id, exerciseIds: [{
+      exerciseId: exercise.exerciseId,
+      targetSets: exercise.plannedSetsSnapshot,
+      targetRepMin: exercise.targetRepMin,
+      targetRepMax: exercise.targetRepMax,
+      targetDurationMin: exercise.targetDurationMin,
+      targetDurationMax: exercise.targetDurationMax,
+    }] }],
+  };
+  const loads = generateAvailableDumbbellLoads(input.progressSettings?.plateInventory ?? DEFAULT_PLATE_INVENTORY);
+  return getExerciseProgress(scopedInput, { id: exercise.exerciseId, name: exercise.nameSnapshot, trackingType: exercise.trackingTypeSnapshot }, localDateKey(new Date(session.startedAt)), loads);
 }
 
 export function getProgressStatus(sessionCount: number, noImprovement: number): ExerciseProgress["status"] {
