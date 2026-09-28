@@ -1,5 +1,6 @@
-import { DEFAULT_PLATE_INVENTORY, generateAvailableDumbbellLoads, getNextAvailableLoad } from "./equipment";
-import type { Confidence, ExerciseProgress, NextTarget, PersonalRecord, ProgressAnalysis, ProgressExerciseOccurrence, ProgressInput, ProgressSet, SessionPerformance, Targets, TrackingType } from "./types";
+import { prescribeWorkout } from "./prescribe";
+import { DEFAULT_PLATE_INVENTORY, generateAvailableDumbbellLoads } from "./equipment";
+import type { Confidence, ExerciseProgress, PersonalRecord, ProgressAnalysis, ProgressExerciseOccurrence, ProgressInput, ProgressSet, SessionPerformance, Targets, TrackingType } from "./types";
 
 const DAY = 86_400_000;
 const positive = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n > 0;
@@ -38,14 +39,39 @@ export function isValidWorkSet(set: ProgressSet, type: TrackingType) {
   return timed(type) ? positive(set.durationSeconds) : count(set.reps);
 }
 
-function targets(sets?: number, repMin?: number, repMax?: number, duration?: number): Targets {
+function targets(sets?: number, repMin?: number, repMax?: number, duration?: number, durationMin?: number): Targets {
   const min = count(repMin) ? repMin : 8;
-  return { sets: count(sets) ? sets : 3, repMin: min, repMax: Math.max(min, count(repMax) ? repMax : 12), duration: positive(duration) ? duration : null };
+  return { sets: count(sets) ? sets : 3, repMin: min, repMax: Math.max(min, count(repMax) ? repMax : 12), duration: positive(duration) ? duration : null, durationMin: positive(durationMin) ? Math.min(durationMin, positive(duration) ? duration : durationMin) : null };
 }
 
 function compareSets(a: ProgressSet, b: ProgressSet, type: TrackingType) {
   return (weighted(type) ? (a.weight ?? 0) - (b.weight ?? 0) : 0)
     || (timed(type) ? (a.durationSeconds ?? 0) - (b.durationSeconds ?? 0) : (a.reps ?? 0) - (b.reps ?? 0));
+}
+
+// A best set can stay unchanged while later sets improve. Compare the complete
+// logged work only when set count and the load at every set position match.
+// Extra sets and a different load are useful facts, but not this comparison.
+function workSignature(session: SessionPerformance, type: TrackingType) {
+  return session.validSets.map(set => `${set.setNumber}:${weighted(type) ? set.weight : 0}`).join("|");
+}
+
+function totalWork(session: SessionPerformance, type: TrackingType) {
+  return session.validSets.reduce((sum, set) => sum + (timed(type) ? set.durationSeconds! : set.reps!), 0);
+}
+
+function compareWork(current: SessionPerformance, prior: SessionPerformance[], type: TrackingType): ExerciseProgress["workComparison"] {
+  const signature = workSignature(current, type);
+  const previous = prior.findLast(session => session.sessionId !== current.sessionId && workSignature(session, type) === signature);
+  if (!previous) return null;
+  const currentTotal = totalWork(current, type);
+  const previousTotal = totalWork(previous, type);
+  const loads = [...new Set(current.validSets.map(set => set.weight))];
+  return {
+    previousSessionId: previous.sessionId, previousDate: previous.sessionDate,
+    setCount: current.validSets.length, load: weighted(type) && loads.length === 1 ? loads[0]! : null,
+    unit: timed(type) ? "seconds" : "reps", previousTotal, currentTotal, change: currentTotal - previousTotal,
+  };
 }
 
 function performance(input: ProgressInput, exerciseId: string, type: TrackingType, today: string) {
@@ -62,13 +88,15 @@ function performance(input: ProgressInput, exerciseId: string, type: TrackingTyp
         if (!zeroRepBaselineDate || day < zeroRepBaselineDate) zeroRepBaselineDate = day;
       }
       const seen = new Set<string>();
+      const seenSlots = new Set<number>();
       const sets = raw.filter(s => {
-        if (!isValidWorkSet(s, type) || seen.has(s.id)) return false;
+        if (!isValidWorkSet(s, type) || !s.id || !count(s.setNumber) || seen.has(s.id) || seenSlots.has(s.setNumber) || localDateKey(new Date(s.completedAt)) > today) return false;
         seen.add(s.id);
+        seenSlots.add(s.setNumber);
         return true;
       }).sort((a, b) => a.setNumber - b.setNumber || a.completedAt.localeCompare(b.completedAt) || a.id.localeCompare(b.id));
       if (!sets.length) continue;
-      const target = targets(occurrence.plannedSetsSnapshot, occurrence.targetRepMin, occurrence.targetRepMax, occurrence.targetDurationMax ?? occurrence.targetDurationMin);
+      const target = targets(occurrence.plannedSetsSnapshot, occurrence.targetRepMin, occurrence.targetRepMax, occurrence.targetDurationMax ?? occurrence.targetDurationMin, occurrence.targetDurationMin);
       const bestRepsAtWeight: Record<string, number> = {};
       const bestDurationAtWeight: Record<string, number> = {};
       for (const set of sets) {
@@ -86,11 +114,14 @@ function performance(input: ProgressInput, exerciseId: string, type: TrackingTyp
       const rir = sets.at(-1)?.repsInReserve;
       result.push({
         sessionId: session.id, occurrenceId: occurrence.id, sessionDate: day, exerciseId, targets: target, validSets: sets,
+        techniqueIssue: raw.some(set => set && !set.deleted && !set.isWarmup && set.techniqueValid === false),
         highestWeight: weighted(type) ? Math.max(...sets.map(s => s.weight!)) : null,
         establishedLoad, bestRepsAtWeight, bestDurationAtWeight,
         bestSet: sets.reduce((best, s) => compareSets(s, best, type) > 0 ? s : best),
         sessionVolume: type === "weight_reps" ? sets.reduce((sum, s) => sum + s.weight! * s.reps!, 0) : null,
-        sessionE1RM: estimates[0]?.value ?? null, e1rmConfidence: estimates[0]?.confidence ?? "insufficient",
+        // Routine work sets are not validated repetition-maximum tests. The
+        // index also omits handle mass under the app's plate-only convention.
+        sessionE1RM: estimates[0]?.value ?? null, e1rmConfidence: estimates.length ? "low" : "insufficient",
         repsInReserve: typeof rir === "number" && Number.isInteger(rir) && rir >= 0 && rir <= 4 ? rir : null,
       });
     }
@@ -101,40 +132,8 @@ function performance(input: ProgressInput, exerciseId: string, type: TrackingTyp
   return { sessions: result, zeroRepBaselineDate };
 }
 
-export function getNextTarget(type: TrackingType, current: SessionPerformance | null, target: Targets, availableLoads: number[]): NextTarget {
-  const base: NextTarget = { kind: "first_session", label: "Complete your first session", reason: "Establish a baseline", weight: null, reps: null, durationSeconds: null, repRangeMastered: false, progressCurrent: null, progressTarget: null };
-  if (!current) return base;
-  if (type === "reps") {
-    const reps = current.bestSet.reps!;
-    return { ...base, kind: "reps", reps: reps + 1, label: `${reps + 1} reps`, reason: "One more rep than your latest best set", progressCurrent: reps, progressTarget: reps + 1 };
-  }
-  if (timed(type)) {
-    const duration = current.bestSet.durationSeconds!;
-    const next = target.duration ?? duration;
-    return { ...base, kind: "duration", weight: current.bestSet.weight ?? null, durationSeconds: next, label: `${type === "weight_time" ? `${current.bestSet.weight}kg x ` : ""}${next}s`, reason: target.duration ? "Use your plan's duration target at the same load; no automatic time increase." : "Repeat the recorded duration. Set a duration goal in your plan before progressing.", progressCurrent: duration, progressTarget: next };
-  }
-  const weight = current.highestWeight!;
-  if (!availableLoads.includes(weight)) {
-    const supported = availableLoads.filter(load => load <= weight).at(-1) ?? availableLoads[0];
-    return supported === undefined
-      ? { ...base, kind: "equipment_limit", label: "Equipment limit reached", reason: "No balanced plate load is available. Consider a bodyweight variation." }
-      : { ...base, kind: "repeat", weight: supported, reps: target.repMin, label: `${supported}kg x ${target.repMin}`, reason: "Your logged load is preserved. Establish a working baseline at an available plate load." };
-  }
-  const sets = current.validSets;
-  const reps = current.bestRepsAtWeight[String(weight)];
-  const mastered = sets.length >= target.sets && sets.every(s => s.weight === weight && s.reps! >= target.repMax);
-  const common = { ...base, weight, reps, repRangeMastered: mastered, progressCurrent: Math.min(...sets.filter(s => s.weight === weight).map(s => s.reps!)), progressTarget: target.repMax };
-  if (mastered && current.repsInReserve === 0) return { ...common, kind: "repeat", label: `${weight}kg x ${target.repMax}`, reason: "Repeat this load and try to make the final set more comfortable (reported RIR 0)." };
-  if (mastered) {
-    const nextLoad = getNextAvailableLoad(weight, availableLoads);
-    // ACSM's 2009 progression guidance uses 2–10% load increases. This app
-    // applies a conservative upper bound, not a prediction of individual capacity.
-    if (nextLoad !== null && nextLoad > weight * 1.1 + 1e-9) return { ...common, kind: "repeat", reps: target.repMax, label: `${weight}kg x ${target.repMax}`, reason: `The next available load (${nextLoad}kg) is more than 10% heavier. Repeat this load or configure smaller plates.` };
-    if (nextLoad !== null) return { ...common, kind: "increase_load", weight: nextLoad, reps: target.repMin, label: `${nextLoad}kg x ${target.repMin}`, reason: "Rep range completed across all working sets. Try the next available load (at most 10% heavier), starting at the lower end of your rep range." };
-    return { ...common, kind: "equipment_limit", label: "Current equipment limit reached", reason: "Keep this load; consider more reps, slower tempo or a harder variation." };
-  }
-  const nextReps = Math.min(target.repMax, Math.max(target.repMin, reps + 1));
-  return { ...common, kind: "reps", reps: nextReps, label: `${weight}kg x ${nextReps}`, reason: reps >= target.repMax ? `Bring all ${target.sets} working sets to ${target.repMax} reps at this load.` : `${Math.max(0, target.repMax - reps)} reps to the top of the range; complete all ${target.sets} working sets.` };
+export function getNextTarget(type: TrackingType, current: SessionPerformance | null, target: Targets, availableLoads: number[]) {
+  return prescribeWorkout(type, current ? [current] : [], target, availableLoads);
 }
 
 // Use the same Progress engine, but the active workout's frozen plan targets.
@@ -142,7 +141,7 @@ export function getNextTarget(type: TrackingType, current: SessionPerformance | 
 export function getWorkoutExerciseProgress(input: ProgressInput, session: { id: string; startedAt: string }, exercise: ProgressExerciseOccurrence): ExerciseProgress {
   const scopedInput: ProgressInput = {
     ...input,
-    sessions: input.sessions.filter(item => item.id !== session.id && Date.parse(item.startedAt) < Date.parse(session.startedAt)),
+    sessions: input.sessions.filter(item => item && item.id !== session.id && Date.parse(item.startedAt) < Date.parse(session.startedAt)),
     plans: [{ id: session.id, exerciseIds: [{
       exerciseId: exercise.exerciseId,
       targetSets: exercise.plannedSetsSnapshot,
@@ -152,15 +151,16 @@ export function getWorkoutExerciseProgress(input: ProgressInput, session: { id: 
       targetDurationMax: exercise.targetDurationMax,
     }] }],
   };
-  const loads = generateAvailableDumbbellLoads(input.progressSettings?.plateInventory ?? DEFAULT_PLATE_INVENTORY);
-  return getExerciseProgress(scopedInput, { id: exercise.exerciseId, name: exercise.nameSnapshot, trackingType: exercise.trackingTypeSnapshot }, localDateKey(new Date(session.startedAt)), loads);
+  const dumbbellCount = exercise.dumbbellCountSnapshot ?? input.exercises.find(item => item.id === exercise.exerciseId)?.dumbbellCount ?? 2;
+  const loads = generateAvailableDumbbellLoads(input.progressSettings?.plateInventory ?? DEFAULT_PLATE_INVENTORY, dumbbellCount);
+  return getExerciseProgress(scopedInput, { id: exercise.exerciseId, name: exercise.nameSnapshot, trackingType: exercise.trackingTypeSnapshot, dumbbellCount }, localDateKey(new Date(session.startedAt)), loads);
 }
 
 export function getProgressStatus(sessionCount: number, noImprovement: number): ExerciseProgress["status"] {
   if (sessionCount < 2) return "Building baseline";
   if (noImprovement >= 6) return "Possible plateau";
   if (noImprovement >= 4) return "Progress slowing";
-  if (noImprovement >= 3) return "Stable";
+  if (noImprovement >= 1) return "Stable";
   return "Progressing";
 }
 
@@ -187,6 +187,7 @@ function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exer
   const loadMilestones: ExerciseProgress["loadMilestones"] = [];
   const prHistory: PersonalRecord[] = [];
   const improvementDates: string[] = [];
+  const bestComparableWork = new Map<string, number>();
   let bestE1RM: number | null = null;
   let bestVolume: number | null = null;
   let highestLoad: number | null = null;
@@ -194,6 +195,8 @@ function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exer
   let lastLoadIndex = 0;
   let lastImprovedSession = -1;
   const uniqueSessions = [...new Set(sessions.map(s => s.sessionId))];
+  const completedSessionIds = new Set((input.sessions ?? []).filter(s => s?.status === "completed").map(s => s.id));
+  const completedSessionOrder = uniqueSessions.filter(id => completedSessionIds.has(id));
 
   for (let index = 0; index < sessions.length; index++) {
     const session = sessions[index];
@@ -219,16 +222,8 @@ function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exer
       improvedFromPrevious ||= previousEstablishedLoad !== null && session.establishedLoad > previousEstablishedLoad;
       previousEstablishedLoad = session.establishedLoad;
     }
-    if (session.sessionE1RM !== null) {
-      if (bestE1RM !== null && session.sessionE1RM > bestE1RM + 1e-9) {
-        const set = session.validSets.find(s => calculateE1RM(s.weight!, s.reps!)?.value === session.sessionE1RM)!;
-        addPR("estimated_strength", session.sessionE1RM, bestE1RM, set.weight!, set);
-        improved = true;
-      }
-      const previousEstimate = sessions.slice(0, index).findLast(s => s.sessionE1RM !== null)?.sessionE1RM;
-      improvedFromPrevious ||= previousEstimate != null && session.sessionE1RM > previousEstimate + 1e-9;
-      bestE1RM = Math.max(bestE1RM ?? 0, session.sessionE1RM);
-    }
+    // Epley's formula is a secondary index, not an observed strength PR.
+    if (session.sessionE1RM !== null) bestE1RM = Math.max(bestE1RM ?? 0, session.sessionE1RM);
     for (const [load, reps] of Object.entries(session.bestRepsAtWeight)) {
       const previous = bestRepsAtLoad[load] ?? (type === "reps" && zeroRepBaselineDate ? 0 : undefined);
       if (previous !== undefined && reps > previous) {
@@ -253,7 +248,16 @@ function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exer
       if (bestVolume !== null && session.sessionVolume > bestVolume) addPR("volume", session.sessionVolume, bestVolume);
       bestVolume = Math.max(bestVolume ?? 0, session.sessionVolume);
     }
-    if (improved || index === 0) lastImprovedSession = uniqueSessions.indexOf(session.sessionId);
+    if (completedSessionIds.has(session.sessionId)) {
+      const signature = workSignature(session, type);
+      const work = totalWork(session, type);
+      const previousBest = bestComparableWork.get(signature);
+      improved ||= previousBest !== undefined && work > previousBest;
+      bestComparableWork.set(signature, Math.max(previousBest ?? 0, work));
+      const comparison = compareWork(session, sessions.slice(0, index).filter(s => completedSessionIds.has(s.sessionId)), type);
+      improvedFromPrevious ||= comparison !== null && comparison.change > 0;
+      if (improved || lastImprovedSession < 0) lastImprovedSession = completedSessionOrder.indexOf(session.sessionId);
+    }
     if (improvedFromPrevious || improved) improvementDates.push(session.sessionDate);
   }
 
@@ -273,14 +277,20 @@ function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exer
   const startingBestDuration = durationSessions[0] ? durationAtLoad(durationSessions[0]) : null;
   const currentBestDuration = current && timed(type) ? durationAtLoad(current) : null;
   const allTimeBestDuration = maxOrNull(durationSessions.map(s => durationAtLoad(s)!).filter(positive));
-  const plan = input.plans?.flatMap(p => p.exerciseIds ?? []).find(p => p.exerciseId === exercise.id);
-  const target = plan ? targets(plan.targetSets, plan.targetRepMin, plan.targetRepMax, plan.targetDurationMax ?? plan.targetDurationMin) : current?.targets ?? targets();
-  const nextTarget = getNextTarget(type, current, target, availableLoads);
-  if (!current && type === "reps" && zeroRepBaselineDate) Object.assign(nextTarget, { kind: "reps", label: "1 rep", reps: 1, reason: /^pull[ -]?up$/i.test(exercise.name.trim()) ? "First Pull-up" : "First completed rep", progressCurrent: 0, progressTarget: 1 });
-  const noImprovement = Math.max(0, uniqueSessions.length - 1 - lastImprovedSession);
+  const targetPlan = input.plans?.find(p => p.exerciseIds?.some(item => item.exerciseId === exercise.id));
+  const plan = targetPlan?.exerciseIds.find(item => item.exerciseId === exercise.id);
+  const target = plan ? targets(plan.targetSets, plan.targetRepMin, plan.targetRepMax, plan.targetDurationMax ?? plan.targetDurationMin, plan.targetDurationMin) : current?.targets ?? targets();
+  const latestRaw = [...input.sessions].filter(s => s && s.status !== "deleted" && validDate(s.startedAt) && localDateKey(new Date(s.startedAt)) <= today && s.exercises?.some(o => o && o.exerciseId === exercise.id && o.trackingTypeSnapshot === type && o.status !== "skipped"))
+    .sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt)).at(-1);
+  const occurrenceIds = new Set(latestRaw?.exercises.filter(o => o && o.exerciseId === exercise.id && o.trackingTypeSnapshot === type && o.status !== "skipped").map(o => o.id));
+  const techniqueIssue = latestRaw?.sets.some(s => s && occurrenceIds.has(s.workoutExerciseId) && !s.deleted && !s.isWarmup && s.techniqueValid === false) ?? false;
+  const failedAttempt = latestRaw?.sets.some(s => s && occurrenceIds.has(s.workoutExerciseId) && eligibleSet(s) && (timed(type) ? s.durationSeconds === 0 : s.reps === 0)) ?? false;
+  const nextTarget = prescribeWorkout(type, sessions, target, availableLoads, today, { zeroBaseline: !!zeroRepBaselineDate, techniqueIssue, failedAttempt });
+  const noImprovement = Math.max(0, completedSessionOrder.length - 1 - lastImprovedSession);
   return {
     exerciseId: exercise.id, exerciseName: exercise.name, trackingType: type, sessions, sessionCount: uniqueSessions.length,
-    baseline, current, bestSet: sessions.length ? sessions.map(s => s.bestSet).reduce((a, b) => compareSets(a, b, type) >= 0 ? a : b) : null,
+    baseline, current, workComparison: current ? compareWork(current, sessions.slice(0, -1), type) : null,
+    bestSet: sessions.length ? sessions.map(s => s.bestSet).reduce((a, b) => compareSets(a, b, type) >= 0 ? a : b) : null,
     baselineE1RM, currentE1RM, currentE1RMDate: estimates.at(-1)?.sessionDate ?? null, bestE1RM, eligibleStrengthSessions,
     estimatedStrengthChangePercent: eligibleStrengthSessions >= 2 ? percent(currentE1RM, baselineE1RM) : null,
     personalBestImprovementPercent: eligibleStrengthSessions >= 2 ? percent(bestE1RM, baselineE1RM) : null,
@@ -301,14 +311,15 @@ function getExerciseProgress(input: ProgressInput, exercise: ProgressInput["exer
     daysToCurrentLoad: currentMilestone?.days ?? null, sessionsToCurrentLoad: currentMilestone?.sessions ?? null,
     averageDaysPerLoadIncrease: increases.length >= 2 ? increases.reduce((sum, m) => sum + m.days!, 0) / increases.length : null,
     averageSessionsPerLoadIncrease: increases.length >= 2 ? increases.reduce((sum, m) => sum + m.sessions!, 0) / increases.length : null,
-    nextTarget, status: getProgressStatus(uniqueSessions.length, noImprovement), sessionsWithoutImprovement: noImprovement,
+    nextTarget, targetPlanName: targetPlan?.name ?? (plan ? "Selected plan" : "Last recorded targets"), dumbbellCount: exercise.dumbbellCount === 1 ? 1 : 2, availableLoads,
+    status: getProgressStatus(completedSessionOrder.length, noImprovement), sessionsWithoutImprovement: noImprovement,
     loadMilestones, prHistory, improvementDates, dataConfidence: uniqueSessions.length === 0 ? "insufficient" : uniqueSessions.length === 1 ? "low" : "normal",
     e1rmConfidence: !estimates.length ? "insufficient" : eligibleStrengthSessions < 2 || estimates[0].e1rmConfidence === "low" || estimates.at(-1)!.e1rmConfidence === "low" ? "low" : "normal",
   };
 }
 
 export function getOverallStrengthTrend(changes: number[]): number | null {
-  const values = changes.filter(Number.isFinite).map(n => Math.max(-50, Math.min(50, n))).sort((a, b) => a - b);
+  const values = changes.filter(Number.isFinite).sort((a, b) => a - b);
   if (values.length < 2) return null;
   const middle = Math.floor(values.length / 2);
   return values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2;
@@ -342,8 +353,13 @@ export function getSinceLastWorkoutProgress(input: ProgressInput, exercises: Exe
     const current = history[index];
     const prior = history.slice(0, index).filter(s => s.sessionId !== latest.id);
     const previous = prior.at(-1);
+    const work = compareWork(current, prior, e.trackingType);
     let label = "No comparable data", improved = false;
-    if (previous) {
+    if (work) {
+      improved = work.change > 0;
+      const change = work.change === 0 ? "Matched total" : `${work.change > 0 ? "+" : ""}${work.change} total ${work.unit}`;
+      label = `${change} across ${work.setCount} set${work.setCount === 1 ? "" : "s"}${work.load !== null ? ` at ${work.load}kg` : weighted(e.trackingType) ? " at the same per-set loads" : ""} (vs ${work.previousDate})`;
+    } else if (previous) {
       const load = current.highestWeight;
       if (current.establishedLoad !== null && previous.establishedLoad !== null && current.establishedLoad > previous.establishedLoad) {
         label = `Load ${previous.establishedLoad} → ${current.establishedLoad}kg`; improved = true;
@@ -355,20 +371,20 @@ export function getSinceLastWorkoutProgress(input: ProgressInput, exercises: Exe
         const last = comparable.at(-1);
         if (last) {
           const before = duration ? last.bestDurationAtWeight[key] : last.bestRepsAtWeight[key];
-          const best = Math.max(...comparable.map(s => duration ? s.bestDurationAtWeight[key] : s.bestRepsAtWeight[key]));
           improved = value > before;
-          label = improved ? `+${value - before} ${duration ? "sec" : value - before === 1 ? "rep" : "reps"}${load !== null ? ` at ${load}kg` : ""}` : value >= best ? "Matched previous best" : "Below previous best";
-        } else if (current.sessionE1RM !== null && previous.sessionE1RM !== null) {
-          improved = current.sessionE1RM > previous.sessionE1RM + 1e-9;
-          label = improved ? "Estimated strength improved" : current.sessionE1RM === previous.sessionE1RM ? "Matched previous best" : "Below previous best";
+          label = `Best set: ${value > before ? "+" : ""}${value - before} ${duration ? "sec" : "reps"}${load !== null ? ` at ${load}kg` : ""} (vs ${last.sessionDate}); total work not comparable`;
+        } else {
+          label = "Different load; no same-load comparison yet";
         }
       }
     }
     const pr = e.prHistory.filter(r => r.sessionId === latest.id).sort((a, b) => ({load: 0, estimated_strength: 1, reps: 2, bodyweight_reps: 2, duration: 2, volume: 3}[a.type] - {load: 0, estimated_strength: 1, reps: 2, bodyweight_reps: 2, duration: 2, volume: 3}[b.type]))[0];
     if (pr) {
-      const title = pr.type === "bodyweight_reps" && pr.previousValue === 0 ? (/^pull[ -]?up$/i.test(e.exerciseName.trim()) ? "First Pull-up" : "First completed rep") : `New ${{load: "Load PR", reps: "Rep PR", bodyweight_reps: "Bodyweight Rep PR", estimated_strength: "Estimated Strength PR", duration: "Duration PR", volume: "Volume PR"}[pr.type]}`;
-      label = label.startsWith("+") ? `${label} · ${title}` : title;
-      improved = pr.type !== "volume" || improved;
+      const firstRep = pr.type === "bodyweight_reps" && pr.previousValue === 0;
+      const title = firstRep ? (/^pull[ -]?up$/i.test(e.exerciseName.trim()) ? "First Pull-up" : "First completed rep") : `New ${{load: "Load PR", reps: "Best-set Rep PR", bodyweight_reps: "Best-set Rep PR", estimated_strength: "Epley index record", duration: "Best-set Duration PR", volume: "Session Volume PR"}[pr.type]}`;
+      label = firstRep ? title : label === "No comparable data" ? title : `${label} · ${title}`;
+      // A best-set or volume PR must not hide a fall in comparable total work.
+      improved ||= firstRep;
     }
     return [{ exerciseId: e.exerciseId, name: e.exerciseName, label, improved }];
   });
@@ -385,13 +401,13 @@ export function analyzeProgress(input: ProgressInput, asOfDate = localDateKey())
     .sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt) || a.id.localeCompare(b.id));
   for (const session of historicalSessions) for (const occurrence of session.exercises ?? []) {
     // Deleted library entries retain history, using their most recent snapshot name/type.
-    if (occurrence && !catalogIds.has(occurrence.exerciseId)) catalog.set(occurrence.exerciseId, { id: occurrence.exerciseId, name: occurrence.nameSnapshot, trackingType: occurrence.trackingTypeSnapshot });
+    if (occurrence && !catalogIds.has(occurrence.exerciseId)) catalog.set(occurrence.exerciseId, { id: occurrence.exerciseId, name: occurrence.nameSnapshot, trackingType: occurrence.trackingTypeSnapshot, dumbbellCount: occurrence.dumbbellCountSnapshot });
   }
   const order = [...new Set((input.plans ?? []).flatMap(p => (p.exerciseIds ?? []).map(e => e.exerciseId)))];
   const exercises = [...catalog.values()].sort((a, b) => {
     const ai = order.indexOf(a.id), bi = order.indexOf(b.id);
     return (ai < 0 ? Infinity : ai) - (bi < 0 ? Infinity : bi) || a.id.localeCompare(b.id);
-  }).map(e => getExerciseProgress(input, e, asOfDate, settings.availableLoads));
+  }).map(e => getExerciseProgress(input, e, asOfDate, generateAvailableDumbbellLoads(plateInventory, e.dumbbellCount ?? 2)));
   const validSessionIds = new Set(exercises.flatMap(e => e.sessions.map(s => s.sessionId)));
   const completed = historicalSessions.filter(s => s.status === "completed" && (validSessionIds.has(s.id) || s.exercises.some(o => o && o.status !== "skipped" && o.trackingTypeSnapshot === "reps" && s.sets.some(set => set && set.workoutExerciseId === o.id && eligibleSet(set) && set.reps === 0))));
   const eligible = exercises.filter(e => e.eligibleStrengthSessions >= 2 && e.baselineE1RM && e.currentE1RM);
@@ -405,14 +421,14 @@ export function analyzeProgress(input: ProgressInput, asOfDate = localDateKey())
   return {
     asOfDate, settings,
     methodology: {
-      e1rm: "Estimate: Epley weight*(1+reps/30), 1-15 reps only; 11-15 reps lower confidence. Current is the most recent suitable session, not the historical best.",
-      overall: "Median of per-exercise changes capped to -50%/+50% for aggregation only; at least two exercises with two eligible sessions. Early until 14 days and three eligible sessions per contributing exercise.",
+      e1rm: "Secondary Epley performance index: plate load*(1+reps/30), 1-15 reps only. Routine sets are not repetition-maximum tests and handle mass is excluded, so this is not a measured or validated estimate of your actual 1RM. Effort and technique changes can alter the index. It never drives targets or strength PRs.",
+      overall: "Median change in the secondary Epley index, not a percentage increase in measured strength. At least two exercises with two eligible sessions; individual exercise histories may cover different periods. Early until 14 days and three eligible sessions per contributing exercise; these are app display rules, not validated confidence thresholds.",
       validSets: "Only valid completed non-warmup sets, excluding skipped exercises, deleted sets, invalid technique, zero reps and invalid values. Partial workouts may contribute valid sets. Changed tracking types are not mixed.",
       zeroRepAttempts: "An explicitly logged zero-rep attempt may establish a reps-only zero baseline; it never counts as a valid work set, volume or performed session.",
       loadMilestoneSessions: "Unique sessions performing this exercise after the previous milestone session, through and including the new milestone session. Calendar dates use the viewer's local timezone.",
-      prCounting: "Improvement records only; first result in each metric/load establishes its baseline. Detailed categories retained; headline counts deduplicate by exercise and workout. A first completed rep after an explicit zero attempt is an improvement.",
+      prCounting: "Improvement records only; first result in each metric/load establishes its baseline. Best-set records and session-volume records describe logged work, not measured strength. Totals compare only equal set counts and equal per-set loads. Partial sessions do not add to no-new-best counts. Status thresholds are app reminders, not diagnoses of a plateau. Headline PR counts deduplicate by exercise and workout.",
       weightConvention: "Plate-only kg per dumbbell including single-dumbbell exercises; handles excluded; never silently doubled. Volume is logged weight*reps, not a strength score. Existing weights are not converted.",
-      recommendations: "App suggestions, not measured outcomes. Use configured available loads only. Current plan targets take precedence for next targets; historical targets are used for historical established loads. For multiple plans the first plan containing the exercise supplies the current target.",
+      recommendations: "Per-set attempts from comparable saved sets. One additional total rep/second, repeated mastery and effort confirmation before increasing load, and an equipment cap are conservative app policies, not measured capacity. The Progress plan selector supplies targets; an active workout uses its frozen plan. Equipment is calculated for one dumbbell or a matched pair. Missing effort remains unknown.",
       rir: "User-reported subjective reps in reserve; 4 means 4 or more. Missing RIR is unknown, not zero.",
     },
     overall: { earlyTrend: !start || calendarDays(start, asOfDate) < 14 || eligible.length < 2 || eligible.some(e => e.eligibleStrengthSessions < 3), trainingStartDate: start, trainingDays: start ? calendarDays(start, asOfDate) : null, workoutsCompleted: new Set(completed.map(s => s.id)).size,

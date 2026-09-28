@@ -1,4 +1,4 @@
-import { analyzeProgress, localDateKey } from "../lib/gym/progress/calculate";
+import { analyzeProgress, getWorkoutExerciseProgress, localDateKey } from "../lib/gym/progress/calculate";
 import type { ProgressSettings } from "../lib/gym/progress/types";
 
 type TrackingType = "weight_reps" | "reps" | "time" | "weight_time";
@@ -19,6 +19,7 @@ type WorkoutExercise = {
   exerciseId: string;
   nameSnapshot: string;
   trackingTypeSnapshot: TrackingType;
+  dumbbellCountSnapshot?: 1 | 2;
   plannedSetsSnapshot: number;
   targetRepMin?: number;
   targetRepMax?: number;
@@ -29,7 +30,7 @@ type WorkoutExercise = {
 
 type GymData = {
   progressSettings?: ProgressSettings;
-  exercises: Array<{ id: string; name: string; trackingType: TrackingType }>;
+  exercises: Array<{ id: string; name: string; trackingType: TrackingType; dumbbellCount?: 1 | 2 }>;
   plans: Array<{
     id: string;
     name: string;
@@ -104,7 +105,7 @@ function sessionSets(session: GymData["sessions"][number], exercise: WorkoutExer
   return (session.sets ?? []).filter((set) => set && set.workoutExerciseId === exercise.id);
 }
 
-export function formatWorkoutAIExport(state: unknown, asOfDate = localDateKey()) {
+export function formatWorkoutAIExport(state: unknown, asOfDate = localDateKey(), options: { planId?: string; active?: { session: { id: string; startedAt: string; exercises: WorkoutExercise[] } } | null } = {}) {
   const data = normalizeWorkoutState(state);
   const parts: string[] = [];
 
@@ -123,9 +124,10 @@ export function formatWorkoutAIExport(state: unknown, asOfDate = localDateKey())
   const totalMinutes = data.sessions.reduce((sum, session) => sum + Number(minutesBetween(session.startedAt, session.endedAt) || 0), 0);
   const totalVolume = data.sessions.reduce((sum, session) => sum + session.sets.reduce((setSum, set) => setSum + volume(set), 0), 0);
 
-  const analysis = analyzeProgress(data, asOfDate);
+  const targetPlan = data.plans.find(plan => plan.id === options.planId);
+  const analysis = analyzeProgress({ ...data, plans: targetPlan ? [targetPlan] : data.plans }, asOfDate);
   parts.push("=== PROGRESS ANALYSIS CONTEXT ===\n");
-  parts.push("This is the complete derived analysis used by the Gym Progress Analysis page, including all exercise sessions, valid sets, baseline/current/best performance, estimated strength and confidence, factual load and same-load rep progress, milestone timelines and elapsed exercise sessions, PR histories, monthly metrics, next-target recommendations, available equipment and user-reported RIR. No workout history has been changed. Null means unavailable, not zero. Recommendations are suggestions; estimated strength is not measured strength.\n\n");
+  parts.push("This is the complete derived analysis used by the Gym Progress Analysis page, including all exercise sessions, valid sets, baseline/current/best performance, secondary Epley index and limitations, factual load and same-load rep progress, milestone timelines and elapsed exercise sessions, PR histories, monthly metrics, next-target recommendations, available equipment and user-reported RIR. No workout history has been changed. Null means unavailable, not zero. Recommendations are suggestions; the Epley index is not an actual 1RM or measured strength.\n\n");
   parts.push("=== PROGRESS ANALYSIS JSON ===\n");
   parts.push(JSON.stringify(analysis, null, 2));
   parts.push("\n\n");
@@ -141,6 +143,12 @@ export function formatWorkoutAIExport(state: unknown, asOfDate = localDateKey())
     totalVolume.toFixed(2),
     data.sessions.at(-1)?.startedAt || "",
   ].join(",") + "\n\n");
+
+  if (options.active?.session && Array.isArray(options.active.session.exercises)) {
+    const session = options.active.session;
+    parts.push("=== CURRENT WORKOUT TARGETS JSON ===\n");
+    parts.push(JSON.stringify(session.exercises.map(exercise => ({ exerciseId: exercise.exerciseId, name: exercise.nameSnapshot, target: getWorkoutExerciseProgress(data, session, exercise).nextTarget })), null, 2) + "\n\n");
+  }
 
   parts.push("=== PLANS CSV ===\n");
   parts.push("plan,order,exercise,tracking_type,target_sets,target_reps,target_duration_seconds\n");
@@ -228,7 +236,7 @@ export function formatWorkoutAIExport(state: unknown, asOfDate = localDateKey())
   parts.push("\n\n");
 
   parts.push("=== AI ANALYSIS PROMPT ===\n\n");
-  parts.push("Analyze my workout data in Chinese. Use PROGRESS ANALYSIS JSON as the reproducible analysis and raw history for context. Clearly separate measured logs, estimated 1RM/strength, subjective RIR and app recommendations. Explain progress since baseline versus all-time best, same-load rep progress, load milestones in days and exercise-specific sessions, PR categories, this month's changes and practical next targets using only available loads. Do not invent scores, treat volume as strength, count first baselines as improvement PRs, infer plateau from inactivity or report missing data as 0% improvement. Summarize consistency, plan/routine structure and exercise balance, acknowledging limited history and confidence.");
+  parts.push("Analyze my workout data in Chinese. Use PROGRESS ANALYSIS JSON as the reproducible analysis and raw history for context. Clearly separate measured logs, the secondary Epley index (not actual 1RM), subjective RIR and per-set app targets. Explain progress since baseline versus all-time best, same-load rep progress, load milestones in days and exercise-specific sessions, PR categories, this month's changes and practical next targets using only available loads. Do not invent scores, treat volume as strength, count first baselines as improvement PRs, infer plateau from inactivity or report missing data as 0% improvement. Summarize consistency, plan/routine structure and exercise balance, acknowledging limited history and confidence.");
 
   return parts.join("").trim();
 }

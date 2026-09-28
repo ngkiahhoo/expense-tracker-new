@@ -1,3 +1,5 @@
+import type { WorkoutPrescription } from "./prescription-types";
+
 export type TrackingType = "weight_reps" | "reps" | "time" | "weight_time";
 
 export type ProgressSet = {
@@ -25,6 +27,7 @@ export type ProgressExerciseOccurrence = {
   targetDurationMin?: number;
   targetDurationMax?: number;
   status: string;
+  dumbbellCountSnapshot?: 1 | 2;
 };
 
 export type PlateInventory = { weightKg: number; quantity: number };
@@ -35,8 +38,8 @@ export type ProgressSettings = {
 };
 
 export type ProgressInput = {
-  exercises: Array<{ id: string; name: string; trackingType: TrackingType }>;
-  plans: Array<{ id: string; exerciseIds: Array<{
+  exercises: Array<{ id: string; name: string; trackingType: TrackingType; dumbbellCount?: 1 | 2 }>;
+  plans: Array<{ id: string; name?: string; exerciseIds: Array<{
     exerciseId: string;
     targetSets: number;
     targetRepMin?: number;
@@ -46,6 +49,7 @@ export type ProgressInput = {
   }> }>;
   sessions: Array<{
     id: string;
+    planId?: string;
     startedAt: string;
     endedAt?: string;
     status: string;
@@ -55,7 +59,7 @@ export type ProgressInput = {
   progressSettings?: ProgressSettings;
 };
 
-export type Targets = { sets: number; repMin: number; repMax: number; duration: number | null };
+export type Targets = { sets: number; repMin: number; repMax: number; duration: number | null; durationMin?: number | null };
 export type Confidence = "insufficient" | "low" | "normal";
 export type SessionPerformance = {
   sessionId: string;
@@ -64,6 +68,7 @@ export type SessionPerformance = {
   exerciseId: string;
   targets: Targets;
   validSets: ProgressSet[];
+  techniqueIssue?: boolean;
   highestWeight: number | null;
   establishedLoad: number | null;
   bestRepsAtWeight: Record<string, number>;
@@ -118,6 +123,16 @@ export type ExerciseProgress = {
   sessionCount: number;
   baseline: SessionPerformance | null;
   current: SessionPerformance | null;
+  workComparison: {
+    previousSessionId: string;
+    previousDate: string;
+    setCount: number;
+    load: number | null;
+    unit: "reps" | "seconds";
+    previousTotal: number;
+    currentTotal: number;
+    change: number;
+  } | null;
   bestSet: ProgressSet | null;
   baselineE1RM: number | null;
   currentE1RM: number | null;
@@ -153,7 +168,10 @@ export type ExerciseProgress = {
   sessionsToCurrentLoad: number | null;
   averageDaysPerLoadIncrease: number | null;
   averageSessionsPerLoadIncrease: number | null;
-  nextTarget: NextTarget;
+  nextTarget: WorkoutPrescription;
+  targetPlanName?: string;
+  dumbbellCount: 1 | 2;
+  availableLoads: number[];
   status: "Building baseline" | "Progressing" | "Stable" | "Progress slowing" | "Possible plateau";
   sessionsWithoutImprovement: number;
   loadMilestones: LoadMilestone[];

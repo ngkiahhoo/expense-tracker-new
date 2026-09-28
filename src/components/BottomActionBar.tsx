@@ -151,7 +151,11 @@ export default function BottomActionBar({
       if (raw) state = JSON.parse(raw);
       else state = await getWorkoutState();
 
-      const copied = await copyTextToClipboard(formatWorkoutAIExport(state));
+      const activeRaw = window.localStorage.getItem("expense-tracker-gym-active");
+      const copied = await copyTextToClipboard(formatWorkoutAIExport(state, undefined, {
+        planId: window.sessionStorage.getItem("gym-progress-target-plan") ?? undefined,
+        active: activeRaw ? JSON.parse(activeRaw) : null,
+      }));
       setWorkoutExportStatus(copied ? "AI export copied" : "Copy failed");
     } catch (cause) {
       setWorkoutExportStatus(cause instanceof Error ? cause.message : "AI export failed.");

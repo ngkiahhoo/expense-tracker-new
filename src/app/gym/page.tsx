@@ -39,6 +39,7 @@ type Exercise = {
   id: string;
   name: string;
   trackingType: TrackingType;
+  dumbbellCount?: 1 | 2;
   category: ExerciseCategory;
   createdAt: string;
   updatedAt: string;
@@ -79,6 +80,7 @@ type WorkoutExercise = {
   exerciseId: string;
   nameSnapshot: string;
   trackingTypeSnapshot: TrackingType;
+  dumbbellCountSnapshot?: 1 | 2;
   plannedSetsSnapshot: number;
   targetRepMin?: number;
   targetRepMax?: number;
@@ -215,6 +217,7 @@ function seedData(): GymData {
     name,
     trackingType,
     category: inferExerciseCategory(name),
+    dumbbellCount: (name === "Goblet Squat" || name === "One-Arm Dumbbell Row" ? 1 : 2) as 1 | 2,
     createdAt: now,
     updatedAt: now,
   }));
@@ -315,6 +318,7 @@ function makeSession(plan: Plan, data: GymData, routineId?: string): WorkoutSess
         exerciseId: item.exerciseId,
         nameSnapshot: exercise?.name || "Unknown Exercise",
         trackingTypeSnapshot: exercise?.trackingType || "weight_reps",
+        dumbbellCountSnapshot: exercise?.dumbbellCount ?? 2,
         plannedSetsSnapshot: item.targetSets,
         targetRepMin: item.targetRepMin,
         targetRepMax: item.targetRepMax,
@@ -405,18 +409,13 @@ function sessionExerciseSets(session: WorkoutSession, exercise: WorkoutExercise)
   return session.sets.filter((set) => set.workoutExerciseId === exercise.id);
 }
 
-function performanceValue(set: WorkoutSet, trackingType: TrackingType) {
-  if (trackingType === "time") return Number(set.durationSeconds || 0);
-  if (trackingType === "reps") return Number(set.reps || 0);
-  if (trackingType === "weight_time") return Number(set.weight || 0) * Number(set.durationSeconds || 0);
-  return Number(set.weight || 0) * Number(set.reps || 0);
-}
-
 function completedSetComparison(previous: WorkoutSet[] | undefined, today: WorkoutSet[], trackingType: TrackingType) {
   return today.reduce((count, set, index) => {
     const oldSet = previous?.[index];
     if (!oldSet) return count;
-    return performanceValue(set, trackingType) > performanceValue(oldSet, trackingType) ? count + 1 : count;
+    if (trackingType.startsWith("weight") && set.weight !== oldSet.weight) return count;
+    const timed = trackingType.includes("time");
+    return Number(timed ? set.durationSeconds : set.reps) > Number(timed ? oldSet.durationSeconds : oldSet.reps) ? count + 1 : count;
   }, 0);
 }
 
@@ -436,6 +435,7 @@ function normalizeGymData(data: GymData): GymData {
     exercises: data.exercises.map((exercise) => ({
       ...exercise,
       category: exercise.category || inferExerciseCategory(exercise.name),
+      dumbbellCount: exercise.dumbbellCount ?? (exercise.name === "Goblet Squat" || exercise.name === "One-Arm Dumbbell Row" ? 1 : 2),
     })),
   };
 }
@@ -494,6 +494,7 @@ function GymPageContent() {
   const [newPlanName, setNewPlanName] = useState("");
   const [planExerciseId, setPlanExerciseId] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [progressPlanId, setProgressPlanId] = useState("");
   const [newRoutineName, setNewRoutineName] = useState("");
   const [draggedPlanExercise, setDraggedPlanExercise] = useState<{ planId: string; itemId: string } | null>(null);
   const [draggedRoutinePlan, setDraggedRoutinePlan] = useState<{ routineId: string; planId: string } | null>(null);
@@ -573,7 +574,11 @@ function GymPageContent() {
   const thisMonth = new Date().toISOString().slice(0, 7);
   const recentSession = data.sessions.at(-1);
   const analysisDate = localDateKey(new Date(nowMs));
-  const progressAnalysis = useMemo(() => analyzeProgress(data, analysisDate), [data, analysisDate]);
+  const progressTargetPlan = data.plans.find(plan => plan.id === progressPlanId) ?? recommendedPlan;
+  const progressAnalysis = useMemo(() => analyzeProgress({ ...data, plans: progressTargetPlan ? [progressTargetPlan] : data.plans }, analysisDate), [data, analysisDate, progressTargetPlan]);
+  useEffect(() => {
+    if (progressTargetPlan) window.sessionStorage.setItem("gym-progress-target-plan", progressTargetPlan.id);
+  }, [progressTargetPlan]);
   const recentPr = progressAnalysis.recentSignal
     ? `${progressAnalysis.recentSignal.exerciseName}: ${recordLabel(progressAnalysis.recentSignal)}`
     : "No improvement PR yet";
@@ -841,12 +846,13 @@ function GymPageContent() {
   }
 
   function startWorkout(plan: Plan, routineId?: string) {
+    setProgressPlanId(plan.id);
     if (pausedWorkout && !window.confirm("Starting a new workout will discard the paused workout. Continue?")) return;
     setPausedWorkout(null);
     setActive({ session: makeSession(plan, data, routineId), currentExerciseIndex: 0 });
   }
 
-  function completeSet(values: { weight?: number; reps?: number; durationSeconds?: number }) {
+  function completeSet(values: { weight?: number; reps?: number; durationSeconds?: number; repsInReserve?: number }) {
     if (!active) return;
     const exercise = active.session.exercises[active.currentExerciseIndex];
     const existingSets = active.session.sets.filter((set) => set.workoutExerciseId === exercise.id);
@@ -1093,7 +1099,7 @@ function GymPageContent() {
             </div>
             <Link href="/gym?tab=progress" className="gym-progress-entry gym-card" aria-label="Open Progress Analysis">
               <TrendingUp size={24} aria-hidden />
-              <div><h2>Progress Analysis</h2><p>{progressAnalysis.overall.estimatedStrengthChangePercent === null ? "Building your training baseline" : `${progressAnalysis.overall.estimatedStrengthChangePercent > 0 ? "+" : ""}${progressAnalysis.overall.estimatedStrengthChangePercent.toFixed(1)}% estimated strength since start`}</p></div>
+              <div><h2>Progress Analysis</h2><p>{progressAnalysis.overall.workoutsCompleted < 2 ? "Building your training baseline" : `${progressAnalysis.monthly.exercisesImproved} exercises with recorded progress this month`}</p></div>
               <ArrowRight size={22} aria-hidden />
             </Link>
             <div className="gym-card rounded-2xl border p-4">
@@ -1159,6 +1165,15 @@ function GymPageContent() {
                       </>
                     )}
                     <p className="mt-3 text-xs text-slate-500">Used in {usedInPlans} plan(s)</p>
+                    {exercise.trackingType.startsWith("weight") && <label className="mt-3 block text-sm">Dumbbells used together
+                      <Select aria-label={`Dumbbells for ${exercise.name}`} className="mt-1" value={exercise.dumbbellCount ?? 2} onChange={event => {
+                        const dumbbellCount = Number(event.target.value) as 1 | 2;
+                        setData(current => ({ ...current, exercises: current.exercises.map(item => item.id === exercise.id ? { ...item, dumbbellCount, updatedAt: new Date().toISOString() } : item) }));
+                      }}>
+                        <option value={1}>One dumbbell</option>
+                        <option value={2}>Two dumbbells (matched pair)</option>
+                      </Select>
+                    </label>}
                     <div className="mt-3 grid gap-2">
                       {history.length ? history.slice(0, 3).map((entry) => (
                         <p key={`${entry.session.id}-${entry.workoutExercise.id}`} className="rounded-xl bg-white/[0.04] p-2 text-sm">
@@ -1511,7 +1526,14 @@ function GymPageContent() {
           </section>
         )}
 
-        {activeTab === "progress" && <ProgressAnalysis analysis={progressAnalysis} />}
+        {activeTab === "progress" && <>
+          <label className="block text-sm font-semibold">Targets for plan
+            <Select className="mt-2" aria-label="Targets for plan" value={progressTargetPlan?.id ?? ""} onChange={event => setProgressPlanId(event.target.value)}>
+              {data.plans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
+            </Select>
+          </label>
+          <ProgressAnalysis analysis={progressAnalysis} />
+        </>}
         {activeTab === "settings" && <AvailableLoads settings={data.progressSettings} onSave={progressSettings => setData(current => ({ ...current, progressSettings }))} />}
       </div>
     </main>
@@ -1625,7 +1647,7 @@ function WorkoutMode({
   data: GymData;
   nowMs: number;
   onSetActive: (active: ActiveWorkout) => void;
-  onCompleteSet: (values: { weight?: number; reps?: number; durationSeconds?: number }) => void;
+  onCompleteSet: (values: { weight?: number; reps?: number; durationSeconds?: number; repsInReserve?: number }) => void;
   completeAllSetsMode: boolean;
   onCompleteAllSetsModeChange: (enabled: boolean) => void;
   onCompleteAllRemainingSets: (values: { weight?: number; reps?: number; durationSeconds?: number }) => void;
@@ -1642,15 +1664,17 @@ function WorkoutMode({
   const completedSets = active.session.sets.filter((set) => set.workoutExerciseId === current.id);
   const previous = lastExerciseSets(data, current.exerciseId, active.session.id);
   const prefill = previous?.sets[completedSets.length] || previous?.sets.at(-1);
-  const [weight, setWeight] = useState(prefill?.weight || 10);
-  const [reps, setReps] = useState(prefill?.reps || current.targetRepMax || 10);
-  const [duration, setDuration] = useState(prefill?.durationSeconds || current.targetDurationMax || 30);
+  const initialTarget = targetProgress.nextTarget.setTargets[completedSets.length];
+  const [weight, setWeight] = useState(initialTarget?.weight ?? prefill?.weight ?? 0);
+  const [reps, setReps] = useState(initialTarget?.reps ?? prefill?.reps ?? current.targetRepMin ?? 8);
+  const [duration, setDuration] = useState(initialTarget?.durationSeconds ?? prefill?.durationSeconds ?? current.targetDurationMin ?? 30);
+  const [repsInReserve, setRepsInReserve] = useState("");
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [showNavigator, setShowNavigator] = useState(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [setFeedback, setSetFeedback] = useState("");
 
-  const elapsed = Math.floor((nowMs - new Date(active.session.startedAt).getTime()) / 1000);
+  const elapsed = Math.max(0, Math.floor((nowMs - new Date(active.session.startedAt).getTime()) / 1000));
   const timerValue = timerStartedAt ? Math.max(0, Math.floor((nowMs - timerStartedAt) / 1000)) : duration;
   const sessionStatus = getSessionStatus(active.session);
   const readyToFinish = sessionStatus === "completed";
@@ -1673,6 +1697,10 @@ function WorkoutMode({
   }, [setFeedback]);
 
   function completeCurrentSet() {
+    if (current.trackingTypeSnapshot.startsWith("weight") && weight <= 0) {
+      setSetFeedback("Choose the weight you actually used before saving.");
+      return;
+    }
     const savedSetNumber = completedSets.length + 1;
     const nextSetNumber = savedSetNumber + 1;
     const values = current.trackingTypeSnapshot === "weight_reps"
@@ -1684,20 +1712,14 @@ function WorkoutMode({
       : { weight, durationSeconds: timerValue };
 
     if (completeAllSetsMode) {
-      const firstSet = completedSets[0];
-      const firstSetValues = firstSet
-        ? {
-            weight: firstSet.weight,
-            reps: firstSet.reps,
-            durationSeconds: firstSet.durationSeconds,
-          }
-        : values;
-      onCompleteAllRemainingSets(firstSetValues);
+      onCompleteAllRemainingSets(values);
       setTimerStartedAt(null);
+      setRepsInReserve("");
       return;
     }
 
-    onCompleteSet(values);
+    onCompleteSet({ ...values, ...(repsInReserve !== "" ? { repsInReserve: Number(repsInReserve) } : {}) });
+    setRepsInReserve("");
     setTimerStartedAt(null);
     setSetFeedback(
       savedSetNumber >= current.plannedSetsSnapshot
@@ -1708,6 +1730,10 @@ function WorkoutMode({
 
   function stopTimerAndSave() {
     const value = timerValue;
+    if (value <= 0 || (current.trackingTypeSnapshot === "weight_time" && weight <= 0)) {
+      setSetFeedback("Record a positive duration and the weight you actually used.");
+      return;
+    }
     if (current.trackingTypeSnapshot === "time") onCompleteSet({ durationSeconds: value });
     if (current.trackingTypeSnapshot === "weight_time") onCompleteSet({ weight, durationSeconds: value });
     setTimerStartedAt(null);
@@ -1806,6 +1832,19 @@ function WorkoutMode({
               </div>
             )}
           </div>
+          {!completeAllSetsMode && !current.trackingTypeSnapshot.includes("time") && <label className="mt-3 block text-sm text-slate-300">
+            Reps left after this set (optional)
+            <Select className="mt-1" aria-label="Reps left after this set" value={repsInReserve} onChange={event => setRepsInReserve(event.target.value)}>
+              <option value="">Not sure / not recorded</option>
+              <option value="0">0 — no more good reps</option>
+              <option value="1">1 more good rep</option>
+              <option value="2">2 more good reps</option>
+              <option value="3">3 more good reps</option>
+              <option value="4">4+ more good reps</option>
+            </Select>
+          </label>}
+          <p className="mt-3 text-xs text-slate-400">Save what you actually completed; edit suggested values if needed.</p>
+          {completeAllSetsMode && <p className="mt-2 text-xs text-amber-200">This records every remaining set with the same values shown above. Use only if you completed them all.</p>}
           {completedSets.length < current.plannedSetsSnapshot ? (
             <Button className="mt-4 w-full text-lg uppercase" size="lg" onClick={completeCurrentSet}>
               <Check className="size-5" /> {completeAllSetsMode ? "Complete All Sets" : "Complete Set"}
@@ -1837,7 +1876,10 @@ function WorkoutMode({
                         type="button"
                         aria-label={`Delete set ${index + 1}`}
                         className="inline-flex size-8 items-center justify-center rounded-full border border-red-300/40 bg-red-500/15 text-red-100 transition hover:bg-red-500/25"
-                        onClick={() => onDeleteSet(set.id)}
+                        onClick={() => {
+                          onDeleteSet(set.id);
+                          setSetFeedback("");
+                        }}
                       >
                         <Trash2 className="size-4" aria-hidden />
                       </button>
@@ -1845,7 +1887,7 @@ function WorkoutMode({
                   ))}
                   {!!previous?.sets.length && (
                     <p className="text-sm text-emerald-100">
-                      {completedSetComparison(previous.sets, completedSets, current.trackingTypeSnapshot)} / {completedSets.length} sets improved
+                      {completedSetComparison(previous.sets, completedSets, current.trackingTypeSnapshot)} / {completedSets.length} sets improved at matching loads
                     </p>
                   )}
                 </div>
@@ -1867,7 +1909,12 @@ function WorkoutMode({
           </div>
         </section>
 
-        <WorkoutTarget progress={targetProgress} exercise={current} />
+        <WorkoutTarget progress={targetProgress} exercise={current} completedSets={completedSets} onUseTarget={(target) => {
+          if (target.weight !== null) setWeight(target.weight);
+          if (target.reps !== null) setReps(target.reps);
+          if (target.durationSeconds !== null) setDuration(target.durationSeconds);
+          setTimerStartedAt(null);
+        }} />
 
         <section className="gym-card rounded-3xl border p-5">
           <div>
@@ -1974,6 +2021,7 @@ function Stepper({ label, value, suffix = "", onChange, onMinus, onPlus }: { lab
         </button>
         <label className="flex min-w-0 items-center justify-center gap-2 bg-white/[0.03] px-3">
           <Input
+            aria-label={label}
             className="h-16 border-0 bg-transparent p-0 text-center text-4xl font-black text-white shadow-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             fieldSize="md"
             type="number"
