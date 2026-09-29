@@ -83,9 +83,19 @@ body {
 }
 
 .app-settings-trigger-gym {
-  color: #03150a;
-  background: #6ee7a0;
-  border-color: #bbf7d0;
+  color: var(--gym-on-accent);
+  background: var(--gym-accent);
+  border-color: var(--gym-accent-soft);
+}
+.gym-theme-purple { --gym-accent: #b56cff; --gym-accent-soft: #ddb5ff; --gym-on-accent: #16051f; }
+.gym-theme-blue { --gym-accent: #55a9f5; --gym-accent-soft: #a8d5ff; --gym-on-accent: #041321; }
+.gym-theme-orange { --gym-accent: #ff6b22; --gym-accent-soft: #ffad4d; --gym-on-accent: #351508; }
+.gym-theme-green { --gym-accent: #48df83; --gym-accent-soft: #8aefad; --gym-on-accent: #03150a; }
+:is(.gym-theme-green, .gym-theme-purple, .gym-theme-blue, .gym-theme-orange) .app-settings-trigger.app-settings-trigger-gym,
+:is(.gym-theme-green, .gym-theme-purple, .gym-theme-blue, .gym-theme-orange) .app-settings-trigger.app-settings-trigger-gym:hover {
+  color: var(--gym-on-accent);
+  background: var(--gym-accent);
+  border-color: var(--gym-accent-soft);
 }
 
 .light-theme .app-settings-trigger {
@@ -1098,8 +1108,8 @@ li {
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgb(74 222 128 / 0.045) 1px, transparent 1px),
-    linear-gradient(180deg, rgb(74 222 128 / 0.035) 1px, transparent 1px);
+    linear-gradient(90deg, var(--gym-page-grid) 1px, transparent 1px),
+    linear-gradient(180deg, var(--gym-page-grid) 1px, transparent 1px);
   background-size: 42px 42px;
   mask-image: linear-gradient(180deg, black, transparent 72%);
 }
@@ -1118,14 +1128,14 @@ li {
   background:
     linear-gradient(145deg, rgb(17 36 34 / 0.92), rgb(7 18 17 / 0.96)),
     #081312;
-  border-color: rgb(74 222 128 / 0.14) !important;
+  border-color: var(--gym-border) !important;
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.055),
     0 18px 48px rgb(0 0 0 / 0.34);
 }
 
 .gym-topbar {
-  border: 1px solid rgb(74 222 128 / 0.12);
+  border: 1px solid var(--gym-border);
   border-radius: 1.5rem;
   padding: 0.75rem;
 }
@@ -1138,8 +1148,8 @@ li {
   justify-content: center;
   border-radius: 1rem;
   color: #07110d;
-  background: linear-gradient(135deg, #86efac, #22c55e);
-  box-shadow: 0 0 22px rgb(34 197 94 / 0.32);
+  background: linear-gradient(135deg, var(--gym-accent-soft), var(--gym-accent));
+  box-shadow: 0 0 22px color-mix(in srgb, var(--gym-accent) 32%, transparent);
 }
 
 .gym-hero {
@@ -1192,7 +1202,7 @@ li {
 }
 
 .gym-stat-card {
-  border-color: rgb(74 222 128 / 0.12) !important;
+  border-color: var(--gym-border) !important;
 }
 
 .gym-athletic .gym-stat-card p,
@@ -1215,12 +1225,12 @@ li {
 .gym-athletic .bg-white\/\[0\.05\],
 .gym-athletic .bg-white\/\[0\.06\] {
   background-color: rgb(255 255 255 / 0.055) !important;
-  border-color: rgb(74 222 128 / 0.12) !important;
+  border-color: var(--gym-border) !important;
 }
 
 .gym-success-panel {
-  background: rgb(34 197 94 / 0.11);
-  border-color: rgb(74 222 128 / 0.36) !important;
+  background: color-mix(in srgb, var(--gym-accent) 11%, var(--gym-surface));
+  border-color: var(--gym-border-strong) !important;
 }
 
 .gym-athletic input:not([type="checkbox"]),
@@ -1243,7 +1253,7 @@ li {
 
 .gym-athletic .text-black,
 .gym-athletic .text-black\/70 {
-  color: #03130a !important;
+  color: var(--gym-on-accent) !important;
   text-shadow: none;
 }
 
@@ -1258,7 +1268,7 @@ li {
 .gym-athletic .gym-stepper-plus *,
 .gym-athletic button.bg-cyan-300,
 .gym-athletic button.bg-cyan-300 * {
-  color: #03130a !important;
+  color: var(--gym-on-accent) !important;
   text-shadow: none;
 }
 
@@ -1275,10 +1285,10 @@ li {
 .gym-start-action,
 .gym-athletic button.inline-flex:not([class*="red"]):not(.gym-button-danger):not(.gym-button-warning):not(.gym-stepper-minus):not(.gym-stepper-plus):not(.bottom-bar-button) {
   border-color: transparent !important;
-  background: linear-gradient(135deg, #86efac, #22c55e) !important;
-  color: #03130a !important;
+  background: linear-gradient(135deg, var(--gym-accent-soft), var(--gym-accent)) !important;
+  color: var(--gym-on-accent) !important;
   box-shadow:
-    0 14px 30px rgb(34 197 94 / 0.22),
+    0 14px 30px color-mix(in srgb, var(--gym-accent) 22%, transparent),
     inset 0 1px 0 rgb(255 255 255 / 0.24);
 }
 
@@ -1288,26 +1298,25 @@ li {
 
 .gym-button-primary {
   border-color: transparent !important;
-  background: linear-gradient(135deg, #86efac, #22c55e) !important;
-  color: #03130a !important;
+  background: linear-gradient(135deg, var(--gym-accent-soft), var(--gym-accent)) !important;
+  color: var(--gym-on-accent) !important;
 }
 
 .gym-bottom-bar {
   background:
-    linear-gradient(180deg, rgb(5 13 12 / 0.74), rgb(3 8 7 / 0.94)),
-    radial-gradient(ellipse at 50% 0%, rgb(34 197 94 / 0.18), transparent 24rem) !important;
-  border-color: rgb(74 222 128 / 0.16) !important;
+    linear-gradient(180deg, var(--gym-surface), var(--gym-canvas)) !important;
+  border-color: var(--gym-border) !important;
 }
 
 .gym-bottom-bar .bottom-bar-button-active {
-  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
-  color: #03130a !important;
+  background: var(--gym-accent) !important;
+  color: var(--gym-on-accent) !important;
 }
 
 .gym-bottom-bar .bottom-bar-button-active *,
 .light-theme .gym-bottom-bar .bottom-bar-button-active *,
 .gym-bottom-bar .bottom-bar-button-active .bottom-bar-button-label {
-  color: #03130a !important;
+  color: var(--gym-on-accent) !important;
   text-shadow: none;
 }
 
@@ -1393,8 +1402,8 @@ li {
 .gym-athletic .gym-button-primary,
 .gym-athletic .gym-start-action {
   border-color: transparent !important;
-  background: linear-gradient(135deg, #86efac, #22c55e) !important;
-  color: #03130a !important;
+  background: linear-gradient(135deg, var(--gym-accent-soft), var(--gym-accent)) !important;
+  color: var(--gym-on-accent) !important;
 }
 
 .gym-finish-modal {
@@ -1409,8 +1418,8 @@ li {
 }
 
 .gym-finish-modal .gym-button-primary {
-  background: linear-gradient(135deg, #86efac, #22c55e) !important;
-  color: #03130a !important;
+  background: linear-gradient(135deg, var(--gym-accent-soft), var(--gym-accent)) !important;
+  color: var(--gym-on-accent) !important;
 }
 
 .gym-finish-modal .gym-button-danger {
@@ -1548,7 +1557,7 @@ li {
 .light-theme .gym-athletic .text-cyan-200,
 .light-theme .gym-athletic .text-cyan-300,
 .light-theme .gym-athletic .text-cyan-400 {
-  color: #86efac !important;
+  color: var(--gym-accent-soft) !important;
 }
 
 .light-theme .gym-athletic :where(h1, h2, h3, h4, p, span, label, li):not(.text-black):not(.text-black\/70) {
@@ -1559,8 +1568,8 @@ li {
 .light-theme .gym-athletic .gym-start-action,
 .light-theme .gym-athletic button.inline-flex:not([class*="red"]):not(.gym-button-danger):not(.gym-button-warning):not(.gym-stepper-minus):not(.gym-stepper-plus):not(.bottom-bar-button) {
   border-color: transparent !important;
-  background: linear-gradient(135deg, #86efac, #22c55e) !important;
-  color: #03130a !important;
+  background: linear-gradient(135deg, var(--gym-accent-soft), var(--gym-accent)) !important;
+  color: var(--gym-on-accent) !important;
 }
 
 .light-theme .gym-light .gym-status-completed {
@@ -1629,6 +1638,8 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
   --gym-on-accent: #03150a;
   --gym-danger: #fecaca;
   --gym-danger-bg: #7f1d1d;
+  --gym-input: #04100c;
+  --gym-page-grid: color-mix(in srgb, var(--gym-accent) 8%, transparent);
   color: var(--gym-text) !important;
   color-scheme: dark;
   font-family: Arial, Helvetica, sans-serif;
@@ -1638,6 +1649,12 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
+.gym-page.gym-ui { background: var(--gym-canvas); }
+
+.gym-theme-purple .gym-ui { --gym-canvas: #08050d; --gym-surface: #171022; --gym-surface-raised: #211632; --gym-surface-soft: #2a1b3d; --gym-border: #68458a; --gym-border-strong: #b58bd2; --gym-input: #110b1a; --gym-accent: #b56cff; --gym-accent-soft: #ddb5ff; --gym-on-accent: #16051f; }
+.gym-theme-blue .gym-ui { --gym-canvas: #040a12; --gym-surface: #0d1a29; --gym-surface-raised: #14263a; --gym-surface-soft: #1a3148; --gym-border: #3b668c; --gym-border-strong: #8db9df; --gym-input: #081522; --gym-accent: #55a9f5; --gym-accent-soft: #a8d5ff; --gym-on-accent: #041321; }
+.gym-theme-orange .gym-ui { --gym-canvas: #f4efdf; --gym-surface: #fffdf5; --gym-surface-raised: #f8f0d9; --gym-surface-soft: #f5ecd3; --gym-border: #dfd3b3; --gym-border-strong: #c6b58d; --gym-text: #332b20; --gym-text-muted: #756957; --gym-text-faint: #998b74; --gym-input: #fffdf7; --gym-accent: #ff6b22; --gym-accent-soft: #ffad4d; --gym-on-accent: #351508; --gym-danger: #9f3025; --gym-danger-bg: #ffe1d8; color-scheme: light; }
 
 .light-theme .gym-ui,
 .dark-theme .gym-ui {
@@ -1695,7 +1712,7 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
   min-height: 3rem;
   color: var(--gym-text) !important;
   -webkit-text-fill-color: var(--gym-text) !important;
-  background: #04100c !important;
+  background: var(--gym-input) !important;
   border-color: var(--gym-border-strong) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04) !important;
 }
@@ -1708,7 +1725,7 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
 }
 
 .gym-ui :where(input, select, textarea, button, a):focus-visible {
-  outline: 3px solid #67e8f9 !important;
+  outline: 3px solid var(--gym-accent-soft) !important;
   outline-offset: 2px !important;
 }
 
@@ -1722,15 +1739,15 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
 
 .gym-ui button.inline-flex:not(.gym-button-contrast):not(.gym-button-danger):not(.gym-button-warning):not(.gym-stepper-minus):not(.gym-stepper-plus) {
   color: var(--gym-on-accent) !important;
-  background: linear-gradient(135deg, #7ae6a1, #24c866) !important;
-  border-color: #8aefad !important;
+  background: linear-gradient(135deg, var(--gym-accent-soft), var(--gym-accent)) !important;
+  border-color: var(--gym-accent-soft) !important;
   text-shadow: none !important;
 }
 
 .gym-ui .gym-button-contrast,
 .gym-ui button.border-zinc-700 {
   color: var(--gym-text) !important;
-  background: #132721 !important;
+  background: var(--gym-surface-raised) !important;
   border-color: var(--gym-border-strong) !important;
   text-shadow: none !important;
 }
@@ -1776,25 +1793,25 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
 
 .gym-ui .gym-set-mode-toggle {
   color: var(--gym-text-muted) !important;
-  background: #10241f;
+  background: var(--gym-surface-raised);
   border-color: var(--gym-border);
 }
 
 .gym-ui .gym-set-mode-toggle:has(input:checked) {
   color: var(--gym-on-accent) !important;
   background: var(--gym-accent-soft);
-  border-color: #d1fae5;
+  border-color: var(--gym-accent-soft);
 }
 
 .gym-ui .gym-set-mode-toggle input {
   width: 1.125rem;
   height: 1.125rem;
   flex: 0 0 auto;
-  accent-color: #16a34a;
+  accent-color: var(--gym-accent);
 }
 
 .gym-ui .gym-exercise-picker {
-  background: #06130f !important;
+  background: var(--gym-input) !important;
   border-color: var(--gym-border-strong) !important;
 }
 
@@ -1814,7 +1831,7 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
 
 .gym-plan-preview-modal {
   color: var(--gym-text) !important;
-  background: #0b1b17 !important;
+  background: var(--gym-surface) !important;
   border-color: var(--gym-border) !important;
   box-shadow: 0 28px 80px rgb(0 0 0 / 0.62), inset 0 1px 0 rgb(255 255 255 / 0.06) !important;
 }
@@ -1827,7 +1844,7 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
 
 .gym-plan-preview-modal .gym-plan-preview-close {
   color: var(--gym-text) !important;
-  background: #132721 !important;
+  background: var(--gym-surface-raised) !important;
   border: 1px solid var(--gym-border-strong) !important;
 }
 
@@ -1839,14 +1856,14 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
 
 .gym-ui .gym-exercise-option:hover {
   border-color: var(--gym-border-strong);
-  background: #1d362e !important;
+  background: var(--gym-surface-raised) !important;
 }
 
 .gym-ui .gym-exercise-option-selected,
 .gym-ui .gym-exercise-option-selected:hover {
   color: var(--gym-on-accent) !important;
   background: var(--gym-accent-soft) !important;
-  border-color: #d1fae5 !important;
+  border-color: var(--gym-accent-soft) !important;
 }
 
 .gym-ui .gym-exercise-option-selected span {
@@ -1856,7 +1873,7 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
 
 .gym-bottom-bar.gym-ui {
   color: var(--gym-text) !important;
-  background: rgb(3 12 9 / 0.97) !important;
+  background: var(--gym-canvas) !important;
   border-color: var(--gym-border-strong) !important;
   box-shadow: 0 -10px 32px rgb(0 0 0 / 0.45) !important;
 }
@@ -1874,8 +1891,8 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
 }
 
 .gym-bottom-bar.gym-ui .bottom-bar-button-active {
-  background: #27c96a !important;
-  border-color: #86efac !important;
+  background: var(--gym-accent) !important;
+  border-color: var(--gym-accent-soft) !important;
 }
 
 .gym-bottom-bar.gym-ui .bottom-bar-button-idle,
@@ -1885,9 +1902,83 @@ main.gym-athletic .gym-stat-card p:not(.gym-stat-value),
 }
 
 .gym-bottom-bar.gym-ui .bottom-bar-button-idle {
-  background: #10241f !important;
+  background: var(--gym-surface-raised) !important;
   border-color: var(--gym-border) !important;
 }
+
+/* Keep legacy utility classes inside Gym on the active theme instead of leaving green or cyan islands. */
+.gym-ui :where(.bg-cyan-300, .bg-emerald-300, .bg-green-400, .bg-green-500),
+.gym-ui button.bg-cyan-300,
+.gym-ui button.bg-cyan-300:hover,
+.gym-ui button.gym-stepper-plus {
+  color: var(--gym-on-accent) !important;
+  background: var(--gym-accent) !important;
+  border-color: var(--gym-accent-soft) !important;
+}
+.gym-ui :where(.bg-cyan-300\/10, .bg-cyan-300\/15, .bg-emerald-400\/10, .bg-emerald-500\/10, .bg-green-400\/10) { background: color-mix(in srgb, var(--gym-accent) 12%, transparent) !important; }
+.gym-ui :where(.border-cyan-300, .border-cyan-300\/30, .border-cyan-300\/40, .border-emerald-300\/50, .border-emerald-400\/35) { border-color: color-mix(in srgb, var(--gym-accent) 62%, transparent) !important; }
+.gym-ui :where(.text-cyan-50, .text-cyan-100, .text-cyan-200, .text-cyan-300, .text-cyan-400, .text-emerald-50, .text-emerald-100, .text-emerald-200, .text-emerald-300, .text-emerald-400) { color: var(--gym-accent-soft) !important; -webkit-text-fill-color: var(--gym-accent-soft) !important; }
+.gym-ui .gym-start-action,
+.gym-ui .gym-button-primary,
+.gym-ui button.inline-flex:not(.gym-button-contrast):not(.gym-button-danger):not(.gym-button-warning):not(.gym-stepper-minus):not(.gym-stepper-plus) { background: linear-gradient(135deg, var(--gym-accent-soft), var(--gym-accent)) !important; }
+.gym-ui .gym-brand-mark { background: linear-gradient(135deg, var(--gym-accent-soft), var(--gym-accent)) !important; color: var(--gym-on-accent) !important; }
+.gym-ui input[type="checkbox"] { accent-color: var(--gym-accent); }
+
+/* Some Gym actions still carry legacy Tailwind color classes. Normalize every
+   non-semantic green/cyan action at the boundary so new screens inherit themes too. */
+.gym-ui :where(
+  button[class*="bg-green"], button[class*="bg-emerald"], button[class*="bg-cyan"],
+  a[class*="bg-green"], a[class*="bg-emerald"], a[class*="bg-cyan"]
+):not(.gym-button-danger):not(.gym-inline-danger):not([class*="text-red"]) {
+  color: var(--gym-on-accent) !important;
+  -webkit-text-fill-color: var(--gym-on-accent) !important;
+  background: linear-gradient(135deg, var(--gym-accent-soft), var(--gym-accent)) !important;
+  border-color: var(--gym-accent-soft) !important;
+}
+.gym-ui :where(
+  button[class*="bg-green"] *, button[class*="bg-emerald"] *, button[class*="bg-cyan"] *,
+  a[class*="bg-green"] *, a[class*="bg-emerald"] *, a[class*="bg-cyan"] *
+):not([class*="text-red"]) {
+  color: var(--gym-on-accent) !important;
+  -webkit-text-fill-color: var(--gym-on-accent) !important;
+}
+.gym-theme-orange .gym-ui :where(.gym-topbar, .gym-card, .gym-stat-card, article, aside) { box-shadow: 0 12px 28px rgb(126 89 29 / 0.1), inset 0 1px 0 rgb(255 255 255 / 0.8) !important; }
+.gym-theme-orange .gym-ui :where(.gym-ui, input, select, textarea) { color-scheme: light; }
+.gym-theme-orange .gym-ui input:not([type="checkbox"]),
+.gym-theme-orange .gym-ui select,
+.gym-theme-orange .gym-ui textarea { background: #fffdf7 !important; }
+.gym-theme-orange .gym-bottom-bar.gym-ui { background: rgb(255 253 245 / 0.97) !important; }
+.gym-theme-orange .gym-bottom-bar.gym-ui .bottom-bar-button-idle { color: var(--gym-text) !important; }
+.gym-theme-orange .gym-bottom-bar.gym-ui .bottom-bar-button-active,
+.gym-theme-orange .gym-bottom-bar.gym-ui .bottom-bar-button-active * { color: var(--gym-on-accent) !important; }
+
+.gym-ui.gym-athletic::before {
+  background: linear-gradient(90deg, var(--gym-page-grid) 1px, transparent 1px), linear-gradient(180deg, var(--gym-page-grid) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+.gym-ui .gym-brand-mark { box-shadow: 0 0 22px color-mix(in srgb, var(--gym-accent) 32%, transparent); }
+.gym-ui .gym-stat-card { border-color: var(--gym-border) !important; }
+main.gym-ui.gym-athletic .gym-stat-card svg,
+.light-theme main.gym-ui.gym-athletic .gym-stat-card svg { color: var(--gym-accent-soft) !important; }
+main.gym-ui.gym-athletic .gym-stat-card p:not(.gym-stat-value),
+.light-theme main.gym-ui.gym-athletic .gym-stat-card p:not(.gym-stat-value) { color: var(--gym-text-muted) !important; -webkit-text-fill-color: var(--gym-text-muted) !important; }
+main.gym-ui.gym-athletic .gym-stat-value,
+.light-theme main.gym-ui.gym-athletic .gym-stat-value { color: var(--gym-text) !important; -webkit-text-fill-color: var(--gym-text) !important; text-shadow: none !important; }
+.gym-ui .gym-success-panel { background: color-mix(in srgb, var(--gym-accent) 12%, var(--gym-surface)); border-color: var(--gym-border-strong) !important; }
+.gym-ui.gym-athletic input:not([type="checkbox"]),
+.gym-ui.gym-athletic select,
+.gym-ui.gym-athletic textarea { color-scheme: inherit; color: var(--gym-text) !important; -webkit-text-fill-color: var(--gym-text) !important; background: var(--gym-input) !important; border-color: var(--gym-border-strong) !important; }
+.gym-ui.gym-athletic option { color: var(--gym-text); background: var(--gym-input); }
+.gym-ui .gym-progress-track { background: color-mix(in srgb, var(--gym-accent) 15%, var(--gym-surface-raised)) !important; }
+.gym-ui .gym-progress-fill { background: var(--gym-accent) !important; box-shadow: 0 0 16px color-mix(in srgb, var(--gym-accent) 60%, transparent) !important; }
+.gym-ui .gym-feedback-dialog,
+.gym-ui .gym-navigator-dialog,
+.gym-ui .gym-completion-dialog { color: var(--gym-text) !important; background: var(--gym-surface) !important; border-color: var(--gym-border-strong) !important; }
+.gym-theme-orange .gym-ui :where(.text-white, .text-slate-100, .text-slate-200, .text-slate-300) { color: var(--gym-text) !important; -webkit-text-fill-color: var(--gym-text) !important; }
+.gym-theme-orange .gym-ui :where(.text-cyan-200, .text-cyan-300, .text-cyan-400, .text-emerald-200, .text-emerald-300, .text-emerald-400) { color: #aa4313 !important; -webkit-text-fill-color: #aa4313 !important; }
+.gym-theme-orange .gym-ui :where(.gym-button-primary, .gym-start-action, .gym-stepper-plus, .gym-exercise-option-selected) { color: var(--gym-on-accent) !important; -webkit-text-fill-color: var(--gym-on-accent) !important; }
+.gym-theme-orange .gym-ui.gym-athletic :where(li, article p.rounded-xl, article div.rounded-2xl, .bg-white\/\[0\.03\], .bg-white\/\[0\.04\], .bg-white\/\[0\.05\], .bg-white\/\[0\.06\]) { background-color: var(--gym-surface-soft) !important; border-color: var(--gym-border) !important; }
+.gym-theme-orange .gym-ui .gym-plan-exercise { background: var(--gym-surface-soft) !important; }
 
 @media (max-width: 640px) {
   .gym-ui {
@@ -2069,7 +2160,7 @@ html body .gym-ui button.gym-button-contrast * {
 }
 
 html body .gym-ui button.gym-button-contrast {
-  background: #132721 !important;
+  background: var(--gym-surface-raised) !important;
   border-color: var(--gym-border-strong) !important;
 }
 

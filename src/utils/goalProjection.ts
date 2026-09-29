@@ -72,6 +72,37 @@ function savingTimelineWithCommitments(current: number, target: number, saving: 
   return { remaining, state: saving <= 0 ? "deficit" : "growing", months: null, date: null };
 }
 
+function monthlyAssetProjection({
+  current,
+  cashFlow,
+  start,
+  commitments,
+  months = 12,
+}: {
+  current: number | null;
+  cashFlow: ReturnType<typeof livingPlanCashFlow> | null;
+  start: string | null;
+  commitments: { month: string; amount: number }[];
+  months?: number;
+}) {
+  if (current === null || !cashFlow || cashFlow.saving === null || !start) return [];
+  const byMonth = new Map(commitments.map(item => [item.month, item.amount]));
+  const lastCommitmentOffset = commitments.reduce((max, item) => {
+    const offset = (Number(item.month.slice(0, 4)) - Number(start.slice(0, 4))) * 12 + Number(item.month.slice(5, 7)) - Number(start.slice(5, 7));
+    return Math.max(max, offset + 1);
+  }, months);
+  let asset = current;
+  return Array.from({ length: Math.min(Math.max(months, lastCommitmentOffset), 24) }, (_, index) => {
+    const month = addMonths(start, index).slice(0, 7);
+    const commitment = byMonth.get(month) || 0;
+    const income = cashFlow.income;
+    const livingCost = cashFlow.expenses || 0;
+    const net = income - livingCost - commitment;
+    asset = round(asset + net);
+    return { month, income: round(income), livingCost: round(livingCost), commitments: round(commitment), net: round(net), expectedAsset: asset };
+  });
+}
+
 export function projectGoal(goal: GoalInput, assets: Asset[], library: FutureExpenseLibrary, today: string, paymentPlans: PaymentPlan[] = []) {
   const errors: string[] = [];
   const included = assets.filter(a => goal.includedAssetIds.includes(a.id));
@@ -89,12 +120,13 @@ export function projectGoal(goal: GoalInput, assets: Asset[], library: FutureExp
   const projectionStart = nextProjectionDate(today);
   const commitments = projectionStart ? scheduledCommitments(paymentPlans, goal.currency, projectionStart) : [];
   const timeline = current === null ? null : savingTimelineWithCommitments(current, goal.targetAmount, saving, projectionStart ?? today, commitments);
+  const monthlyProjection = monthlyAssetProjection({ current, cashFlow, start: projectionStart, commitments });
   const targetMonths = goal.targetDate && projectionStart ? monthsUntil(projectionStart, goal.targetDate) : null;
   if (goal.targetDate && targetMonths === null) errors.push("Enter a valid target date.");
   const required = timeline && targetMonths !== null && targetMonths > 0 ? timeline.remaining / targetMonths : null;
   const difference = required === null || saving === null ? null : saving - required;
   const paceStatus = difference === null ? null : Math.abs(difference) < 0.01 ? "On Track" : difference > 0 ? "Ahead of Plan" : "Behind Plan";
-  return { current, plan, cashFlow, saving, timeline, errors, targetMonths, required, difference, paceStatus, projectionStart, scheduledCommitments: commitments, progress: current === null ? null : Math.max(0, Math.min(100, current / goal.targetAmount * 100)) };
+  return { current, plan, cashFlow, saving, timeline, errors, targetMonths, required, difference, paceStatus, projectionStart, scheduledCommitments: commitments, monthlyProjection, progress: current === null ? null : Math.max(0, Math.min(100, current / goal.targetAmount * 100)) };
 }
 
 export function goalMilestones(current: number, target: number, saving: number | null, today: string) {

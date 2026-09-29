@@ -35,6 +35,7 @@ import BottomBarButton from "@/components/BottomBarButton";
 import AppIconEditor from "@/components/AppIconEditor";
 import { Select } from "@/components/ui/Field";
 import type { AppTheme, ThemeMode } from "@/hooks/useThemePreference";
+import { gymThemeColors, type GymThemeColor } from "@/hooks/useGymThemePreference";
 import { getWorkoutState, workoutStorageKey } from "@/services/workoutService";
 import { copyTextToClipboard } from "@/utils/clipboard";
 import { formatWorkoutAIExport } from "@/utils/formatWorkoutAIExport";
@@ -102,6 +103,10 @@ interface BottomActionBarProps {
   buttonSoundsEnabled: boolean;
   onButtonSoundsEnabledChange: (enabled: boolean) => void;
   onNavigate: () => void;
+  gymThemeColor: GymThemeColor;
+  gymThemeAuto: boolean;
+  onGymThemeColorChange: (color: GymThemeColor) => void;
+  onGymThemeAutoChange: (enabled: boolean) => void;
 }
 
 export default function BottomActionBar({
@@ -115,6 +120,10 @@ export default function BottomActionBar({
   buttonSoundsEnabled,
   onButtonSoundsEnabledChange,
   onNavigate,
+  gymThemeColor,
+  gymThemeAuto,
+  onGymThemeColorChange,
+  onGymThemeAutoChange,
 }: BottomActionBarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -205,6 +214,12 @@ export default function BottomActionBar({
           </Select>
         </label>
       </div>
+    </div>
+  );
+  const gymThemePanel = themeSettingsOpen && (
+    <div className="col-span-3 rounded-lg border border-white/10 bg-black/35 p-3 text-sm">
+      <div className="mb-3 flex items-center justify-between gap-3"><div><p className="font-semibold">Gym color</p><p className="text-xs text-zinc-400">Choose an accent or rotate it once per day.</p></div><MonitorCog className="size-5 shrink-0 text-zinc-400" aria-hidden="true" /></div>
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto]"><label className="block text-xs font-medium text-zinc-300">Color<Select fieldSize="md" className="mt-1" value={gymThemeColor} onChange={event => onGymThemeColorChange(event.target.value as GymThemeColor)}>{gymThemeColors.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</Select></label><label className="flex min-h-12 items-end gap-2 pb-2 text-xs font-medium text-zinc-300"><input type="checkbox" checked={gymThemeAuto} onChange={event => onGymThemeAutoChange(event.target.checked)} /> Auto daily</label></div>
     </div>
   );
 
@@ -302,14 +317,14 @@ export default function BottomActionBar({
 
             {isSettingsOpen && (
               <div className="grid grid-cols-3 gap-2">
-                {themePanel}
+                {isGym ? gymThemePanel : themePanel}
                 <BottomBarButton
-                  active={themeSettingsOpen || themeMode === "auto" || theme === "light"}
+                  active={themeSettingsOpen || (!isGym && (themeMode === "auto" || theme === "light")) || (isGym && gymThemeAuto)}
                   onClick={() => {
                     setThemeSettingsOpen((current) => !current);
                   }}
-                  icon={theme === "dark" ? Moon : Sun}
-                  label={themeMode === "auto" ? "Auto theme" : "Theme"}
+                  icon={isGym ? Sun : theme === "dark" ? Moon : Sun}
+                  label={isGym ? "Color" : themeMode === "auto" ? "Auto theme" : "Theme"}
                 />
                 <BottomBarButton
                   active={buttonSoundsEnabled}

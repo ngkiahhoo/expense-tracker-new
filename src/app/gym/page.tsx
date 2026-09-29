@@ -487,7 +487,7 @@ function WorkoutFeedbackModal({ onSkip, onSave }: { onSkip: () => void; onSave: 
   );
   return createPortal(
     <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
-      <div className="max-h-[calc(100dvh-3rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-emerald-400/35 bg-[#0b2118] p-5 shadow-2xl">
+      <div className="gym-feedback-dialog max-h-[calc(100dvh-3rem)] w-full max-w-xl overflow-y-auto rounded-2xl border p-5 shadow-2xl">
         <h2 id="feedback-title" className="text-xl font-bold text-emerald-100">Training feedback</h2>
         <p className="mt-2 text-sm text-slate-300">Optional. Choose the closest answer so the next target can account for today&apos;s condition.</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -1789,7 +1789,7 @@ function WorkoutMode({
             onClick={() => setShowNavigator(false)}
           >
             <div
-              className="flex max-h-[calc(100dvh-10rem)] w-full max-w-3xl flex-col rounded-2xl border border-cyan-300/30 bg-[#0a1d20] p-4 shadow-2xl shadow-black/50 sm:max-h-[82vh]"
+              className="gym-navigator-dialog flex max-h-[calc(100dvh-10rem)] w-full max-w-3xl flex-col rounded-2xl border p-4 shadow-2xl shadow-black/50 sm:max-h-[82vh]"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
@@ -1964,8 +1964,8 @@ function WorkoutMode({
             <p className="text-sm">Exercise {active.currentExerciseIndex + 1} of {active.session.exercises.length}</p>
             <span className="rounded-full bg-black/20 px-3 py-1 text-sm text-slate-200">{completedSets.length}/{current.plannedSetsSnapshot} sets</span>
           </div>
-          <div className="mt-3 h-3 overflow-hidden rounded-full bg-emerald-950/80">
-            <div className="h-full rounded-full bg-emerald-300 shadow-[0_0_16px_rgba(74,222,128,0.75)]" style={{ width: `${((active.currentExerciseIndex + 1) / active.session.exercises.length) * 100}%` }} />
+          <div className="gym-progress-track mt-3 h-3 overflow-hidden rounded-full">
+            <div className="gym-progress-fill h-full rounded-full" style={{ width: `${((active.currentExerciseIndex + 1) / active.session.exercises.length) * 100}%` }} />
           </div>
           <h2 className="mt-6 text-3xl font-bold uppercase leading-tight">{current.nameSnapshot}</h2>
           <p className="mt-3 text-sm text-cyan-200">
@@ -1990,7 +1990,7 @@ function WorkoutMode({
       <dialog
         ref={completionDialogRef}
         aria-labelledby="workout-complete-title"
-        className="fixed inset-0 m-auto max-h-[calc(100dvh-3rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-2xl border border-emerald-400/40 bg-[#0d291c] p-4 text-emerald-100 shadow-2xl backdrop:bg-black/75 backdrop:backdrop-blur-md"
+        className="gym-completion-dialog fixed inset-0 m-auto max-h-[calc(100dvh-3rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-2xl border p-4 shadow-2xl backdrop:bg-black/75 backdrop:backdrop-blur-md"
       >
         <h2 id="workout-complete-title" className="text-lg font-semibold">All exercises are done.</h2>
         <Button
@@ -2009,7 +2009,7 @@ function WorkoutMode({
       </dialog>
       {showFinishConfirm && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-md"
+          className="gym-ui fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 px-4 py-6 backdrop-blur-md"
           role="dialog"
           aria-modal="true"
           aria-labelledby="finish-workout-title"

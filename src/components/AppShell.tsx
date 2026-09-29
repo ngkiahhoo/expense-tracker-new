@@ -10,6 +10,7 @@ import useThemePreference from "../hooks/useThemePreference";
 import SyncStatus from "./SyncStatus";
 import { confirmPanelClose } from "@/hooks/useUnsavedChanges";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import useGymThemePreference from "@/hooks/useGymThemePreference";
 
 const ToolsContext = createContext<{ activeTool: BottomTool | null; setActiveTool: Dispatch<SetStateAction<BottomTool | null>> } | null>(null);
 export function useAppTools() {
@@ -46,12 +47,18 @@ function ConfiguredAppShell({ children }: { children: ReactNode }) {
     buttonSoundsEnabled,
     setButtonSoundsEnabled,
   } = useSoundPreference();
+  const gymTheme = useGymThemePreference();
   useButtonClickSounds(buttonSoundsEnabled);
   useEffect(() => {
     document.documentElement.classList.toggle("light-theme", theme === "light");
   }, [theme]);
+  useEffect(() => {
+    const themeClass = `gym-theme-${gymTheme.color}`;
+    if (pathname === "/gym") document.body.classList.add(themeClass);
+    return () => document.body.classList.remove(themeClass);
+  }, [gymTheme.color, pathname]);
   return <ToolsContext.Provider value={{ activeTool, setActiveTool }}>
-    <div className={`${theme === "light" ? "light-theme" : ""} min-h-screen app-background pb-[calc(7rem+env(safe-area-inset-bottom))]`}>
+    <div className={`${theme === "light" ? "light-theme" : ""} gym-theme-${gymTheme.color} min-h-screen app-background pb-[calc(7rem+env(safe-area-inset-bottom))]`}>
       <SyncStatus />
       <button
         type="button"
@@ -75,7 +82,7 @@ function ConfiguredAppShell({ children }: { children: ReactNode }) {
             if (activeTool && !confirmPanelClose()) return;
             setActiveTool(current => pathname === "/" && current === tool ? null : tool);
             if (pathname !== "/") router.push("/");
-          }} theme={theme} themeMode={themeMode} themeTimeZone={themeTimeZone} onThemeModeChange={setThemeMode} onThemeTimeZoneChange={setThemeTimeZone} buttonSoundsEnabled={buttonSoundsEnabled} onButtonSoundsEnabledChange={setButtonSoundsEnabled} onNavigate={() => setActiveTool(null)} />
+          }} theme={theme} themeMode={themeMode} themeTimeZone={themeTimeZone} onThemeModeChange={setThemeMode} onThemeTimeZoneChange={setThemeTimeZone} buttonSoundsEnabled={buttonSoundsEnabled} onButtonSoundsEnabledChange={setButtonSoundsEnabled} onNavigate={() => setActiveTool(null)} gymThemeColor={gymTheme.selectedColor} gymThemeAuto={gymTheme.auto} onGymThemeColorChange={gymTheme.setColor} onGymThemeAutoChange={gymTheme.setAuto} />
       </Suspense>
     </div>
   </ToolsContext.Provider>;

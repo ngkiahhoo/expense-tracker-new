@@ -25,6 +25,9 @@ const displayDate = (date: string | null) => date ? new Date(`${date}T00:00:00Z`
 function Stat({ label, children }: { label: string; children: ReactNode }) {
   return <div><dt className="text-sm text-slate-500">{label}</dt><dd className="mt-1 text-xl font-semibold">{children}</dd></div>;
 }
+function MonthLabel({ month }: { month: string }) {
+  return <span>{displayDate(`${month}-01`)}</span>;
+}
 function WhatIf({ current, target, saving, today, currency }: { current: number; target: number; saving: number; today: string; currency: Currency }) {
   const [amount, setAmount] = useState(String(saving));
   const alternate = amount.trim() ? Number(amount) : NaN;
@@ -126,7 +129,48 @@ export default function SavingsGoalsPage() {
           {result?.errors.map(message => <p role="alert" key={message}>{message}</p>)}
           {!result?.errors.length && result?.timeline && <>
             {result.projectionStart && <p className="text-sm text-slate-400">First projected income and saving: {displayDate(result.projectionStart)}</p>}
-            {!!result.scheduledCommitments.length && <p className="text-sm text-amber-300">Scheduled payment commitments: {result.scheduledCommitments.map(item => `${item.month} ${money(item.amount)}`).join(" · ")}</p>}
+            {!!result.scheduledCommitments.length && (
+              <section className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4">
+                <h3 className="font-semibold text-amber-200">Scheduled Payment Commitments</h3>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {result.scheduledCommitments.map(item => (
+                    <div key={item.month} className="flex items-center justify-between gap-3 rounded-md border border-amber-300/20 px-3 py-2 text-sm">
+                      <span className="text-slate-300"><MonthLabel month={item.month} /></span>
+                      <span className="font-semibold text-amber-200">-{money(item.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+            {!!result.monthlyProjection.length && (
+              <section className="rounded-lg border border-slate-300/20 p-4">
+                <h3 className="font-semibold">Expected Monthly Assets</h3>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full min-w-[620px] text-left text-sm">
+                    <thead className="text-slate-400">
+                      <tr className="border-b border-slate-300/20">
+                        <th className="py-2 pr-3 font-medium">Month</th>
+                        <th className="px-3 py-2 text-right font-medium">Income</th>
+                        <th className="px-3 py-2 text-right font-medium">Living Cost</th>
+                        <th className="px-3 py-2 text-right font-medium">Pay Later / Instalment</th>
+                        <th className="py-2 pl-3 text-right font-medium">Expected Asset</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.monthlyProjection.map(item => (
+                        <tr key={item.month} className="border-b border-slate-300/10 last:border-0">
+                          <td className="py-2 pr-3"><MonthLabel month={item.month} /></td>
+                          <td className="px-3 py-2 text-right text-emerald-300">+{money(item.income)}</td>
+                          <td className="px-3 py-2 text-right text-rose-300">-{money(item.livingCost)}</td>
+                          <td className="px-3 py-2 text-right text-amber-200">{item.commitments ? `-${money(item.commitments)}` : "-"}</td>
+                          <td className="py-2 pl-3 text-right font-semibold">{money(item.expectedAsset)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
             <dl className="grid gap-4 sm:grid-cols-3"><Stat label="Remaining">{money(result.timeline.remaining)}</Stat>{result.timeline.state === "growing" && <><Stat label="Estimated Goal Date">{displayDate(result.timeline.date)}</Stat><Stat label="Estimated Time">{result.timeline.months!.toFixed(1)} months</Stat></>}</dl>
             {result.timeline.state === "reached" ? <p className="text-xl font-semibold text-teal-500">Goal reached</p> : !result.plan ? <p>Select a Living Cost Plan to calculate your projection.</p> : result.timeline.state === "stalled" ? <p>No progress under this plan. Income equals expenses.</p> : result.timeline.state === "deficit" ? <div><p>Goal cannot be reached under this plan.</p><p>Monthly deficit: {money(-result.saving!)}. Assets are decreasing by {money(-result.saving!)} / month.</p></div> : !result.timeline.date ? <p>The estimated date is beyond the supported calendar range.</p> : null}
           </>}
