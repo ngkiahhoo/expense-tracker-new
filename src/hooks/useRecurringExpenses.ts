@@ -54,6 +54,11 @@ export default function useRecurringExpenses(
   ] = useState("");
 
   const [
+    recurringAssetId,
+    setRecurringAssetId,
+  ] = useState("");
+
+  const [
     recurringRepeatDay,
     setRecurringRepeatDay,
   ] = useState(
@@ -98,6 +103,7 @@ export default function useRecurringExpenses(
     setRecurringAmount("");
     setRecurringDescription("");
     setRecurringCategory("");
+    setRecurringAssetId("");
     setRecurringRepeatDay(
       String(
         new Date()
@@ -159,6 +165,7 @@ export default function useRecurringExpenses(
         isActive: recurringIsActive,
         name: recurringName,
         repeatDay: recurringRepeatDay,
+        assetId: recurringAssetId,
       });
 
       if (!payload) {
@@ -247,6 +254,9 @@ export default function useRecurringExpenses(
     setRecurringCategory(
       formValues.category
     );
+    setRecurringAssetId(
+      formValues.assetId
+    );
     setRecurringRepeatDay(
       formValues.repeatDay
     );
@@ -304,6 +314,9 @@ export default function useRecurringExpenses(
 
     recurringCategory,
     setRecurringCategory,
+
+    recurringAssetId,
+    setRecurringAssetId,
 
     recurringRepeatDay,
     setRecurringRepeatDay,

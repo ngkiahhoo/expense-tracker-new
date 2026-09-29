@@ -10,9 +10,46 @@ export type ExpensePayload = {
   note: string;
   expense_date: string;
   category_id: number;
+  asset_id?: number | null;
   currency?: Currency;
   recurring_expense_id?: number;
 };
+
+async function adjustExpenseAsset(amount: number, currency: Currency, assetId?: number | null) {
+  const { adjustAssetValue } = await import("./assetService");
+  if (assetId) return adjustAssetValue(assetId, amount, currency);
+
+  const { data, error } = await supabase
+    .from("assets")
+    .select("id")
+    .eq("is_main", true)
+    .eq("currency", currency)
+    .maybeSingle();
+
+  if (error) return error;
+  if (!data) return new Error(`Set a ${currency} Main Asset before recording expenses in ${currency}.`);
+
+  return adjustAssetValue(data.id, amount, currency);
+}
+
+async function insertExpensePayload(payload: ExpensePayload) {
+  const { data, error } = await supabase
+    .from("expenses")
+    .insert([payload])
+    .select("id")
+    .single();
+
+  if (!error || !payload.asset_id) return { data, error };
+  if (error.code !== "PGRST204") return { data, error };
+
+  const fallbackPayload = { ...payload };
+  delete fallbackPayload.asset_id;
+  return supabase
+    .from("expenses")
+    .insert([fallbackPayload])
+    .select("id")
+    .single();
+}
 
 export async function getAllExpenseRecords(): Promise<Expense[]> {
   const records: Expense[] = [];
@@ -60,17 +97,19 @@ export async function getExpenses(selectedMonth: string) {
 }
 
 export async function createExpense(payload: ExpensePayload) {
-  const { error } = await supabase
-    .from("expenses")
-    .insert([payload]);
+  const { data, error } = await insertExpensePayload(payload);
 
   if (!error) {
     try {
-      const { adjustMainAssetValue } = await import("./assetService");
-      await adjustMainAssetValue(
+      const adjustError = await adjustExpenseAsset(
         -Number(payload.amount || 0),
-        normalizeCurrency(payload.currency)
+        normalizeCurrency(payload.currency),
+        payload.asset_id
       );
+      if (adjustError) {
+        if (data?.id) await supabase.from("expenses").delete().eq("id", data.id);
+        return adjustError;
+      }
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("asset:updated"));
       }
@@ -99,7 +138,8 @@ export async function updateExpense(
   const newAmount = Number(payload.amount ?? prevAmount);
   const prevCurrency = normalizeCurrency(existingExpense.currency);
   const newCurrency = normalizeCurrency(payload.currency ?? prevCurrency);
-  const delta = prevAmount - newAmount;
+  const prevAssetId = existingExpense.asset_id ?? null;
+  const newAssetId = payload.asset_id === undefined ? prevAssetId : payload.asset_id;
 
   const { error } = await supabase
     .from("expenses")
@@ -108,14 +148,16 @@ export async function updateExpense(
 
   if (!error) {
     try {
-      const { adjustMainAssetValue } = await import("./assetService");
       if (existingExpense.payment_installment_id) {
         // The database trigger adjusts the original asset in the same transaction.
-      } else if (prevCurrency === newCurrency) {
-        await adjustMainAssetValue(delta, newCurrency);
+      } else if (prevCurrency === newCurrency && prevAssetId === newAssetId) {
+        const adjustError = await adjustExpenseAsset(prevAmount - newAmount, newCurrency, newAssetId);
+        if (adjustError) return adjustError;
       } else {
-        await adjustMainAssetValue(prevAmount, prevCurrency);
-        await adjustMainAssetValue(-newAmount, newCurrency);
+        const restoreError = await adjustExpenseAsset(prevAmount, prevCurrency, prevAssetId);
+        if (restoreError) return restoreError;
+        const deductError = await adjustExpenseAsset(-newAmount, newCurrency, newAssetId);
+        if (deductError) return deductError;
       }
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("asset:updated"));
@@ -140,6 +182,7 @@ export async function removeExpense(id: number) {
   const existingExpense = existing as Expense;
   const prevAmount = Number(existingExpense.amount || 0);
   const prevCurrency = normalizeCurrency(existingExpense.currency);
+  const prevAssetId = existingExpense.asset_id ?? null;
 
   const { error } = await supabase
     .from("expenses")
@@ -148,9 +191,9 @@ export async function removeExpense(id: number) {
 
   if (!error && prevAmount !== 0) {
     try {
-      const { adjustMainAssetValue } = await import("./assetService");
       if (!existingExpense.payment_installment_id) {
-        await adjustMainAssetValue(prevAmount, prevCurrency);
+        const adjustError = await adjustExpenseAsset(prevAmount, prevCurrency, prevAssetId);
+        if (adjustError) return adjustError;
       }
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("asset:updated"));
@@ -177,9 +220,10 @@ export async function removeExpensesByMonth(selectedMonth: string) {
   const removedTotals = ((existing || []) as Expense[]).reduce((totals, expense) => {
     if (expense.payment_installment_id) return totals;
     const currency = normalizeCurrency(expense.currency);
-    totals[currency] += Number(expense.amount || 0);
+    const key = `${currency}:${expense.asset_id ?? ""}`;
+    totals[key] = (totals[key] || 0) + Number(expense.amount || 0);
     return totals;
-  }, { MYR: 0, SGD: 0 } as Record<Currency, number>);
+  }, {} as Record<string, number>);
 
   const { error } = await supabase
     .from("expenses")
@@ -189,10 +233,11 @@ export async function removeExpensesByMonth(selectedMonth: string) {
 
   if (!error) {
     try {
-      const { adjustMainAssetValue } = await import("./assetService");
       await Promise.all(
-        Object.entries(removedTotals).map(([currency, total]) =>
-          adjustMainAssetValue(total, currency as Currency)
+        Object.entries(removedTotals).map(([key, total]) => {
+          const [currency, assetId] = key.split(":");
+          return adjustExpenseAsset(total, currency as Currency, assetId ? Number(assetId) : null);
+        }
         )
       );
       if (typeof window !== "undefined") {

@@ -20,9 +20,17 @@ export async function processDuePayments() {
   return Number(data || 0);
 }
 
-export async function savePaymentPlan(payload: { p_id: string; p_name: string; p_category_id: number; p_currency: string; p_total: number; p_count: number; p_first_date: string; p_amounts: number[]; p_payment_name_id: number }) {
+export async function savePaymentPlan(payload: { p_id: string; p_name: string; p_category_id: number; p_currency: string; p_total: number; p_count: number; p_first_date: string; p_amounts: number[]; p_payment_name_id: number; p_asset_id?: number | null }) {
   const { error } = await supabase.rpc('create_payment_plan', payload);
-  if (error) throw paymentError(error);
+  if (!error) return;
+  if (!payload.p_asset_id && ['PGRST202', '42883'].includes(error.code || '')) {
+    const legacyPayload = { ...payload };
+    delete legacyPayload.p_asset_id;
+    const { error: legacyError } = await supabase.rpc('create_payment_plan', legacyPayload);
+    if (!legacyError) return;
+    throw paymentError(legacyError);
+  }
+  throw paymentError(error);
 }
 
 export async function changePaymentInstallment(id: number, cancel: boolean, amount: number, date: string) {

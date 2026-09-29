@@ -2,6 +2,14 @@ export function paymentToday() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
+export function firstDayOfNextPaymentMonth() {
+  const today = paymentToday();
+  const year = Number(today.slice(0, 4));
+  const month = Number(today.slice(5, 7));
+  const next = new Date(Date.UTC(year, month, 1));
+  return next.toISOString().slice(0, 10);
+}
+
 export function buildPaymentSchedule(total: string, count: number, firstDate: string) {
   if (!/^\d+(\.\d{1,2})?$/.test(total) || !/^\d{4}-\d{2}-\d{2}$/.test(firstDate)) return [];
   const cents = Math.round(Number(total) * 100);

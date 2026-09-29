@@ -116,6 +116,30 @@ export async function adjustMainAssetValue(delta: number, currency: Currency = D
 
 export const adjustDefaultAssetValue = adjustMainAssetValue;
 
+export async function adjustAssetValue(id: number, delta: number, currency: Currency = DEFAULT_CURRENCY) {
+  if (delta === 0) return null;
+
+  const targetCurrency = normalizeCurrency(currency);
+  const { data, error } = await supabase
+    .from("assets")
+    .select("*")
+    .eq("id", id)
+    .eq("currency", targetCurrency)
+    .single();
+
+  if (error) return error;
+  if (!data) return new Error("Selected asset was not found.");
+
+  const nextValue = Number(data.current_value || 0) + delta;
+  if (nextValue < 0) {
+    return new Error(`${data.name} does not have enough balance for this expense.`);
+  }
+
+  return updateAsset(id, {
+    current_value: nextValue,
+  });
+}
+
 export async function removeAsset(id: number) {
   const { error } = await supabase.from("assets").delete().eq("id", id);
   return error;

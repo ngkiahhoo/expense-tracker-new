@@ -41,7 +41,7 @@ import { formatWorkoutAIExport } from "@/utils/formatWorkoutAIExport";
 import { createSupabaseBackup, downloadSupabaseBackup } from "@/utils/supabaseBackup";
 
 export type BottomTool =
-  "expense" | "recurring" | "payments" | "categories" | "records" | "income" | "reminders" | "reminderLogs";
+  "expense" | "recurring" | "payLater" | "instalment" | "categories" | "records" | "income" | "reminders" | "reminderLogs";
 
 const BOTTOM_BUTTONS_PER_ROW = 3;
 const EXPORTING_STATUS = "Exporting...";
@@ -78,7 +78,8 @@ const actionTools = [
   { tool: "recurring", icon: CalendarSync, label: "Repeat" },
   { tool: "categories", icon: FolderTree, label: "Category" },
   { tool: "records", icon: ClipboardList, label: "Records" },
-  { tool: "payments", icon: CalendarClock, label: "Pay Later" },
+  { tool: "payLater", icon: CalendarClock, label: "Pay Later" },
+  { tool: "instalment", icon: CalendarRange, label: "Instalment" },
 ] as const;
 
 const actionRows = Array.from(

@@ -16,6 +16,8 @@ create table if not exists public.payment_plans (
 );
 alter table public.payment_plans add column if not exists payment_name_id bigint
   references public.payment_names(id) on delete restrict;
+alter table public.payment_plans add column if not exists asset_id integer
+  references public.assets(id) on delete restrict;
 -- Backfill old free-text names without reactivating archived options on reruns.
 with legacy_names as (
   select coalesce(nullif(btrim(regexp_replace(name, '[[:space:]]+', ' ', 'g')), ''), 'Unnamed payment') as name,
@@ -129,8 +131,16 @@ begin
     if item.status <> 'scheduled' or item.due_date > (now() at time zone 'Asia/Kuala_Lumpur')::date then
       raise exception 'Installment is not due';
     end if;
-    select id into target from public.assets where is_main and currency = plan.currency for update;
-    if target is null then raise exception 'Set a main asset for % before posting payments', plan.currency; end if;
+    if plan.asset_id is not null then
+      select id into target from public.assets where id = plan.asset_id and currency = plan.currency for update;
+      if target is null then raise exception 'Selected asset is not available for %', plan.currency; end if;
+    else
+      select id into target from public.assets where is_main and currency = plan.currency for update;
+      if target is null then raise exception 'Set a main asset for % before posting payments', plan.currency; end if;
+    end if;
+    if exists(select 1 from public.assets where id = target and current_value < new.amount) then
+      raise exception 'Selected asset does not have enough balance for this payment';
+    end if;
     update public.assets set current_value = current_value - new.amount, updated_at = now() where id = target;
     update public.payment_installments set status = 'posted', asset_id = target, amount = new.amount where id = item.id;
   else
@@ -153,7 +163,12 @@ begin
     select i.*, p.name, p.category_id, p.currency
     from public.payment_installments i join public.payment_plans p on p.id = i.plan_id
     where i.status = 'scheduled' and i.due_date <= (now() at time zone 'Asia/Kuala_Lumpur')::date
-      and exists (select 1 from public.assets a where a.is_main and a.currency = p.currency)
+      and exists (
+        select 1 from public.assets a
+        where a.currency = p.currency
+          and a.current_value >= i.amount
+          and ((p.asset_id is null and a.is_main) or a.id = p.asset_id)
+      )
     order by i.due_date, i.id for update of i
   loop
     insert into public.expenses(amount, currency, note, expense_date, category_id, payment_installment_id)
@@ -166,10 +181,12 @@ end $$;
 -- Replace old signatures to avoid ambiguous API overloads. Defaults preserve old clients.
 drop function if exists public.create_payment_plan(uuid, text, bigint, text, numeric, integer, date);
 drop function if exists public.create_payment_plan(uuid, text, bigint, text, numeric, integer, date, numeric[]);
+drop function if exists public.create_payment_plan(uuid, text, bigint, text, numeric, integer, date, numeric[], bigint);
+drop function if exists public.create_payment_plan(uuid, text, bigint, text, numeric, integer, date, numeric[], bigint, integer);
 create or replace function public.create_payment_plan(
   p_id uuid, p_name text, p_category_id bigint, p_currency text,
   p_total numeric, p_count integer, p_first_date date, p_amounts numeric[] default null,
-  p_payment_name_id bigint default null
+  p_payment_name_id bigint default null, p_asset_id integer default null
 ) returns uuid language plpgsql set search_path = public as $$
 declare cents bigint; base bigint; idx integer; month_start date; due date;
   chosen_name public.payment_names;
@@ -190,7 +207,10 @@ begin
       raise exception 'Payment amounts must be positive, have at most two decimal places and add up to the total payable';
     end if;
   end if;
-  if not exists(select 1 from public.assets where is_main and currency = p_currency) then
+  if p_asset_id is not null and not exists(select 1 from public.assets where id = p_asset_id and currency = p_currency) then
+    raise exception 'Selected asset is not available for %', p_currency;
+  end if;
+  if p_asset_id is null and not exists(select 1 from public.assets where is_main and currency = p_currency) then
     raise exception 'Set a main asset for % before creating a plan', p_currency;
   end if;
   if p_payment_name_id is null then
@@ -199,8 +219,8 @@ begin
   select * into chosen_name from public.payment_names where id = p_payment_name_id and is_active;
   if not found then raise exception 'Select an active payment name'; end if;
   base := cents / p_count;
-  insert into public.payment_plans(id,name,payment_name_id,category_id,currency)
-    values(p_id,chosen_name.name,chosen_name.id,p_category_id,p_currency);
+  insert into public.payment_plans(id,name,payment_name_id,category_id,currency,asset_id)
+    values(p_id,chosen_name.name,chosen_name.id,p_category_id,p_currency,p_asset_id);
   for idx in 0..p_count-1 loop
     month_start := (date_trunc('month', p_first_date) + make_interval(months => idx))::date;
     due := month_start + (least(extract(day from p_first_date)::integer,

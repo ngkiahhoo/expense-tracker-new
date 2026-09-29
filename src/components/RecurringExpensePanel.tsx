@@ -16,9 +16,11 @@ import {
 import { confirmDelete } from "../utils/confirm";
 import { getTypeColor } from "../utils/typeColors";
 import { formatCurrencyAmount } from "../utils/currency";
+import { mainAssetDefaultLabel } from "../utils/assetLabels";
 
 import type { Category } from "../types/category";
 import type { Currency } from "../types/currency";
+import type { Asset } from "../types/asset";
 import type { RecurringExpense } from "../types/recurringExpense";
 import ListToolbar, { defaultListFilters } from "./ui/ListToolbar";
 import useSessionState from "@/hooks/useSessionState";
@@ -35,6 +37,8 @@ interface RecurringExpensePanelProps {
   setRecurringDescription: (value: string) => void;
   recurringCategory: string;
   setRecurringCategory: (value: string) => void;
+  recurringAssetId: string;
+  setRecurringAssetId: (value: string) => void;
   recurringRepeatDay: string;
   setRecurringRepeatDay: (value: string) => void;
   recurringIsActive: boolean;
@@ -47,6 +51,7 @@ interface RecurringExpensePanelProps {
   recurringError: string;
   generatedRecurringCount: number;
   categories: Category[];
+  assets: Asset[];
   refreshRecurringExpenses: () => Promise<boolean>;
   saveRecurringExpense: () => Promise<boolean>;
   deleteRecurringExpense: (id: number) => Promise<boolean>;
@@ -66,6 +71,8 @@ export default function RecurringExpensePanel({
   setRecurringDescription,
   recurringCategory,
   setRecurringCategory,
+  recurringAssetId,
+  setRecurringAssetId,
   recurringRepeatDay,
   setRecurringRepeatDay,
   recurringIsActive,
@@ -78,6 +85,7 @@ export default function RecurringExpensePanel({
   recurringError,
   generatedRecurringCount,
   categories,
+  assets,
   refreshRecurringExpenses,
   saveRecurringExpense,
   deleteRecurringExpense,
@@ -207,6 +215,29 @@ export default function RecurringExpensePanel({
             Active
           </label>
         </div>
+
+        <label className="block text-sm font-medium">
+          Asset
+          <Select
+            className="mt-1"
+            value={recurringAssetId}
+            onChange={(event) => setRecurringAssetId(event.target.value)}
+          >
+            <option value="">{mainAssetDefaultLabel(assets, recurringCurrency)}</option>
+            {assets
+              .filter((asset) => !asset.is_main && (asset.currency || "MYR") === recurringCurrency)
+              .map((asset) => (
+                <option key={asset.id} value={asset.id}>
+                  {asset.name}
+                  {asset.is_main ? " - Main" : ""}
+                  {" - "}
+                  {asset.currency || recurringCurrency}
+                  {" "}
+                  {Number(asset.current_value || 0).toFixed(2)}
+                </option>
+              ))}
+          </Select>
+        </label>
 
         <SheetFooter>
           <Button

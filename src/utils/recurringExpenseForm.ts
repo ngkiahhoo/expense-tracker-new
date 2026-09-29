@@ -12,6 +12,7 @@ interface RecurringFormValues {
   isActive:boolean;
   name:string;
   repeatDay:string;
+  assetId:string;
 }
 
 export function getRecurringErrorMessage(
@@ -45,6 +46,7 @@ export function buildRecurringExpensePayload({
   isActive,
   name,
   repeatDay,
+  assetId,
 }:RecurringFormValues) {
   const numericAmount = Number(amount);
   const numericRepeatDay = Number(repeatDay);
@@ -71,6 +73,7 @@ export function buildRecurringExpensePayload({
     currency,
     description: description.trim() || null,
     category_id: Number(category),
+    asset_id: assetId ? Number(assetId) : null,
     repeat_day: numericRepeatDay,
     is_active: isActive,
   };
@@ -92,5 +95,6 @@ export function recurringExpenseToFormValues(
     name: recurringExpense.name,
     repeatDay: recurringExpense.repeat_day.toString(),
     currency: recurringExpense.currency,
+    assetId: recurringExpense.asset_id ? String(recurringExpense.asset_id) : "",
   };
 }

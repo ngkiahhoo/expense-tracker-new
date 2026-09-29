@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FocusEvent,
 } from "react";
@@ -167,6 +168,9 @@ export default function Home() {
     selectedCategory,
     setSelectedCategory,
 
+    selectedAssetId,
+    setSelectedAssetId,
+
     editingId,
     setEditingId,
 
@@ -248,6 +252,9 @@ export default function Home() {
     recurringCategory,
     setRecurringCategory,
 
+    recurringAssetId,
+    setRecurringAssetId,
+
     recurringRepeatDay,
     setRecurringRepeatDay,
 
@@ -299,12 +306,62 @@ export default function Home() {
 
   const assets = useAssets(selectedMonth);
   const { fetchAssets } = assets;
-  useUnsavedChanges(activeTool === "expense" ? !!(amount || note || editingId) : activeTool === "income" ? !!(incomeAmount || incomeNote || incomeEditingId) : false, activeTool === "expense" ? loading : activeTool === "income" ? incomeLoading : false);
+  useUnsavedChanges(activeTool === "expense" ? !!(amount || note || selectedAssetId || editingId) : activeTool === "income" ? !!(incomeAmount || incomeNote || incomeEditingId) : false, activeTool === "expense" ? loading : activeTool === "income" ? incomeLoading : false);
 
   const refreshPaymentTransactions = useCallback(async () => {
     await Promise.all([fetchExpenses(), fetchDashboardHistory()]);
   }, [fetchExpenses, fetchDashboardHistory]);
   const payments = usePaymentPlans(refreshPaymentTransactions);
+
+  const expenseHistoryDraft = useMemo(() => {
+    const noteCounts = new Map<string, number>();
+    const categoryCounts = new Map<string, number>();
+    const validCategoryIds = new Set(categories.map((category) => String(category.id)));
+
+    for (const expense of allExpenses) {
+      if (normalizeCurrency(expense.currency) !== activeCurrency) continue;
+
+      const trimmedNote = expense.note.trim();
+      if (trimmedNote) noteCounts.set(trimmedNote, (noteCounts.get(trimmedNote) || 0) + 1);
+
+      const categoryId = String(expense.category_id);
+      if (validCategoryIds.has(categoryId)) {
+        categoryCounts.set(categoryId, (categoryCounts.get(categoryId) || 0) + 1);
+      }
+    }
+
+    const mostUsed = (counts: Map<string, number>) =>
+      [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || "";
+
+    return {
+      note: mostUsed(noteCounts),
+      category: mostUsed(categoryCounts),
+    };
+  }, [activeCurrency, allExpenses, categories]);
+
+  const expenseDraftAutofillKey = useRef("");
+  useEffect(() => {
+    if (activeTool !== "expense" || editingId) {
+      expenseDraftAutofillKey.current = "";
+      return;
+    }
+
+    const key = `${activeCurrency}:${expenseHistoryDraft.note}:${expenseHistoryDraft.category}`;
+    if (expenseDraftAutofillKey.current === key) return;
+    expenseDraftAutofillKey.current = key;
+
+    if (!note.trim() && expenseHistoryDraft.note) setNote(expenseHistoryDraft.note);
+    if (!selectedCategory && expenseHistoryDraft.category) setSelectedCategory(expenseHistoryDraft.category);
+  }, [
+    activeCurrency,
+    activeTool,
+    editingId,
+    expenseHistoryDraft,
+    note,
+    selectedCategory,
+    setNote,
+    setSelectedCategory,
+  ]);
 
   const activeCurrencyAssets = useMemo(
     () => (assets.assets || []).filter((asset) => normalizeCurrency(asset.currency) === activeCurrency),
@@ -397,19 +454,24 @@ export default function Home() {
 
   async function handleSaveExpense() {
     const noteToSave = note;
+    const editingExpenseId = editingId;
 
     const result =
       await saveExpense();
 
     if (result.success) {
-      if (editingId) {
-        setUpdatedExpense(editingId);
+      if (editingExpenseId) {
+        setUpdatedExpense(editingExpenseId);
         setActiveTool(editReturn === "records" ? "records" : null);
         if (editReturn === "drilldown") setShowExpenseDrilldown(true);
       }
       try { addSavedNote(noteToSave); }
       catch { toast.showToast("Expense saved. The note shortcut could not be synced.", "warning"); }
       await fetchDashboardHistory();
+      if (!editingExpenseId) {
+        if (expenseHistoryDraft.note) setNote(expenseHistoryDraft.note);
+        if (!selectedCategory && expenseHistoryDraft.category) setSelectedCategory(expenseHistoryDraft.category);
+      }
       toast.showToast(result.message || "Expense saved successfully", "success");
     } else {
       toast.showToast(result.error || "Failed to save expense", "error");
@@ -589,8 +651,10 @@ export default function Home() {
       ? incomeEditingId
         ? "Edit Income"
         : "Income CRUD"
-      : activeTool === "payments"
-      ? "Pay Later & Installments"
+      : activeTool === "payLater"
+      ? "Pay Later"
+      : activeTool === "instalment"
+      ? "Instalment"
       : activeTool === "categories"
       ? "Category CRUD"
       : activeTool === "reminders"
@@ -773,6 +837,9 @@ export default function Home() {
                     setExpenseDate={setExpenseDate}
                     selectedCategory={selectedCategory}
                     setSelectedCategory={setSelectedCategory}
+                    selectedAssetId={selectedAssetId}
+                    setSelectedAssetId={setSelectedAssetId}
+                    assets={activeCurrencyAssets}
                     categories={categories}
                     editingId={editingId}
                     currency={editingCurrency || activeCurrency}
@@ -788,9 +855,9 @@ export default function Home() {
               </>
             )}
 
-            {activeTool === "payments" && (
+            {(activeTool === "payLater" || activeTool === "instalment") && (
               <PaymentPlanPanel
-                key={activeCurrency}
+                key={`${activeCurrency}:${activeTool}`}
                 plans={payments.plans}
                 names={payments.names}
                 categories={categories}
@@ -799,6 +866,8 @@ export default function Home() {
                 error={payments.error}
                 loading={payments.loading}
                 refresh={payments.refresh}
+                mode={activeTool === "payLater" ? "later" : "installment"}
+                assets={activeCurrencyAssets}
               />
             )}
 
@@ -813,6 +882,8 @@ export default function Home() {
                     setRecurringDescription={setRecurringDescription}
                     recurringCategory={recurringCategory}
                     setRecurringCategory={setRecurringCategory}
+                    recurringAssetId={recurringAssetId}
+                    setRecurringAssetId={setRecurringAssetId}
                     recurringRepeatDay={recurringRepeatDay}
                     setRecurringRepeatDay={setRecurringRepeatDay}
                     recurringIsActive={recurringIsActive}
@@ -825,6 +896,7 @@ export default function Home() {
                     recurringError={recurringError}
                     generatedRecurringCount={generatedRecurringCount}
                     categories={categories}
+                    assets={activeCurrencyAssets}
                     refreshRecurringExpenses={fetchRecurringExpenses}
                     saveRecurringExpense={handleSaveRecurringExpense}
                     deleteRecurringExpense={handleDeleteRecurringExpense}

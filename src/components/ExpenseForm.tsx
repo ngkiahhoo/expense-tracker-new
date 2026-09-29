@@ -11,10 +11,12 @@ import { Card } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
 import { confirmDelete } from "../utils/confirm";
 import { currencyLabel } from "../utils/currency";
+import { mainAssetDefaultLabel } from "../utils/assetLabels";
 
 import type { Category } from "../types/category";
 import type { Currency } from "../types/currency";
 import type { SavedNote } from "../hooks/useSavedNotes";
+import type { Asset } from "../types/asset";
 
 interface ExpenseFormProps {
   amount: string;
@@ -25,6 +27,9 @@ interface ExpenseFormProps {
   setExpenseDate: (value: string) => void;
   selectedCategory: string;
   setSelectedCategory: (value: string) => void;
+  selectedAssetId: string;
+  setSelectedAssetId: (value: string) => void;
+  assets: Asset[];
   categories: Category[];
   editingId: number | null;
   currency: Currency;
@@ -46,6 +51,9 @@ export default function ExpenseForm({
   setExpenseDate,
   selectedCategory,
   setSelectedCategory,
+  selectedAssetId,
+  setSelectedAssetId,
+  assets,
   categories,
   editingId,
   currency,
@@ -203,6 +211,28 @@ export default function ExpenseForm({
       </Select>
 
       {!editingId && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={another} onChange={e => setAnother(e.target.checked)} />Add another after saving</label>}
+      {!editingId && (
+        <label className="block text-sm font-medium">
+          Asset
+          <Select
+            className="mt-1"
+            value={selectedAssetId}
+            onChange={(event) => setSelectedAssetId(event.target.value)}
+          >
+            <option value="">{mainAssetDefaultLabel(assets, currency)}</option>
+            {assets.filter((asset) => !asset.is_main).map((asset) => (
+              <option key={asset.id} value={asset.id}>
+                {asset.name}
+                {asset.is_main ? " - Main" : ""}
+                {" - "}
+                {asset.currency || currency}
+                {" "}
+                {Number(asset.current_value || 0).toFixed(2)}
+              </option>
+            ))}
+          </Select>
+        </label>
+      )}
       <SheetFooter>
       <Button
         onClick={() => void submit()}

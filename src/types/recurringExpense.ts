@@ -16,6 +16,8 @@ export interface RecurringExpense {
 
   category_id:number;
 
+  asset_id?: number | null;
+
   repeat_day:number;
 
   is_active:boolean;
@@ -38,6 +40,8 @@ export interface RecurringExpensePayload {
   description:string | null;
 
   category_id:number;
+
+  asset_id?: number | null;
 
   repeat_day:number;
 

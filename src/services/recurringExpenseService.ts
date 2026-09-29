@@ -194,6 +194,7 @@ async function generatedExpenseExists(
     note:string;
     expense_date:string;
     category_id:number;
+    asset_id?: number | null;
     recurring_expense_id:number;
   }
 ) {
@@ -305,6 +306,8 @@ export async function generateRecurringExpensesForMonth(
         Number(
           recurringExpense.category_id
         ),
+      asset_id:
+        recurringExpense.asset_id ?? null,
       recurring_expense_id:
         recurringExpense.id,
     };

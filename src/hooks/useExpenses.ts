@@ -51,6 +51,11 @@ export default function useExpenses(
     setSelectedCategory,
   ] = useSessionState("expense-draft:category", "");
 
+  const [
+    selectedAssetId,
+    setSelectedAssetId,
+  ] = useSessionState("expense-draft:asset", "");
+
   const [editingId, setEditingId] =
     useSessionState<number | null>("expense-draft:id", null);
 
@@ -138,6 +143,11 @@ export default function useExpenses(
             selectedCategory
           ),
 
+        asset_id:
+          selectedAssetId
+            ? Number(selectedAssetId)
+            : null,
+
         currency:
           editingCurrency ||
           activeCurrency,
@@ -201,6 +211,8 @@ export default function useExpenses(
     setEditingCurrency(null);
 
     setExpenseDate(dateKey());
+
+    setSelectedAssetId("");
   }
 
   async function deleteExpense(
@@ -293,6 +305,10 @@ export default function useExpenses(
       expense.category_id.toString()
     );
 
+    setSelectedAssetId(
+      expense.asset_id ? String(expense.asset_id) : ""
+    );
+
     setEditingCurrency(
       normalizeCurrency(expense.currency)
     );
@@ -314,6 +330,9 @@ export default function useExpenses(
 
     selectedCategory,
     setSelectedCategory,
+
+    selectedAssetId,
+    setSelectedAssetId,
 
     editingId,
     setEditingId,

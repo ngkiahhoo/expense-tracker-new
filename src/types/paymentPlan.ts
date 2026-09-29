@@ -12,6 +12,7 @@ export interface PaymentInstallment {
   amount: number;
   due_date: string;
   status: 'scheduled' | 'posted' | 'cancelled' | 'reversed';
+  asset_id?: number | null;
 }
 export interface PaymentPlan {
   id: string;
@@ -19,5 +20,6 @@ export interface PaymentPlan {
   payment_name_id?: number | null;
   currency: Currency;
   category_id: number;
+  asset_id?: number | null;
   payment_installments: PaymentInstallment[];
 }

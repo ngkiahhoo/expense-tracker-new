@@ -10,9 +10,11 @@ import useUnsavedChanges from "@/hooks/useUnsavedChanges";
 import { changePaymentInstallment, savePaymentPlan } from "@/services/paymentPlanService";
 import type { Category } from "@/types/category";
 import type { Currency } from "@/types/currency";
+import type { Asset } from "@/types/asset";
 import type { PaymentName, PaymentPlan } from "@/types/paymentPlan";
+import { mainAssetDefaultLabel } from "@/utils/assetLabels";
 import { groupPaymentPlans } from "@/utils/paymentPlanGroups";
-import { buildPaymentSchedule, paymentToday } from "@/utils/paymentSchedule";
+import { buildPaymentSchedule, firstDayOfNextPaymentMonth, paymentToday } from "@/utils/paymentSchedule";
 
 import { SheetFooter } from "./QuickActionSheet";
 import ListToolbar, { defaultListFilters } from "./ui/ListToolbar";
@@ -26,6 +28,18 @@ interface Props {
   error: string;
   loading: boolean;
   refresh: () => Promise<void>;
+  mode: "later" | "installment";
+  assets: Asset[];
+}
+
+interface PaymentPlanDraft {
+  nameId: string;
+  total: string;
+  count: string;
+  date: string;
+  category: string;
+  assetId: string;
+  amountOverrides: Record<number, string>;
 }
 
 const statusTone: Record<string, string> = {
@@ -44,24 +58,36 @@ export default function PaymentPlanPanel({
   error,
   loading,
   refresh,
+  mode,
+  assets,
 }: Props) {
-  const [mode, setMode] = useState("later");
-  const [nameId, setNameId] = useState("");
+  const defaultDraft: PaymentPlanDraft = {
+    nameId: "",
+    total: "",
+    count: "3",
+    date: firstDayOfNextPaymentMonth(),
+    category: "",
+    assetId: "",
+    amountOverrides: {},
+  };
+  const [draft, setDraft] = useSessionState<PaymentPlanDraft>(`payment-plan:draft:${currency}:${mode}`, defaultDraft);
+  const { nameId, total, count, date, category, assetId, amountOverrides } = draft;
   const [nameBusy, setNameBusy] = useState(false);
   const selectedName = names.find((item) => String(item.id) === nameId);
-  const [total, setTotal] = useState("");
-  const [count, setCount] = useState("3");
-  const [date, setDate] = useState(paymentToday);
-  const [category, setCategory] = useState("");
-  const [amountOverrides, setAmountOverrides] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
   const [editAmount, setEditAmount] = useState("");
   const [editDate, setEditDate] = useState("");
   const [filters, setFilters] = useSessionState(`payment-list:${currency}`, defaultListFilters);
   const [expanded, setExpanded] = useSessionState<string[]>(`payment-list:expanded:${currency}`, []);
-  useUnsavedChanges(!!total || editing !== null, busy);
+  function updateDraft(next: Partial<PaymentPlanDraft>) {
+    setDirty(true);
+    setDraft((current) => ({ ...current, ...next }));
+  }
+
+  useUnsavedChanges(dirty || editing !== null, busy);
 
   const request = useRef<{ key: string; id: string } | null>(null);
   const lock = useRef(false);
@@ -203,13 +229,13 @@ export default function PaymentPlanPanel({
               p_count: schedule.length,
               p_first_date: date,
               p_amounts: schedule.map((item) => item.amount),
+              p_asset_id: assetId ? Number(assetId) : null,
             };
             const key = JSON.stringify(values);
             if (request.current?.key !== key) request.current = { key, id: crypto.randomUUID() };
             await savePaymentPlan({ ...values, p_id: request.current.id });
             request.current = null;
-            setTotal("");
-            setAmountOverrides({});
+            setDirty(false);
             setMessage("Payment plan saved.");
           });
         }}
@@ -221,21 +247,10 @@ export default function PaymentPlanPanel({
           </p>
         </div>
 
-        <label className="block text-sm font-medium">
-          Payment type
-          <Select className="mt-1" value={mode} onChange={(event) => {
-            setMode(event.target.value);
-            setAmountOverrides({});
-          }}>
-            <option value="later">Pay Later - one payment</option>
-            <option value="installment">Installment - monthly payments</option>
-          </Select>
-        </label>
-
         <PaymentNameMenu
           names={names}
           value={nameId}
-          onChange={setNameId}
+          onChange={(value) => updateDraft({ nameId: value })}
           refresh={refresh}
           disabled={busy || loading || !!error}
           onBusyChange={setNameBusy}
@@ -243,7 +258,7 @@ export default function PaymentPlanPanel({
 
         <label className="block text-sm font-medium">
           Category
-          <Select className="mt-1" required value={category} onChange={(event) => setCategory(event.target.value)}>
+          <Select className="mt-1" required value={category} onChange={(event) => updateDraft({ category: event.target.value })}>
             <option value="">Choose category</option>
             {categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </Select>
@@ -260,10 +275,26 @@ export default function PaymentPlanPanel({
             step="0.01"
             value={total}
             onChange={(event) => {
-              setTotal(event.target.value);
-              setAmountOverrides({});
+              updateDraft({ total: event.target.value, amountOverrides: {} });
             }}
           />
+        </label>
+
+        <label className="block text-sm font-medium">
+          Asset
+          <Select className="mt-1" value={assetId} onChange={(event) => updateDraft({ assetId: event.target.value })}>
+            <option value="">{mainAssetDefaultLabel(assets, currency)}</option>
+            {assets.filter((asset) => !asset.is_main).map((asset) => (
+              <option key={asset.id} value={asset.id}>
+                {asset.name}
+                {asset.is_main ? " - Main" : ""}
+                {" - "}
+                {asset.currency || currency}
+                {" "}
+                {Number(asset.current_value || 0).toFixed(2)}
+              </option>
+            ))}
+          </Select>
         </label>
 
         {mode === "installment" && (
@@ -278,8 +309,7 @@ export default function PaymentPlanPanel({
               step="1"
               value={count}
               onChange={(event) => {
-                setCount(event.target.value);
-                setAmountOverrides({});
+                updateDraft({ count: event.target.value, amountOverrides: {} });
               }}
             />
           </label>
@@ -294,7 +324,7 @@ export default function PaymentPlanPanel({
             min="1900-01-01"
             max="2200-01-01"
             value={date}
-            onChange={(event) => setDate(event.target.value)}
+            onChange={(event) => updateDraft({ date: event.target.value })}
           />
         </label>
 
@@ -327,7 +357,7 @@ export default function PaymentPlanPanel({
                     step="0.01"
                     value={amountOverrides[index] ?? baseSchedule[index].amount.toFixed(2)}
                     onChange={(event) =>
-                      setAmountOverrides((current) => ({ ...current, [index]: event.target.value }))
+                      updateDraft({ amountOverrides: { ...amountOverrides, [index]: event.target.value } })
                     }
                   />
                 </label>
@@ -347,7 +377,7 @@ export default function PaymentPlanPanel({
                 {difference > 0 ? `${money(difference)} left to allocate.` : `${money(-difference)} over the total payable.`}
               </p>
             )}
-            <Button className="mt-3" type="button" disabled={busy} onClick={() => setAmountOverrides({})}>
+            <Button className="mt-3" type="button" disabled={busy} onClick={() => updateDraft({ amountOverrides: {} })}>
               Split equally
             </Button>
           </details>
