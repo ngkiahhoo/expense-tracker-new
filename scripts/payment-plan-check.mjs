@@ -7,7 +7,9 @@ import ts from 'typescript';
 // node scripts/payment-plan-check.mjs <temporary-directory>/node_modules/@electric-sql/pglite/dist/index.js
 const { PGlite } = await import(pathToFileURL(process.argv[2]).href);
 const source = ts.transpileModule(readFileSync('src/utils/paymentSchedule.ts', 'utf8'), { compilerOptions: { module: ts.ModuleKind.ES2022 } }).outputText;
-const { buildPaymentSchedule } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+const { buildPaymentDates, buildPaymentSchedule } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+assert.deepEqual(buildPaymentDates(3, '2024-01-31'), [{ due_date: '2024-01-31' }, { due_date: '2024-02-29' }, { due_date: '2024-03-31' }]);
+assert.equal(buildPaymentDates(0, '2024-01-01').length, 0);
 const preview = buildPaymentSchedule('100', 3, '2024-01-31');
 assert.deepEqual(preview, [{ due_date: '2024-01-31', amount: 33.33 }, { due_date: '2024-02-29', amount: 33.33 }, { due_date: '2024-03-31', amount: 33.34 }]);
 assert.equal(buildPaymentSchedule('0.02', 3, '2024-01-01').length, 0);

@@ -14,7 +14,7 @@ import type { Asset } from "@/types/asset";
 import type { PaymentName, PaymentPlan } from "@/types/paymentPlan";
 import { mainAssetDefaultLabel } from "@/utils/assetLabels";
 import { groupPaymentPlans } from "@/utils/paymentPlanGroups";
-import { buildPaymentSchedule, firstDayOfNextPaymentMonth, paymentToday } from "@/utils/paymentSchedule";
+import { buildPaymentDates, buildPaymentSchedule, firstDayOfNextPaymentMonth, paymentToday } from "@/utils/paymentSchedule";
 
 import { SheetFooter } from "./QuickActionSheet";
 import ListToolbar, { defaultListFilters } from "./ui/ListToolbar";
@@ -87,25 +87,59 @@ export default function PaymentPlanPanel({
     setDraft((current) => ({ ...current, ...next }));
   }
 
+  function freezeScheduleAmounts() {
+    if (Object.keys(amountOverrides).length > 0 || baseSchedule.length > 0) {
+      setDraft((current) => ({
+        ...current,
+        amountOverrides: Object.fromEntries(schedule.map((item, index) => [index, item.amountValue])),
+      }));
+    }
+  }
+
+  function updatePaymentAmount(index: number, value: string) {
+    const nextAmounts = Object.fromEntries(
+      schedule.map((item, itemIndex) => [itemIndex, itemIndex === index ? value : item.amountValue]),
+    );
+    const cents = Object.values(nextAmounts).reduce((sum, amount) => {
+      if (!/^\d+(\.\d{1,2})?$/.test(amount)) return sum;
+      const parsed = Number(amount);
+      return parsed > 0 && parsed <= 9999999999.99 ? sum + Math.round(parsed * 100) : sum;
+    }, 0);
+    updateDraft({
+      amountOverrides: nextAmounts,
+      total: cents > 0 ? (cents / 100).toFixed(2) : "",
+    });
+  }
+
   useUnsavedChanges(dirty || editing !== null, busy);
 
   const request = useRef<{ key: string; id: string } | null>(null);
   const lock = useRef(false);
   const today = paymentToday();
-  const baseSchedule = buildPaymentSchedule(total, mode === "later" ? 1 : Number(count), date);
-  const schedule = baseSchedule.map((item, i) => ({
+  const paymentCount = mode === "later" ? 1 : Number(count);
+  const paymentDates = buildPaymentDates(paymentCount, date);
+  const baseSchedule = buildPaymentSchedule(total, paymentCount, date);
+  const schedule = paymentDates.map((item, i) => ({
     ...item,
-    amount: Number(amountOverrides[i] ?? item.amount),
+    amountValue: amountOverrides[i] ?? (baseSchedule[i]?.amount.toFixed(2) ?? ""),
+    amount: Number(amountOverrides[i] ?? baseSchedule[i]?.amount ?? 0),
   }));
   const validAmounts = schedule.every(
-    (item, i) =>
-      /^\d+(\.\d{1,2})?$/.test(amountOverrides[i] ?? String(item.amount)) &&
+    (item) =>
+      /^\d+(\.\d{1,2})?$/.test(item.amountValue) &&
       item.amount > 0 &&
       item.amount <= 9999999999.99,
   );
-  const scheduledCents = schedule.reduce((sum, item) => sum + Math.round(item.amount * 100), 0);
-  const difference = (Math.round(Number(total) * 100) - scheduledCents) / 100;
-  const scheduleValid = schedule.length > 0 && validAmounts && difference === 0;
+  const scheduledCents = schedule.reduce(
+    (sum, item) => sum + (/^\d+(\.\d{1,2})?$/.test(item.amountValue) && item.amount > 0 && item.amount <= 9999999999.99 ? Math.round(item.amount * 100) : 0),
+    0,
+  );
+  const totalValid = /^\d+(\.\d{1,2})?$/.test(total) &&
+    Number.isSafeInteger(Math.round(Number(total) * 100)) &&
+    Number(total) > 0 &&
+    Number(total) <= 9999999999.99;
+  const difference = totalValid ? (Math.round(Number(total) * 100) - scheduledCents) / 100 : 0;
+  const scheduleValid = schedule.length > 0 && validAmounts && totalValid && difference === 0;
   const immediate = schedule
     .filter((item) => item.due_date <= today)
     .reduce((sum, item) => sum + item.amount, 0);
@@ -274,9 +308,9 @@ export default function PaymentPlanPanel({
             max="9999999999.99"
             step="0.01"
             value={total}
-            onChange={(event) => {
-              updateDraft({ total: event.target.value, amountOverrides: {} });
-            }}
+            onFocus={freezeScheduleAmounts}
+            onBlur={freezeScheduleAmounts}
+            onChange={(event) => updateDraft({ total: event.target.value })}
           />
         </label>
 
@@ -334,7 +368,7 @@ export default function PaymentPlanPanel({
               Payment schedule - {schedule.length} payment(s)
             </summary>
             <p className="my-2 text-xs paylater-help">
-              Edit each monthly amount. Payments must add up to the total payable. Changing the total or number of months resets the split.
+              Enter payment amounts here to calculate the total payable. Changing the total keeps payment amounts unchanged; use Split equally to redistribute them. Changing the number of months resets the split.
             </p>
             <div className="max-h-72 space-y-2 overflow-auto pr-1">
               {schedule.map((item, index) => (
@@ -355,10 +389,8 @@ export default function PaymentPlanPanel({
                     min="0.01"
                     max="9999999999.99"
                     step="0.01"
-                    value={amountOverrides[index] ?? baseSchedule[index].amount.toFixed(2)}
-                    onChange={(event) =>
-                      updateDraft({ amountOverrides: { ...amountOverrides, [index]: event.target.value } })
-                    }
+                    value={item.amountValue}
+                    onChange={(event) => updatePaymentAmount(index, event.target.value)}
                   />
                 </label>
               ))}
@@ -366,18 +398,31 @@ export default function PaymentPlanPanel({
 
             <div className="paylater-total mt-3">
               <p className="paylater-kicker">Scheduled total</p>
-              <p className="font-semibold">{money(scheduledCents / 100)} / {money(Number(total))}</p>
+              <p className="font-semibold">
+                {money(scheduledCents / 100)} / {totalValid ? money(Number(total)) : "—"}
+              </p>
             </div>
             {!validAmounts ? (
               <p role="alert" className="mt-2 text-amber-400">
                 Each payment must be greater than zero with at most two decimal places.
               </p>
-            ) : difference !== 0 && (
+            ) : totalValid && difference !== 0 && (
               <p role="alert" className="mt-2 text-amber-400">
                 {difference > 0 ? `${money(difference)} left to allocate.` : `${money(-difference)} over the total payable.`}
               </p>
             )}
-            <Button className="mt-3" type="button" disabled={busy} onClick={() => updateDraft({ amountOverrides: {} })}>
+            <Button
+              className="mt-3"
+              type="button"
+              disabled={busy || !baseSchedule.length}
+              onClick={() =>
+                updateDraft({
+                  amountOverrides: Object.fromEntries(
+                    baseSchedule.map((item, index) => [index, item.amount.toFixed(2)]),
+                  ),
+                })
+              }
+            >
               Split equally
             </Button>
           </details>

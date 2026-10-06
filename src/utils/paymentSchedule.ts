@@ -10,16 +10,26 @@ export function firstDayOfNextPaymentMonth() {
   return next.toISOString().slice(0, 10);
 }
 
-export function buildPaymentSchedule(total: string, count: number, firstDate: string) {
-  if (!/^\d+(\.\d{1,2})?$/.test(total) || !/^\d{4}-\d{2}-\d{2}$/.test(firstDate)) return [];
-  const cents = Math.round(Number(total) * 100);
+export function buildPaymentDates(count: number, firstDate: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(firstDate)) return [];
   const first = new Date(`${firstDate}T00:00:00Z`);
-  if (!Number.isSafeInteger(cents) || cents > 999999999999 || !Number.isInteger(count) || count < 1 || count > 360 || cents < count || Number.isNaN(first.getTime()) || first.toISOString().slice(0,10) !== firstDate || firstDate < '1900-01-01' || firstDate > '2200-01-01') return [];
-  const base = Math.floor(cents / count);
+  if (!Number.isInteger(count) || count < 1 || count > 360 || Number.isNaN(first.getTime()) || first.toISOString().slice(0,10) !== firstDate || firstDate < '1900-01-01' || firstDate > '2200-01-01') return [];
   return Array.from({ length: count }, (_, index) => {
     const month = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + index, 1));
     const lastDay = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 0)).getUTCDate();
     month.setUTCDate(Math.min(first.getUTCDate(), lastDay));
-    return { due_date: month.toISOString().slice(0,10), amount: (index === count - 1 ? cents - base * (count - 1) : base) / 100 };
+    return { due_date: month.toISOString().slice(0,10) };
   });
+}
+
+export function buildPaymentSchedule(total: string, count: number, firstDate: string) {
+  if (!/^\d+(\.\d{1,2})?$/.test(total)) return [];
+  const dates = buildPaymentDates(count, firstDate);
+  const cents = Math.round(Number(total) * 100);
+  if (!dates.length || !Number.isSafeInteger(cents) || cents > 999999999999 || cents < count) return [];
+  const base = Math.floor(cents / count);
+  return dates.map((date, index) => ({
+    ...date,
+    amount: (index === count - 1 ? cents - base * (count - 1) : base) / 100,
+  }));
 }
