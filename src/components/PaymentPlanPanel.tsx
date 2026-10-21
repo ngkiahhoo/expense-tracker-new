@@ -518,86 +518,28 @@ export default function PaymentPlanPanel({
             )}
           </div>
 
-          {group.plans.map((plan) => {
-            const items = [...plan.payment_installments].sort((a, b) => a.sequence - b.sequence);
-            const scheduled = items.filter((item) => item.status === "scheduled");
-            const installmentAmount = Number(items[0]?.amount || 0);
-            return (
-              <details key={plan.id} className="paylater-plan">
-                <summary className="cursor-pointer">
-                  <span className="font-medium">
-                    {items.length === 1 ? "Pay Later" : `${items.length}-month installment`} - {items[0]?.due_date} - {money(items.reduce((sum, item) => sum + Number(item.amount), 0))}
-                  </span>
-                  <span className="paylater-help block text-xs">
-                    {items.filter((item) => item.status === "posted").length}/{items.length} posted - {scheduled.length ? `${money(scheduled.reduce((sum, item) => sum + Number(item.amount), 0))} remaining` : items.every((item) => item.status === "posted") ? "Completed" : "Closed"}
-                  </span>
-                </summary>
-                <p className="mt-2 text-sm font-medium">
-                  {plan.name} - {money(installmentAmount)} x {items.length} months - {scheduled.length} payment{scheduled.length === 1 ? "" : "s"} remaining
-                </p>
-                <p className="text-xs text-zinc-400">
-                  Remaining balance: {money(scheduled.reduce((sum, item) => sum + Number(item.amount), 0))}
-                  {scheduled.length ? ` - Due ${scheduled[0].due_date} to ${scheduled.at(-1)?.due_date}` : ""}
-                </p>
-
-                {items.map((item) => (
-                  <div key={item.id} className="space-y-2 border-t border-white/10 py-3 text-sm">
-                    <div className="flex items-start justify-between gap-3">
-                      <span>
-                        #{item.sequence} - {item.due_date}
-                        <br />
-                        <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-xs ${statusTone[item.status] || statusTone.cancelled}`}>
-                          {item.status === "scheduled" ? "Scheduled" : item.status === "posted" ? "Posted" : item.status === "reversed" ? "Reversed" : "Cancelled"}
-                        </span>
-                      </span>
-                      <span className="shrink-0 font-medium">{money(Number(item.amount))}</span>
-                    </div>
-                    {item.status === "posted" && (
-                      <p className="text-xs text-zinc-400">
-                        Edit or delete in Expense Records. Deleting restores the original asset balance and reverses this payment.
-                      </p>
-                    )}
-                    {item.status === "scheduled" && (
-                      editing === item.id ? (
-                        <div className="paylater-subpanel space-y-2">
-                          <label className="block">
-                            Amount
-                            <Input type="number" min="0.01" step="0.01" value={editAmount} onChange={(event) => setEditAmount(event.target.value)} onBlur={() => void commitEdit(item.id, editAmount, editDate)} />
-                          </label>
-                          <label className="block">
-                            Due date
-                            <Input type="date" value={editDate} onChange={(event) => setEditDate(event.target.value)} onBlur={() => void commitEdit(item.id, editAmount, editDate)} />
-                          </label>
-                          {editDate <= today && <p className="text-amber-400">Saving posts this payment immediately.</p>}
-                          <div className="flex flex-wrap gap-2">
-                            <span className="text-xs text-zinc-400">Changes apply automatically when you leave a field.</span>
-                            <Button disabled={busy} onClick={() => setEditing(null)}>Close</Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          <Button disabled={busy} onClick={() => {
-                            setEditing(item.id);
-                            setEditAmount(String(item.amount));
-                            setEditDate(item.due_date);
-                          }}>
-                            Edit
-                          </Button>
-                          <Button disabled={busy} onClick={() => {
-                            if (window.confirm(`Cancel ${money(Number(item.amount))} due ${item.due_date}? It will no longer be deducted from your account.`)) {
-                              void run(() => changePaymentInstallment(item.id, true, Number(item.amount), item.due_date));
-                            }
-                          }}>
-                            Cancel payment
-                          </Button>
-                        </div>
-                      )
-                    )}
-                  </div>
-                ))}
-              </details>
-            );
-          })}
+          <div className="flex flex-wrap gap-2 border-t border-white/10 pt-3">
+            <Button disabled={busy} onClick={() => {
+              const item = group.plans.flatMap((plan) => plan.payment_installments).find((entry) => entry.status === "scheduled");
+              if (!item) return;
+              setEditing(item.id); setEditAmount(String(item.amount)); setEditDate(item.due_date);
+            }}>Edit</Button>
+            <Button disabled={busy} onClick={() => {
+              if (!window.confirm(`Delete all scheduled ${group.name} payments?`)) return;
+              void run(async () => {
+                for (const item of group.plans.flatMap((plan) => plan.payment_installments).filter((entry) => entry.status === "scheduled")) {
+                  await changePaymentInstallment(item.id, true, Number(item.amount), item.due_date);
+                }
+              });
+            }}>Delete</Button>
+          </div>
+          {editing !== null && group.plans.flatMap((plan) => plan.payment_installments).some((item) => item.id === editing) && (
+            <div className="paylater-subpanel mt-3 space-y-2">
+              <label className="block">Amount<Input type="number" min="0.01" step="0.01" value={editAmount} onChange={(event) => setEditAmount(event.target.value)} onBlur={() => void commitEdit(editing, editAmount, editDate)} /></label>
+              <label className="block">Due date<Input type="date" value={editDate} onChange={(event) => setEditDate(event.target.value)} onBlur={() => void commitEdit(editing, editAmount, editDate)} /></label>
+              <span className="text-xs text-zinc-400">Changes apply automatically when leaving a field.</span>
+            </div>
+          )}
         </details>
       ))}
     </div>
