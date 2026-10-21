@@ -190,6 +190,7 @@ create or replace function public.create_payment_plan(
 ) returns uuid language plpgsql set search_path = public as $$
 declare cents bigint; base bigint; idx integer; month_start date; due date;
   existing_plan uuid; existing_total bigint; existing_first date;
+  existing_amount numeric; new_amount numeric; existing_count integer;
   chosen_name public.payment_names;
 begin
   perform pg_advisory_xact_lock(726194201);
@@ -243,15 +244,34 @@ begin
     update public.payment_plans
        set category_id = p_category_id, asset_id = p_asset_id
      where id = existing_plan;
-    delete from public.payment_installments where plan_id = existing_plan and status = 'scheduled';
+    select count(*) into existing_count from public.payment_installments
+      where plan_id = existing_plan and status = 'scheduled';
     base := cents / p_count;
     for idx in 0..p_count-1 loop
       month_start := (date_trunc('month', (coalesce(existing_first, p_first_date))) + make_interval(months => idx))::date;
       due := month_start + (least(extract(day from coalesce(existing_first, p_first_date))::integer,
         extract(day from month_start + interval '1 month - 1 day')::integer) - 1);
-      insert into public.payment_installments(plan_id,sequence,amount,due_date)
-      values(existing_plan,idx+1,(case when idx = p_count-1 then cents-base*(p_count-1) else base end)::numeric/100,due);
+      select amount into existing_amount from public.payment_installments
+        where plan_id = existing_plan and sequence = idx + 1 and status = 'scheduled';
+      new_amount := case
+        when p_amounts is not null then p_amounts[idx + 1]
+        when idx = p_count - 1 then (p_total * 100 - (p_total * 100)::bigint / p_count * (p_count - 1)) / 100
+        else ((p_total * 100)::bigint / p_count)::numeric / 100
+      end;
+      if idx = p_count - 1 and existing_count > p_count then
+        select coalesce(sum(amount), 0) into existing_amount from public.payment_installments
+          where plan_id = existing_plan and sequence > p_count and status = 'scheduled';
+      end if;
+      update public.payment_installments
+         set amount = coalesce(existing_amount, 0) + new_amount, due_date = due
+       where plan_id = existing_plan and sequence = idx + 1 and status = 'scheduled';
+      if not found then
+        insert into public.payment_installments(plan_id,sequence,amount,due_date)
+        values(existing_plan,idx+1,new_amount,due);
+      end if;
     end loop;
+    delete from public.payment_installments
+      where plan_id = existing_plan and status = 'scheduled' and sequence > p_count;
     perform public.process_due_payment_installments();
     return existing_plan;
   end if;
