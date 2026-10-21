@@ -116,6 +116,14 @@ export default function PaymentPlanPanel({
   const request = useRef<{ key: string; id: string } | null>(null);
   const lock = useRef(false);
   const today = paymentToday();
+
+  async function commitEdit(itemId: number, amount: string, dueDate: string) {
+    if (!buildPaymentSchedule(amount, 1, dueDate).length) return;
+    await run(async () => {
+      await changePaymentInstallment(itemId, false, Number(amount), dueDate);
+      setEditing(null);
+    });
+  }
   const paymentCount = mode === "later" ? 1 : Number(count);
   const paymentDates = buildPaymentDates(paymentCount, date);
   const baseSchedule = buildPaymentSchedule(total, paymentCount, date);
@@ -554,25 +562,15 @@ export default function PaymentPlanPanel({
                         <div className="paylater-subpanel space-y-2">
                           <label className="block">
                             Amount
-                            <Input type="number" min="0.01" step="0.01" value={editAmount} onChange={(event) => setEditAmount(event.target.value)} />
+                            <Input type="number" min="0.01" step="0.01" value={editAmount} onChange={(event) => setEditAmount(event.target.value)} onBlur={() => void commitEdit(item.id, editAmount, editDate)} />
                           </label>
                           <label className="block">
                             Due date
-                            <Input type="date" value={editDate} onChange={(event) => setEditDate(event.target.value)} />
+                            <Input type="date" value={editDate} onChange={(event) => setEditDate(event.target.value)} onBlur={() => void commitEdit(item.id, editAmount, editDate)} />
                           </label>
                           {editDate <= today && <p className="text-amber-400">Saving posts this payment immediately.</p>}
                           <div className="flex flex-wrap gap-2">
-                            <Button
-                              disabled={busy || !buildPaymentSchedule(editAmount, 1, editDate).length}
-                              onClick={() => {
-                                void run(async () => {
-                                  await changePaymentInstallment(item.id, false, Number(editAmount), editDate);
-                                  setEditing(null);
-                                });
-                              }}
-                            >
-                              Save payment
-                            </Button>
+                            <span className="text-xs text-zinc-400">Changes apply automatically when you leave a field.</span>
                             <Button disabled={busy} onClick={() => setEditing(null)}>Close</Button>
                           </div>
                         </div>

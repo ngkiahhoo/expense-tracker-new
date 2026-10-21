@@ -189,6 +189,7 @@ create or replace function public.create_payment_plan(
   p_payment_name_id bigint default null, p_asset_id integer default null
 ) returns uuid language plpgsql set search_path = public as $$
 declare cents bigint; base bigint; idx integer; month_start date; due date;
+  existing_plan uuid; existing_total bigint; existing_first date;
   chosen_name public.payment_names;
 begin
   perform pg_advisory_xact_lock(726194201);
@@ -218,6 +219,42 @@ begin
   end if;
   select * into chosen_name from public.payment_names where id = p_payment_name_id and is_active;
   if not found then raise exception 'Select an active payment name'; end if;
+
+  -- One payment name is one commitment. New entries merge into the existing
+  -- future commitment instead of creating another plan card. Only scheduled
+  -- installments are reshaped; posted history remains immutable.
+  select p.id, min(i.due_date), coalesce(sum(round(i.amount * 100)), 0)::bigint
+    into existing_plan, existing_first, existing_total
+    from public.payment_plans p
+    join public.payment_installments i on i.plan_id = p.id
+   where p.payment_name_id = p_payment_name_id
+     and p.category_id = p_category_id
+     and p.currency = p_currency
+     and p.asset_id is not distinct from p_asset_id
+     and not exists (select 1 from public.payment_installments posted
+                     where posted.plan_id = p.id and posted.status = 'posted')
+     and i.status = 'scheduled'
+   group by p.id
+   order by p.created_at
+   limit 1;
+  if existing_plan is not null then
+    cents := existing_total + (p_total * 100);
+    if cents < p_count then raise exception 'Each installment must be at least 0.01'; end if;
+    update public.payment_plans
+       set category_id = p_category_id, asset_id = p_asset_id
+     where id = existing_plan;
+    delete from public.payment_installments where plan_id = existing_plan and status = 'scheduled';
+    base := cents / p_count;
+    for idx in 0..p_count-1 loop
+      month_start := (date_trunc('month', (coalesce(existing_first, p_first_date))) + make_interval(months => idx))::date;
+      due := month_start + (least(extract(day from coalesce(existing_first, p_first_date))::integer,
+        extract(day from month_start + interval '1 month - 1 day')::integer) - 1);
+      insert into public.payment_installments(plan_id,sequence,amount,due_date)
+      values(existing_plan,idx+1,(case when idx = p_count-1 then cents-base*(p_count-1) else base end)::numeric/100,due);
+    end loop;
+    perform public.process_due_payment_installments();
+    return existing_plan;
+  end if;
   base := cents / p_count;
   insert into public.payment_plans(id,name,payment_name_id,category_id,currency,asset_id)
     values(p_id,chosen_name.name,chosen_name.id,p_category_id,p_currency,p_asset_id);
