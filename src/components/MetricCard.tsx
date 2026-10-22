@@ -56,7 +56,7 @@ export default function MetricCard({
 
           <h2
             className={cn(
-              "mt-2 text-3xl font-bold leading-tight",
+              "mt-2 flex min-h-10 items-center text-3xl font-bold leading-tight",
               toneStyles[tone].text
             )}
           >
@@ -82,11 +82,9 @@ export default function MetricCard({
         {action && <div className="shrink-0">{action}</div>}
       </div>
 
-      {helper && !loading && !error && (
-        <p className="mt-1 text-sm text-zinc-400">
-          {helper}
-        </p>
-      )}
+      <p className={cn("mt-1 min-h-5 text-sm text-zinc-400", (!helper || loading || error) && "invisible")}>
+        {helper || "Placeholder"}
+      </p>
     </Card>
   );
 }

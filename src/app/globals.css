@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  scrollbar-gutter: stable;
+}
+
 /* Scenario surfaces follow the app's saved theme rather than the OS preference. */
 .expense-plans .glass-surface {
   background: #fff;

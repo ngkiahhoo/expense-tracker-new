@@ -67,7 +67,7 @@ export default function DashboardSummarySection({
             </div>
           </div>
 
-          <p className="mt-2 text-sm text-zinc-400">
+          <p className="mt-2 min-h-5 text-sm text-zinc-400">
             {!loading && !error && <>{assetCount} record{assetCount === 1 ? "" : "s"}</>}
           </p>
         </div>

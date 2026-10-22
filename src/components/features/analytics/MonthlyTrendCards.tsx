@@ -90,8 +90,6 @@ export default function MonthlyTrendCards({
                         card.valueKey === "income"
                           ? 100
                           : Math.min(100, Math.max(8, (Math.abs(value) / referenceValue) * 100));
-                      const isExpenseRow = card.valueKey === "expense";
-
                       return (
                         <button
                           key={`${card.title}-${item.label}`}

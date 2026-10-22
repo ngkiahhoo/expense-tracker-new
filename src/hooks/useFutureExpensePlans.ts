@@ -89,9 +89,7 @@ export default function useFutureExpensePlans() {
     const refresh = () => { if (!s.pending) void sync(); };
     window.addEventListener("focus", refresh);
     window.addEventListener("online", refresh);
-    const unload = (e: BeforeUnloadEvent) => { if (s.pending) { e.preventDefault(); e.returnValue = ""; } };
-    window.addEventListener("beforeunload", unload);
-    return () => { alive = false; clearTimeout(initial); clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("online", refresh); window.removeEventListener("beforeunload", unload); };
+    return () => { alive = false; clearTimeout(initial); clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("online", refresh); };
   }, []);
 
   function saveLibrary(next: FutureExpenseLibrary) {

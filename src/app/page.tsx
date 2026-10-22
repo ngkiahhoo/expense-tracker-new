@@ -15,8 +15,6 @@ import LoadState from "@/components/ui/LoadState";
 import { Button } from "@/components/ui/Button";
 import useSessionState from "@/hooks/useSessionState";
 import useUnsavedChanges, { confirmPanelClose } from "@/hooks/useUnsavedChanges";
-import { defaultListFilters } from "@/components/ui/ListToolbar";
-import { getMonthDateRange } from "@/utils/monthRange";
 import { formatCurrencyAmount } from "@/utils/currency";
 
 import { useToast } from "@/contexts/ToastContext";
@@ -105,10 +103,6 @@ export default function Home() {
   const [showAssetModal, setShowAssetModal] = useState(false);
   const [showBalance, setShowBalance] = useState(false);
   const [editReturn, setEditReturn] = useState<"records" | "drilldown" | null>(null);
-  const [, setRecordFilters] = useSessionState("records:filters", defaultListFilters);
-  const [, setRecordFrom] = useSessionState("records:from", "");
-  const [, setRecordTo] = useSessionState("records:to", "");
-  const [, setRecordPage] = useSessionState("records:page", 1);
   const [, setUpdatedExpense] = useSessionState("records:updated", 0);
   const [, setUpdatedIncome] = useSessionState("income:updated", 0);
   useEffect(() => {
@@ -725,7 +719,7 @@ export default function Home() {
               activeCurrency={activeCurrency}
               assetCount={activeCurrencyAssets.length}
               assetTotal={activeCurrencyAssetTotal}
-              loading={assets.loading}
+              loading={assets.loading && activeCurrencyAssets.length === 0}
               error={!!assets.error}
               currentMonth={currentMonth}
               months={months}
@@ -758,7 +752,7 @@ export default function Home() {
                 icon={Wallet}
                 label="Monthly Income"
                 amount={totalIncome}
-                loading={incomeReading}
+                loading={incomeReading && incomes.length === 0}
                 error={!!incomeReadError}
                 currency={activeCurrency}
                 onAmountClick={openIncomeCrud}
@@ -769,7 +763,7 @@ export default function Home() {
                 tone="danger"
                 label="Total Spending"
                 amount={totalSpending}
-                loading={expenseReading}
+                loading={expenseReading && expenses.length === 0}
                 error={!!expenseReadError}
                 currency={activeCurrency}
                 helper={`${spendingPercent}% of income`}
@@ -781,7 +775,7 @@ export default function Home() {
                 tone="balance"
                 label="Balance"
                 amount={balance}
-                loading={expenseReading || incomeReading}
+                loading={(expenseReading && expenses.length === 0) || (incomeReading && incomes.length === 0)}
                 error={!!expenseReadError || !!incomeReadError}
                 onAmountClick={() => { if (!confirmPanelClose()) return; setActiveTool(null); setShowBalance(true); }}
                 currency={activeCurrency}
