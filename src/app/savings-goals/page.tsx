@@ -113,7 +113,7 @@ export default function SavingsGoalsPage() {
         <label>Status<Select value={form.status} onChange={e => setForm({ ...form, status: e.target.value as SavingsGoalStatus })}><option value="active">Active</option><option value="paused">Paused</option><option value="completed">Completed</option></Select></label>
       </div>
       <fieldset className="space-y-2"><legend className="mb-2 font-semibold">Included assets</legend>{data.loading ? <p>Loading assets...</p> : data.assets.map(a => <label key={a.id} className="flex items-center gap-3"><input type="checkbox" checked={form.includedAssetIds.includes(a.id)} onChange={e => setForm({ ...form, includedAssetIds: e.target.checked ? [...form.includedAssetIds, a.id] : form.includedAssetIds.filter(id => id !== a.id) })} />{a.name} · {formatCurrencyAmount(a.current_value, a.currency)}</label>)}{form.includedAssetIds.filter(id => !data.assets.some(a => a.id === id)).map(id => <label key={id} className="flex gap-3"><input type="checkbox" checked onChange={() => setForm({ ...form, includedAssetIds: form.includedAssetIds.filter(value => value !== id) })} />Unavailable asset #{id}</label>)}</fieldset>
-      <div className="sticky bottom-24 flex flex-wrap gap-2 bg-zinc-950 py-3"><Button type="submit">Save Goal</Button><Button type="button" variant="secondary" onClick={() => { if (confirmPanelClose()) setForm(null); }}>Cancel</Button></div>
+      <div className="flex flex-wrap gap-2 border-t border-slate-300/20 pt-3"><Button type="submit">Save Goal</Button><Button type="button" variant="secondary" onClick={() => { if (confirmPanelClose()) setForm(null); }}>Cancel</Button></div>
     </form></Card>}
     {!!goals.length && <label className="block">Savings Goal<Select value={goal?.id ?? ""} onChange={e => setSelected(e.target.value)}>{goals.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</Select></label>}
     {!goals.length && !form && !goalsError && <Card><h2 className="text-xl font-semibold">Create your first savings goal</h2></Card>}
@@ -130,13 +130,13 @@ export default function SavingsGoalsPage() {
           {!result?.errors.length && result?.timeline && <>
             {result.projectionStart && <p className="text-sm text-slate-400">First projected income and saving: {displayDate(result.projectionStart)}</p>}
             {!!result.scheduledCommitments.length && (
-              <section className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4">
-                <h3 className="font-semibold text-amber-200">Scheduled Payment Commitments</h3>
+              <section className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-slate-900">
+                <h3 className="font-semibold text-amber-900">Scheduled Payment Commitments</h3>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {result.scheduledCommitments.map(item => (
-                    <div key={item.month} className="flex items-center justify-between gap-3 rounded-md border border-amber-300/20 px-3 py-2 text-sm">
-                      <span className="text-slate-300"><MonthLabel month={item.month} /></span>
-                      <span className="font-semibold text-amber-200">-{money(item.amount)}</span>
+                    <div key={item.month} className="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-white/70 px-3 py-2 text-sm">
+                      <span className="text-slate-700"><MonthLabel month={item.month} /></span>
+                      <span className="font-semibold text-amber-900">-{money(item.amount)}</span>
                     </div>
                   ))}
                 </div>
@@ -162,7 +162,7 @@ export default function SavingsGoalsPage() {
                           <td className="py-2 pr-3"><MonthLabel month={item.month} /></td>
                           <td className="px-3 py-2 text-right text-emerald-300">+{money(item.income)}</td>
                           <td className="px-3 py-2 text-right text-rose-300">-{money(item.livingCost)}</td>
-                          <td className="px-3 py-2 text-right text-amber-200">{item.commitments ? `-${money(item.commitments)}` : "-"}</td>
+                          <td className="px-3 py-2 text-right font-medium text-amber-900">{item.commitments ? `-${money(item.commitments)}` : "-"}</td>
                           <td className="py-2 pl-3 text-right font-semibold">{money(item.expectedAsset)}</td>
                         </tr>
                       ))}

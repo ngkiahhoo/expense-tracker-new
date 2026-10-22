@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
 import useSessionState from "@/hooks/useSessionState";
 import useUnsavedChanges from "@/hooks/useUnsavedChanges";
-import { changePaymentInstallment, savePaymentPlan } from "@/services/paymentPlanService";
+import { changePaymentInstallment, savePaymentPlan, updatePaymentPlanDetails, updatePaymentPlanInstallments } from "@/services/paymentPlanService";
 import type { Category } from "@/types/category";
 import type { Currency } from "@/types/currency";
 import type { Asset } from "@/types/asset";
@@ -18,6 +18,7 @@ import { buildPaymentDates, buildPaymentSchedule, firstDayOfNextPaymentMonth, pa
 
 import { SheetFooter } from "./QuickActionSheet";
 import ListToolbar, { defaultListFilters } from "./ui/ListToolbar";
+import OverlayPortal from "./ui/OverlayPortal";
 
 interface Props {
   plans: PaymentPlan[];
@@ -77,9 +78,15 @@ export default function PaymentPlanPanel({
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
-  const [editAmount, setEditAmount] = useState("");
-  const [editDate, setEditDate] = useState("");
+  const [editingPlan, setEditingPlan] = useState<string | null>(null);
+  const [editNameId, setEditNameId] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState("");
+  const [editAssetId, setEditAssetId] = useState("");
+  const [editCount, setEditCount] = useState("");
+  const [editFirstDate, setEditFirstDate] = useState("");
+  const [editSchedule, setEditSchedule] = useState<Record<number, { amount: string; date: string }>>({});
   const [filters, setFilters] = useSessionState(`payment-list:${currency}`, defaultListFilters);
   const [expanded, setExpanded] = useSessionState<string[]>(`payment-list:expanded:${currency}`, []);
   function updateDraft(next: Partial<PaymentPlanDraft>) {
@@ -117,11 +124,20 @@ export default function PaymentPlanPanel({
   const lock = useRef(false);
   const today = paymentToday();
 
-  async function commitEdit(itemId: number, amount: string, dueDate: string) {
+  async function commitEdit(planId: string, itemId: number, nameId: string, amount: string, dueDate: string, categoryId: string, assetId: string) {
     if (!buildPaymentSchedule(amount, 1, dueDate).length) return;
+    const selectedEditName = names.find((item) => String(item.id) === nameId);
+    if (!selectedEditName) return;
     await run(async () => {
+      if (!categoryId) return;
+      await updatePaymentPlanDetails({ planId, nameId: selectedEditName.id, categoryId: Number(categoryId), assetId: assetId ? Number(assetId) : null });
       await changePaymentInstallment(itemId, false, Number(amount), dueDate);
+      const otherItems = Object.entries(editSchedule)
+        .filter(([id]) => Number(id) !== itemId)
+        .map(([id, value]) => ({ id: Number(id), amount: Number(value.amount), date: value.date }));
+      if (otherItems.length) await updatePaymentPlanInstallments(otherItems);
       setEditing(null);
+      setEditingPlan(null);
     });
   }
   const paymentCount = mode === "later" ? 1 : Number(count);
@@ -198,9 +214,6 @@ export default function PaymentPlanPanel({
 
   return (
     <div className="space-y-5">
-      <p className="paylater-note">
-        Payments automatically become expenses and reduce your {currency} Main Asset on their due dates (Malaysia time).
-      </p>
 
       {(error || message) && <p role="alert" className="text-sm text-red-400">{error || message}</p>}
       {mainBalance === null && (
@@ -230,9 +243,6 @@ export default function PaymentPlanPanel({
 
       <details className="paylater-section">
         <summary className="cursor-pointer font-medium">Upcoming cash flow</summary>
-        <p className="my-2 text-xs text-zinc-400">
-          Projected Main Asset includes scheduled payments only; future income and other spending are excluded.
-        </p>
         {Object.keys(monthly).length === 0 && <p className="text-sm text-zinc-400">No upcoming payments.</p>}
         {Object.entries(monthly)
           .sort(([a], [b]) => a.localeCompare(b))
@@ -252,9 +262,12 @@ export default function PaymentPlanPanel({
           ))}
       </details>
 
+      {showCreate && <OverlayPortal><div className="fixed inset-0 z-[70] flex items-stretch justify-center bg-slate-950">
+      <div role="dialog" aria-modal="true" aria-label="New payment plan" className="flex h-full w-full max-w-2xl flex-col overflow-hidden bg-slate-950 shadow-2xl ring-1 ring-white/20">
+      <div className="flex shrink-0 items-center justify-between border-b border-white/10 p-4"><Button type="button" onClick={() => setShowCreate(false)}>← Back</Button><h2 className="text-lg font-semibold">New payment plan</h2><span className="w-16" /></div>
       <form
         id="payment-plan-form"
-        className="paylater-form space-y-4"
+        className="paylater-form min-h-0 flex-1 space-y-4 overflow-y-auto p-4"
         onSubmit={(event) => {
           event.preventDefault();
           if (!scheduleValid || !category || !selectedName) {
@@ -283,8 +296,7 @@ export default function PaymentPlanPanel({
         }}
       >
         <div>
-          <h3 className="font-semibold">New payment plan</h3>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="text-xs text-zinc-400">
             Choose a one-time pay later item or split it into monthly installments.
           </p>
         </div>
@@ -441,7 +453,7 @@ export default function PaymentPlanPanel({
             Saving will immediately record {money(immediate)} in expenses and deduct it from Main Asset. Only add payments that are not already in your expenses.
           </p>
         )}
-        <SheetFooter>
+        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 p-3">
           <Button
             form="payment-plan-form"
             type="submit"
@@ -449,8 +461,13 @@ export default function PaymentPlanPanel({
           >
             {busy ? "Saving..." : scheduleValid && immediate > 0 ? `Create & post ${money(immediate)}` : "Create plan"}
           </Button>
-        </SheetFooter>
+        </div>
       </form>
+      </div></div></OverlayPortal>}
+
+      <SheetFooter>
+        <Button type="button" disabled={busy || loading || !!error} onClick={() => setShowCreate(true)}>Create plan</Button>
+      </SheetFooter>
 
       <div className="flex items-center justify-between border-t border-white/10 pt-4">
         <h3 className="font-semibold">Payment records</h3>
@@ -520,9 +537,10 @@ export default function PaymentPlanPanel({
 
           <div className="flex flex-wrap gap-2 border-t border-white/10 pt-3">
             <Button disabled={busy} onClick={() => {
-              const item = group.plans.flatMap((plan) => plan.payment_installments).find((entry) => entry.status === "scheduled");
-              if (!item) return;
-              setEditing(item.id); setEditAmount(String(item.amount)); setEditDate(item.due_date);
+              const targetPlan = group.plans.find((plan) => plan.payment_installments.some((entry) => entry.status === "scheduled"));
+              const item = targetPlan?.payment_installments.find((entry) => entry.status === "scheduled");
+              if (!targetPlan || !item) return;
+              setEditingPlan(targetPlan.id); setEditing(item.id); setEditNameId(String(targetPlan.payment_name_id || names.find((name) => name.name === targetPlan.name)?.id || "")); setEditCategoryId(String(targetPlan.category_id)); setEditAssetId(targetPlan.asset_id ? String(targetPlan.asset_id) : ""); setEditCount(String(targetPlan.payment_installments.length)); setEditFirstDate(targetPlan.payment_installments.slice().sort((a, b) => a.due_date.localeCompare(b.due_date))[0]?.due_date || item.due_date); setEditSchedule(Object.fromEntries(targetPlan.payment_installments.map((row) => [row.id, { amount: String(row.amount), date: row.due_date }])));
             }}>Edit</Button>
             <Button disabled={busy} onClick={() => {
               if (!window.confirm(`Delete all scheduled ${group.name} payments?`)) return;
@@ -533,11 +551,16 @@ export default function PaymentPlanPanel({
               });
             }}>Delete</Button>
           </div>
-          {editing !== null && group.plans.flatMap((plan) => plan.payment_installments).some((item) => item.id === editing) && (
+          {editing !== null && editingPlan !== null && group.plans.flatMap((plan) => plan.payment_installments).some((item) => item.id === editing) && (
             <div className="paylater-subpanel mt-3 space-y-2">
-              <label className="block">Amount<Input type="number" min="0.01" step="0.01" value={editAmount} onChange={(event) => setEditAmount(event.target.value)} onBlur={() => void commitEdit(editing, editAmount, editDate)} /></label>
-              <label className="block">Due date<Input type="date" value={editDate} onChange={(event) => setEditDate(event.target.value)} onBlur={() => void commitEdit(editing, editAmount, editDate)} /></label>
-              <span className="text-xs text-zinc-400">Changes apply automatically when leaving a field.</span>
+              <label className="block">Name<Select value={editNameId} onChange={(event) => setEditNameId(event.target.value)}><option value="">Choose name</option>{names.map((name) => <option key={name.id} value={name.id}>{name.name}</option>)}</Select></label>
+              <label className="block">Category<Select value={editCategoryId} onChange={(event) => setEditCategoryId(event.target.value)}><option value="">Choose category</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</Select></label>
+              <label className="block">Total payable ({currency}, including any fees)<Input type="number" min="0.01" step="0.01" value={Object.values(editSchedule).reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toFixed(2)} readOnly /></label>
+              <label className="block">Asset<Select value={editAssetId} onChange={(event) => setEditAssetId(event.target.value)}><option value="">{mainAssetDefaultLabel(assets, currency)}</option>{assets.filter((asset) => !asset.is_main).map((asset) => <option key={asset.id} value={asset.id}>{asset.name} - {asset.currency || currency} {Number(asset.current_value || 0).toFixed(2)}</option>)}</Select></label>
+              {mode === "installment" && <label className="block">Number of months<Input type="number" min="2" max="360" step="1" value={editCount} onChange={(event) => setEditCount(event.target.value)} /></label>}
+              <label className="block">First payment date<Input type="date" value={editFirstDate} onChange={(event) => setEditFirstDate(event.target.value)} /></label>
+              <div className="space-y-2 border-t border-white/10 pt-3"><p className="font-medium">Payment schedule</p>{Object.entries(editSchedule).map(([id, value], index) => <div key={id} className="grid grid-cols-2 gap-2"><label className="text-xs">Payment {index + 1}<Input type="number" min="0.01" step="0.01" value={value.amount} onChange={(event) => setEditSchedule((current) => ({ ...current, [Number(id)]: { ...current[Number(id)], amount: event.target.value } }))} /></label><label className="text-xs">Due date<Input type="date" value={value.date} onChange={(event) => setEditSchedule((current) => ({ ...current, [Number(id)]: { ...current[Number(id)], date: event.target.value } }))} /></label></div>)}</div>
+              <Button type="button" disabled={busy || !editNameId || !editCategoryId} onClick={() => { const current = editSchedule[editing]; if (current) void commitEdit(editingPlan, editing, editNameId, current.amount, current.date, editCategoryId, editAssetId); }}>Save changes</Button>
             </div>
           )}
         </details>

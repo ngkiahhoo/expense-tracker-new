@@ -38,6 +38,50 @@ export async function changePaymentInstallment(id: number, cancel: boolean, amou
   if (error) throw paymentError(error);
 }
 
+export async function updatePaymentPlanName(planId: string, nameId: number) {
+  const { data: name, error: nameError } = await supabase
+    .from('payment_names')
+    .select('name')
+    .eq('id', nameId)
+    .eq('is_active', true)
+    .single();
+  if (nameError) throw paymentError(nameError);
+  const { error } = await supabase
+    .from('payment_plans')
+    .update({ name: name.name, payment_name_id: nameId })
+    .eq('id', planId);
+  if (error) throw paymentError(error);
+}
+
+export async function updatePaymentPlanDetails(payload: {
+  planId: string;
+  nameId: number;
+  categoryId: number;
+  assetId: number | null;
+}) {
+  const { data: name, error: nameError } = await supabase.from('payment_names').select('name').eq('id', payload.nameId).eq('is_active', true).single();
+  if (nameError) throw paymentError(nameError);
+  const { error } = await supabase.from('payment_plans').update({
+    name: name.name,
+    payment_name_id: payload.nameId,
+    category_id: payload.categoryId,
+    asset_id: payload.assetId,
+  }).eq('id', payload.planId);
+  if (error) throw paymentError(error);
+}
+
+export async function updatePaymentPlanInstallments(items: Array<{ id: number; amount: number; date: string }>) {
+  for (const item of items) {
+    const { error } = await supabase.rpc('change_payment_installment', {
+      p_id: item.id,
+      p_cancel: false,
+      p_amount: item.amount,
+      p_date: item.date,
+    });
+    if (error) throw paymentError(error);
+  }
+}
+
 export async function getPaymentNames() {
   const { data, error } = await supabase.from('payment_names').select('*').eq('is_active', true).order('name');
   if (error) throw paymentError(error);
