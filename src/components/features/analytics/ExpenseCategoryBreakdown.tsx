@@ -15,6 +15,8 @@ interface ExpenseCategoryBreakdownProps {
   monthlySeries?:MonthlySeriesItem[];
   onSelectCategory?:(item:CategoryBreakdownItem) => void;
   onSelectMonthExpense?:(monthKey:string) => void;
+  onSelectMonthIncome?:(monthKey:string) => void;
+  onSelectMonthBalance?:(monthKey:string) => void;
 }
 
 export default function ExpenseCategoryBreakdown({
@@ -23,7 +25,7 @@ export default function ExpenseCategoryBreakdown({
   loading,
   monthlySeries = [],
   onSelectCategory,
-  onSelectMonthExpense,
+  onSelectMonthExpense, onSelectMonthIncome, onSelectMonthBalance,
 }:ExpenseCategoryBreakdownProps) {
   const [showCategoryDetails, setShowCategoryDetails] = useState(false);
   const [showTrendDetails, setShowTrendDetails] = useState(false);
@@ -65,6 +67,8 @@ export default function ExpenseCategoryBreakdown({
         isOpen={showTrendDetails}
         monthlySeries={monthlySeries}
         onSelectMonthExpense={onSelectMonthExpense}
+        onSelectMonthIncome={onSelectMonthIncome}
+        onSelectMonthBalance={onSelectMonthBalance}
         onToggle={() => setShowTrendDetails((current) => !current)}
       />
     </div>

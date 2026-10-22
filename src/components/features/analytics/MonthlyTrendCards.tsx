@@ -10,6 +10,8 @@ interface MonthlyTrendCardsProps {
   isOpen:boolean;
   monthlySeries:MonthlySeriesItem[];
   onSelectMonthExpense?:(monthKey:string) => void;
+  onSelectMonthIncome?:(monthKey:string) => void;
+  onSelectMonthBalance?:(monthKey:string) => void;
   onToggle:() => void;
 }
 
@@ -38,7 +40,7 @@ export default function MonthlyTrendCards({
   currency,
   isOpen,
   monthlySeries,
-  onSelectMonthExpense,
+  onSelectMonthExpense, onSelectMonthIncome, onSelectMonthBalance,
   onToggle,
 }:MonthlyTrendCardsProps) {
   const trendItems = [...monthlySeries].reverse();
@@ -95,11 +97,11 @@ export default function MonthlyTrendCards({
                           key={`${card.title}-${item.label}`}
                           type="button"
                           onClick={() => {
-                            if (isExpenseRow && onSelectMonthExpense) {
-                              onSelectMonthExpense(item.monthKey);
-                            }
+                            if (card.valueKey === "expense") onSelectMonthExpense?.(item.monthKey);
+                            if (card.valueKey === "income") onSelectMonthIncome?.(item.monthKey);
+                            if (card.valueKey === "balance") onSelectMonthBalance?.(item.monthKey);
                           }}
-                          className={`w-full rounded-xl border border-zinc-800/70 bg-zinc-900/60 px-3 py-2 text-left transition ${isExpenseRow ? "cursor-pointer hover:border-white" : "cursor-default"}`}
+                          className="w-full cursor-pointer rounded-xl border border-zinc-800/70 bg-zinc-900/60 px-3 py-2 text-left transition hover:border-white"
                         >
                           <div className="flex items-center justify-between gap-3 text-sm">
                             <span className="text-zinc-400">

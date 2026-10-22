@@ -83,6 +83,7 @@ export default function Home() {
 
   const [selectedMonth, setSelectedMonth] =
     useState(currentMonth);
+  const [includePlanned, setIncludePlanned] = useState(false);
 
   const [activeCurrency, setActiveCurrency] =
     useState<Currency>(() => getStoredCurrency());
@@ -293,17 +294,6 @@ export default function Home() {
     setShowModal:setShowExportModalFromHook,
   } = useAIExport();
 
-  const {
-    analytics,
-    totalSpending,
-    totalIncome,
-    spendingPercent,
-  } = useAnalytics(
-    expenses,
-    incomes,
-    activeCurrency
-  );
-
   const assets = useAssets(selectedMonth);
   const { fetchAssets } = assets;
   useUnsavedChanges(activeTool === "expense" ? !!(amount || note || selectedAssetId || editingId) : activeTool === "income" ? !!(incomeAmount || incomeNote || incomeEditingId) : false, activeTool === "expense" ? loading : activeTool === "income" ? incomeLoading : false);
@@ -312,6 +302,29 @@ export default function Home() {
     await Promise.all([fetchExpenses(), fetchDashboardHistory()]);
   }, [fetchExpenses, fetchDashboardHistory]);
   const payments = usePaymentPlans(refreshPaymentTransactions);
+
+  const plannedExpenses = useMemo(() => {
+    if (!includePlanned || selectedMonth <= currentMonth) return [];
+    const result = [];
+    for (const plan of payments.plans) {
+      if (normalizeCurrency(plan.currency) !== activeCurrency) continue;
+      for (const item of plan.payment_installments) {
+        if (item.status === "scheduled" && item.due_date.startsWith(selectedMonth)) {
+          result.push({ id: -item.id, amount: Number(item.amount), currency: activeCurrency, note: `${plan.name} - Payment ${item.sequence}`, expense_date: item.due_date, category_id: plan.category_id, asset_id: plan.asset_id ?? null, payment_installment_id: item.id });
+        }
+      }
+    }
+    for (const item of recurringExpenses) {
+      if (!item.is_active || normalizeCurrency(item.currency) !== activeCurrency) continue;
+      const day = Math.min(item.repeat_day, new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5, 7)), 0).getDate());
+      result.push({ id: -1000000 - item.id, amount: Number(item.amount), currency: activeCurrency, note: item.name, expense_date: `${selectedMonth}-${String(day).padStart(2, "0")}`, category_id: item.category_id, asset_id: item.asset_id ?? null, recurring_expense_id: item.id });
+    }
+    return result;
+  }, [activeCurrency, currentMonth, includePlanned, payments.plans, recurringExpenses, selectedMonth]);
+
+  const displayExpenses = useMemo(() => [...expenses, ...plannedExpenses], [expenses, plannedExpenses]);
+  const drilldownExpenses = useMemo(() => [...allExpenses, ...plannedExpenses], [allExpenses, plannedExpenses]);
+  const { analytics, totalSpending, totalIncome, spendingPercent } = useAnalytics(displayExpenses, incomes, activeCurrency);
 
   const expenseHistoryDraft = useMemo(() => {
     const noteCounts = new Map<string, number>();
@@ -607,10 +620,12 @@ export default function Home() {
 
   function openScopedRecords() {
     if (!confirmPanelClose()) return;
-    const range = getMonthDateRange(selectedMonth);
-    setRecordFilters({ ...defaultListFilters, currency: activeCurrency });
-    setRecordFrom(range.start); setRecordTo(range.end); setRecordPage(1);
-    setShowBalance(false); setActiveTool("records");
+    setDrilldownCategoryKey(null);
+    setDrilldownCategoryName(null);
+    setDrilldownTypeName(null);
+    setDrilldownMonth(selectedMonth);
+    setShowBalance(false);
+    setShowExpenseDrilldown(true);
   }
 
   function closeExpenseDrilldown() {
@@ -718,6 +733,8 @@ export default function Home() {
               onCurrencyChange={handleCurrencyChange}
               onMonthChange={setSelectedMonth}
               selectedMonth={selectedMonth}
+              includePlanned={includePlanned}
+              onIncludePlannedChange={setIncludePlanned}
             />
 
             <LoadState error={expenseReadError || incomeReadError || assets.error} retry={() => void refreshAll()} />
@@ -797,6 +814,8 @@ export default function Home() {
                 setDrilldownMonth(monthKey);
                 setShowExpenseDrilldown(true);
               }}
+              onSelectMonthIncome={(monthKey) => { setSelectedMonth(monthKey); openIncomeCrud(); }}
+              onSelectMonthBalance={(monthKey) => { setSelectedMonth(monthKey); if (!confirmPanelClose()) return; setActiveTool(null); setShowBalance(true); }}
               totalIncome={totalIncome}
             />}
 
@@ -979,7 +998,7 @@ export default function Home() {
             isOpen={showExpenseDrilldown}
             selectedMonth={drilldownMonth ?? selectedMonth}
             currency={activeCurrency}
-            expenses={allExpenses}
+            expenses={drilldownExpenses}
             categories={categories}
             initialCategoryKey={drilldownCategoryKey}
             initialCategoryName={drilldownCategoryName}

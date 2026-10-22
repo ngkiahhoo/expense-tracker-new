@@ -27,6 +27,8 @@ interface DashboardAnalyticsSectionProps {
   onCopyAIExport:() => void;
   onSelectCategory:(item:CategoryBreakdownItem) => void;
   onSelectMonthExpense:(monthKey:string) => void;
+  onSelectMonthIncome:(monthKey:string) => void;
+  onSelectMonthBalance:(monthKey:string) => void;
   totalIncome:number;
 }
 
@@ -41,7 +43,7 @@ export default function DashboardAnalyticsSection({
   monthlySeries,
   onCopyAIExport,
   onSelectCategory,
-  onSelectMonthExpense,
+  onSelectMonthExpense, onSelectMonthIncome, onSelectMonthBalance,
   totalIncome,
 }:DashboardAnalyticsSectionProps) {
   return (
@@ -86,6 +88,8 @@ export default function DashboardAnalyticsSection({
           loading={loading}
           onSelectCategory={onSelectCategory}
           onSelectMonthExpense={onSelectMonthExpense}
+          onSelectMonthIncome={onSelectMonthIncome}
+          onSelectMonthBalance={onSelectMonthBalance}
           monthlySeries={monthlySeries}
           currency={currency}
         />

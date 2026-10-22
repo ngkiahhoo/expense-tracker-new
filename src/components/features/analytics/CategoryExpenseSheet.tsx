@@ -248,11 +248,14 @@ export default function CategoryExpenseSheet({
                   </div>
                 ) : (
                   recordItems.map((expense) => (
+                    (() => {
+                      const preview = expense.id < 0;
+                      return (
                     <Card key={expense.id} variant="default" padding="sm">
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
                           <p className="truncate text-lg font-semibold text-white">
-                            {expense.note || "Expense"}
+                            {expense.note || "Expense"} {preview && <span className="text-sm font-medium text-sky-300">(Preview)</span>}
                           </p>
                           <p className="mt-1 text-sm text-zinc-400">
                             {expense.categories?.name || categories.find(category => category.id === expense.category_id)?.name || "Uncategorized"}
@@ -269,7 +272,7 @@ export default function CategoryExpenseSheet({
                             </p>
                           </div>
 
-                          <div className="flex gap-2">
+                          {!preview && <div className="flex gap-2">
                             <ActionIconButton
                               kind="edit"
                               onClick={() => {
@@ -289,10 +292,12 @@ export default function CategoryExpenseSheet({
                               title="Delete expense"
                               aria-label="Delete expense"
                             />
-                          </div>
+                          </div>}
                         </div>
                       </div>
                     </Card>
+                      );
+                    })()
                   ))
                 )}
               </>

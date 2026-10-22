@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 import { Card } from "@/components/ui/Card";
-import { Select } from "@/components/ui/Field";
+import { Input, Select } from "@/components/ui/Field";
 import type { Currency } from "@/types/currency";
 import {
   CURRENCIES,
@@ -26,6 +26,8 @@ interface DashboardSummarySectionProps {
   selectedMonth:string;
   loading?: boolean;
   error?: boolean;
+  includePlanned: boolean;
+  onIncludePlannedChange: (checked: boolean) => void;
 }
 
 export default function DashboardSummarySection({
@@ -38,7 +40,7 @@ export default function DashboardSummarySection({
   onCurrencyChange,
   onMonthChange,
   selectedMonth,
-  loading, error,
+  loading, error, includePlanned, onIncludePlannedChange,
 }:DashboardSummarySectionProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -76,28 +78,27 @@ export default function DashboardSummarySection({
         padding="none"
         className="flex h-full min-h-[132px] flex-col p-4 sm:p-5 md:min-h-[150px]"
       >
-        <div className="flex items-center gap-2 text-zinc-400">
+        <div className="flex items-center justify-between gap-2 text-zinc-400">
+          <div className="flex items-center gap-2">
           <CalendarDays size={18} />
           <span>View Month</span>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+            <input type="checkbox" checked={includePlanned} onChange={(event) => onIncludePlannedChange(event.target.checked)} />
+            Include planned payments
+          </label>
         </div>
 
         <div className="mt-4 grid grid-cols-[minmax(0,1fr)_96px] gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
-          <Select
+          <Input
             aria-label="View month"
+            type="month"
             value={selectedMonth}
-            onChange={(event) => onMonthChange(event.target.value)}
+            min={months.reduce((earliest, month) => month < earliest ? month : earliest, months[0] || currentMonth)}
+            max={months.reduce((latest, month) => month > latest ? month : latest, months[0] || currentMonth)}
+            onChange={(event) => event.target.value && onMonthChange(event.target.value)}
             className="w-full text-base sm:text-lg"
-          >
-            {months.map((month) => (
-              <option
-                key={month}
-                value={month}
-                className="bg-black"
-              >
-                {month === currentMonth ? `${month} (Current)` : month}
-              </option>
-            ))}
-          </Select>
+          />
 
           <Select
             value={activeCurrency}

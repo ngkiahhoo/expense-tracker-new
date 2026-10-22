@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 
 export default function useMonthOptions(
-  visibleMonths = 12
+  visibleMonths = 24
 ) {
   return useMemo(() => {
     const today = new Date();
@@ -12,11 +12,11 @@ export default function useMonthOptions(
     ).padStart(2, "0")}`;
 
     const months = Array.from(
-      { length: visibleMonths },
+      { length: visibleMonths * 2 + 1 },
       (_, index) => {
         const date = new Date(
           today.getFullYear(),
-          today.getMonth() - index,
+          today.getMonth() + index - visibleMonths,
           1
         );
 
@@ -28,7 +28,7 @@ export default function useMonthOptions(
 
     return {
       currentMonth,
-      months,
+      months: [currentMonth, ...months.filter((month) => month !== currentMonth)],
     };
   }, [visibleMonths]);
 }
