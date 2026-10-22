@@ -14,6 +14,7 @@ import type {
 import type {
   Asset,
 } from "../types/asset";
+import aiAnalysisPrompt from "../data/ai-analysis-prompt.json";
 
 function csvEscape(
   value:string | number | null | undefined
@@ -216,9 +217,7 @@ export function formatAIExport(
 
   if (options.includeAIPrompt) {
     parts.push("=== AI ANALYSIS PROMPT ===\n\n");
-    parts.push(
-      "Analyze my personal finance data using the provided export, then write the analysis in Chinese. Use the plans, goals, events, notes, recurring expenses and payment plans alongside the historical transactions. Treat scheduled payment installments as dated, temporary future commitments; report each plan's installment amount, total count, remaining count, remaining balance and due-date range. Explain how planned cash flow and future events affect each goal, call out currency and data limitations, then provide practical next actions."
-    );
+    parts.push(aiAnalysisPrompt.prompt);
     parts.push("\n\n");
   }
 
